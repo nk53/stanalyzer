@@ -1,0 +1,63 @@
+mpi:
+  nranks:
+    When GPUs are available, each MPI rank is associated with a different GPU
+  depth:
+    Number of CPU processes to spawn per MPI rank
+  nnodes:
+    Number of nodes allocated to each MPI process
+omp:
+  nthreads:
+    Number of OpenMP threads to spawn per MPI process
+lammps:
+  args: |
+    See <a href="https://docs.lammps.org/Run_options.html">run options</a> in the LAMMPS manual for details
+namd:
+  script:
+    Name of NAMD script to run
+  script_tpl:
+    Shell expression yielding NAMD script filename
+  out:
+    Filename to write NAMD output
+  out_tpl:
+    Shell expression yielding NAMD output filename
+  p: |
+    <p>Number of NAMD worker threads to spawn</p>
+    <p>See <a href="https://charm.readthedocs.io/en/latest/charm++/manual.html#command-line-options">here</a> in Charm++ docs for more detail on the <code>+p</code> option</p>
+hostfile:
+  path:
+    Filename to store allocated hostnames
+PBS:
+  name:
+    Optional job name to display in qstat and email notifications
+  queue: |
+    See <a href="https://docs.alcf.anl.gov/polaris/running-jobs/#queues">queue</a> ALCF documentation
+  place:
+    arrangement: |
+      How to place allocated resources (chunks), see <a href="https://docs.alcf.anl.gov/running-jobs/job-and-queue-scheduling/#definitions-and-notes">ALCF resource definitions</a> for more detail
+    sharing: |
+      Whether and how to allow other jobs to use your allocated resource, see <a href="https://docs.alcf.anl.gov/running-jobs/job-and-queue-scheduling/#definitions-and-notes">ALCF resource definitions</a> for more detail
+  walltime:
+    Amount of time to reserve for your job to run
+  pcput:
+    CPU time limit for any individual process (optional)
+  pmem:
+    Physical memory to allocate to each process (optional)
+  pvmem:
+    Virtual memory to allocate to each process (optional)
+  chunk:
+    help: |
+      <p>A chunk is a set of resources allocated as a unit to a job. All parts of a chunk come from the same host. In a typical MPI job, there is one chunk per MPI process.</p>
+      <p>References:
+        <ul>
+          <li><a href="https://docs.alcf.anl.gov/running-jobs/job-and-queue-scheduling/#definitions-and-notes">ALCF resource definitions</a></li>
+          <li>PBS User Guide <a href="https://help.altair.com/2022.1.0/PBS%20Professional/PBSUserGuide2022.1.pdf#I7.1.955001">4.2.2</a> and <a href="https://help.altair.com/2022.1.0/PBS%20Professional/PBSUserGuide2022.1.pdf#I7.1.955057">4.3.3</a>)</li>
+        </p>
+    "0":
+      nchunks: |
+        Number of chunks to allocate with the resources defined in this chunk set (default: 1)
+      ncpus:
+        Number of CPUs to include in each chunk in this set
+      mem:
+        Amount of physical memory per chunk
+      mpiprocs:
+        Number of MPI processes to create in each chunk

@@ -1,0 +1,44 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+<form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
+{%- filter indent(_indent_level+4) %}
+{{ form.path('namd_path', value='/soft/applications/NAMD/namd3',
+         label="Path to NAMD executable") }}
+{{ form.path('hostfile_path', value='local_hostfile', label="Hostfile config path prefix") }}
+{{ form.path('namd_script_tpl', value='equ_test_${i}.namd', label="NAMD script path template") }}
+{{ form.path('namd_out_tpl', value='equ_test_${i}.output', label="NAMD output path template") }}
+{{ form.positive_integer('mpi[nnodes]', label="Nodes per MPI process", value=16) }}
+{{ form.positive_integer('mpi[depth]', label="MPI Depth", value=16) }}
+{{ form.positive_integer('namd[p]', label="NAMD processes", value=16) }}
+{{ form.non_negative_integer('gpus', value=4, label="Number of GPUs") }}
+{{ form.select('system', [
+    ('any', 'Any'),
+    ('polaris', 'Polaris', True)], label="System") }}
+{{ pbs.resources(default_chunks="8:system=polaris") }}
+{%- endfilter %}
+<pre id="{{ page_id }}_script_tpl" class="code" style="display: none;">#!/bin/bash -l
+<span id="{{ page_id }}_pbs_opts">#PBS placeholder_text</span>
+
+EXE=<span data-src="namd_path"></span>
+
+cd ${PBS_O_WORKDIR}
+NUM_NODES_PER_MPI=<span data-src="mpi[nnodes]"></span>
+
+module swap PrgEnv-nvhpc/8.3.3 PrgEnv-gnu/8.3.3
+split --lines=${NUM_NODES_PER_MPI} --numeric-suffixes=1 --suffix-length=2 $PBS_NODEFILE <span data-src="hostfile_path"></span>.
+i=0
+for lh in <span data-src="hostfile_path"></span>*
+do
+    i=$[$i+1]
+    mpiexec -n 1 --ppn 1 --hostfile ${lh} --depth=<span data-src="mpi[depth]"></span> --cpu-bind depth $EXE +p <span data-src="namd[p]"></span> +devices <span data-function="num_to_range_list" data-src="gpus"></span> <span data-src="namd_script_tpl"></span> &gt; <span data-src="namd_out_tpl"></span> &
+sleep 1s
+done
+wait
+</pre>
+{%- filter indent(_indent_level+4) %}
+<h2>The Code</h2>
+{{ form.textarea('code', classes=['code']) }}
+{%- endfilter -%}
+{% filter indent(_indent_level) %}
+</form><!-- form#namd_ensemble_form -->
+{%- endfilter -%}

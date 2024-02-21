@@ -1,0 +1,21 @@
+{%- import 'parts/utils.html' as utils with context -%}
+{%- macro anchor_list(items, collapsible=False, ul_attrs=None) -%}
+{%- if ul_attrs is none %}{% set ul_attrs = {} %}{% endif -%}
+<ul{{ utils.cat_attrs(**ul_attrs) }} data-role="listview">
+{%- for path, item in items.items() -%}
+    {%- if 'sub_menu' in item %}
+    <li data-inset="false"{% if collapsible %} data-role="collapsible" data-collapsed-icon="carat-r" data-expanded-icon="carat-d" data-iconpos="right"{% endif -%}
+       {% if 'icon' in item %} data-icon="{{ item['icon'] }}"{% endif %}>
+        <h2>{{ item['text'] }}</h2>
+        {{ anchor_list(item['sub_menu'], collapsible)|indent(width=8) }}
+    </li>
+    {%- else -%}
+    {%- set page_name = path -%}
+    {%- set path = item.get('path', path) -%}
+    {%- set active = (page_id == page_name) %}
+    <li{% if 'icon' in item %} data-icon="{{ item['icon'] }}"
+       {%- endif %}><a{% if active %} class="active"{% endif %} href="{{ path }}">{{ item['text'] }}</a></li>
+    {%- endif -%}
+{%- endfor %}
+</ul>
+{%- endmacro -%}

@@ -1,0 +1,24 @@
+{%- from 'parts/utils.html' import include_indented with context -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{ page.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='jquery.mobile-1.4.5.min.css') }}">
+    <link href="{{ url_for('static', path='/style.css') }}" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{ url_for('static', path='/jquery-1.11.1.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/jquery.mobile-1.4.5.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/forms.js') }}"></script>
+</head>
+<body>
+    <div data-role="page" id="{{ page_id }}">
+        {{ include_indented("parts/navigation.html", width=8) }}
+        {{ include_indented("parts/header.html", width=8) }}
+        <div class="ui-content" role="main">
+            {%- set _indent_level = 12 %}
+            {% include "content/%s.html"|format(page_id) %}
+        </div><!-- .ui-content[role=main] -->
+        {{ include_indented("parts/footer.html", width=8) }}
+    </div><!-- page -->
+</body>
+</html>

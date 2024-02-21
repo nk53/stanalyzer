@@ -1,0 +1,17 @@
+home:
+  text: Home
+  icon: home
+  path: /
+docs:
+  text: Documentation
+project_settings:
+  text: Project
+host_settings:
+  text: Hosts
+analysis:
+  text: Analysis
+plugin_settings:
+  text: Plugins
+settings:
+  text: Settings
+  icon: gear

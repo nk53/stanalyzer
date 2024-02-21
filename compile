@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+tmp=.tmppath.html
+
+addr="http://localhost:8000"
+curl $addr/$1 > $tmp
+${EDITOR:-less} $tmp
+rm $tmp

@@ -1,0 +1,8 @@
+{%- import 'parts/list.html' as list with context -%}
+<div id="{{ page_id }}_navigation" data-role="panel" data-display="overlay">
+    {{ list.anchor_list(menu, collapsible=True)|indent }}
+</div><!-- navigation -->
+<div class="expanded-nav-left">
+    {{ list.anchor_list(menu, collapsible=True, ul_attrs={
+        'classes': ['ui-alt-icon', 'ui-nodisc-icon']})|indent }}
+</div><!-- .expanded-nav-left -->

@@ -1,0 +1,14 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+<form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
+{%- filter indent(_indent_level+4) %}
+{{ form.input('title', label='Title') }}
+{{ form.path('input_path', label='Input path') }}
+{{ form.path('output_path', label='Output path') }}
+{{ form.path('python_path', label='Python path') }}
+{{ form.path('application_path', label='Application path') }}
+{{ form.radio('scheduler', ['PBS', 'SLURM', ('interactive', 'Interactive (none)', True)],
+              legend='Resource manager type', horizontal=True) }}
+{{ form.textarea('PBS', label='PBS settings', visibility={'allowed_scheduler': 'PBS'}) }}
+{{ form.textarea('SLURM', label='SLURM settings', visibility={'allowed_scheduler': 'SLURM'}) }}
+{%- endfilter %}

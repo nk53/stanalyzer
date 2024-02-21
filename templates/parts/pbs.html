@@ -1,0 +1,73 @@
+{%- import 'parts/utils.html' as utils with context -%}
+{%- import 'parts/form.html' as form with context -%}
+{%- macro resources() -%}
+<h2>PBS Options</h2>
+{{ form.input('PBS[name]', label='Job name', placeholder='Leave blank to ignore') }}
+{{ form.input('PBS[account]', label='Account to charge') }}
+{{ form.select('PBS[queue]', [
+    'debug', 'debug-scaling', 'prod', 'preemptable', 'demand'
+], label='Job queue') }}
+{{ form.checkbox('PBS[mail][use]', label='Get email updates') }}
+<div class="email-options ui-body ui-body-a ui-corner-all">
+{%- filter indent %}
+{{ form.input('PBS[mail][addr]', label='Email address') }}
+{{ form.checkbox_group('PBS_mail_opts', [
+    {
+        'label': 'job aborted',
+        'name': 'PBS[mail][a]',
+        'checked': True,
+    }, {
+        'label': 'beginning of execution',
+        'name': 'PBS[mail][b]',
+    }, {
+        'label': 'end of execution',
+        'name': 'PBS[mail][e]',
+    }, {
+        'label': 'also update subjobs',
+        'name': 'PBS[mail][j]',
+    }
+], legend="Job update events") }}
+{%- endfilter %}
+</div><!-- .email-options -->
+{{ form.select('PBS[place][arrangement]', [
+    ('free', 'no restrictions (free)'),
+    ('pack', 'all chunks on one host (pack)'),
+    ('scatter', 'one host per chunk (scatter)'),
+    ('vscatter', 'one host per vnode (vscatter)'),
+], label='Chunk arrangement') }}
+{{ form.select('PBS[place][sharing]', [
+    ('excl', 'only this job can use the chosen vnodes (excl)'),
+    ('exclhost', 'reserve whole host for this job (exclhost)'),
+    ('shared', 'vnodes can be shared with other jobs (shared)'),
+], label='Chunk sharing') }}
+<h3>Job-wide resource limits</h3>
+{{ form.input('PBS[walltime]', label='Walltime', value='0:30:00', add_div=True, mini=True) }}
+{{ form.input('PBS[pcput]', label='Per-process CPU time', add_div=True, mini=True) }}
+{{ form.memory_size('PBS[pmem]', label='Per-process memory', value='') }}
+{{ form.memory_size('PBS[pvmem]', label='Per-process vnode memory', value='') }}
+{{ chunk_limits(**kwargs) }}
+{%- endmacro -%}
+
+{%- macro chunk_limits(tid='chunk_tpl') -%}
+<h3>Per-chunk resource limits {{ form.tooltip('PBS[chunk][help]') }}</h3>
+<div class="chunk-limits">
+    <button{{ utils.get_id_attr(tid+'_add') }} type="button" data-mini="true" data-inline="true" data-icon="plus" data-enhanced="true">Add chunk set</button>
+    <button{{ utils.get_id_attr(tid+'_rm') }} type="button" data-mini="true" data-inline="true" data-icon="minus" data-enhanced="true">Remove chunk set</button>
+    <div{{ utils.get_id_attr(tid) }} data-inset="true" class="ui-body ui-body-a ui-corner-all" data-enhanced="true">
+        <div><p style="float: left;">Chunk set #<span></span>:</p></div>
+{%- filter indent(width=8) %}
+{{ form.positive_integer('PBS[chunk][0][nchunks]', label='Chunks', **{'data-enhanced': 'true'}) }}
+{{ form.positive_integer('PBS[chunk][0][ncpus]', label='CPUs', value='', **{'data-enhanced': 'true'}) }}
+{{ form.memory_size('PBS[chunk][0][mem]', label='Memory', value='', num_opts={'optional': True}, no_enhance=True) }}
+{%- for pint_opt in (('mpiprocs', 'MPI processes'), ('ompthreads', 'OMP threads')) %}
+    {%- if pint_opt[0] in kwargs %}
+        {{ form.positive_integer('PBS[chunk][0]['~pint_opt[0]~']', label=pint_opt[1], optional=True, **{'data-enhanced': 'true'}) }}
+    {%- endif %}
+{%- endfor %}
+{%- endfilter -%}
+    </div>
+</div><!-- .chunk-limits -->
+{%- if 'default_chunks' in kwargs %}
+<input type="hidden" id="{{ page_id }}_default_chunks" value="{{ kwargs['default_chunks'] }}">
+{% endif -%}
+{%- endmacro -%}

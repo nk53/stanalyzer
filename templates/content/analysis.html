@@ -1,0 +1,65 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+{% macro render_dialog(title, class='dialog') -%}
+    <div class="{{ class }}">
+        <h2>{{ title }}</h2>
+        <div class="contents">
+            {{ caller() }}
+        </div>
+    </div>
+{%- endmacro %}
+
+{% call render_dialog('Hello World') %}
+    This is a simple dialog rendered by using a macro and
+    a call block.
+{% endcall %}
+
+<form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
+{%- filter indent(_indent_level+4) %}
+<!-- this form needs a LOT more modularization -->
+{{ form.checkbox('apl', label="Average area per lipid") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+    {{ form.input('apl_x', label="System Size (X)") }}
+    {{ form.input('apl_y', label="System Size (Y)") }}
+    {{ form.checkbox('apl_center', label="Perform Membrane Centering") }}
+    {{ form.checkbox('apl_voronoi', label="Use Voronoi diagram") }}
+    {{ form.textarea('apl_query', label="Query") }}
+    {{ form.positive_integer('apl_interval', label="Frame Interval") }}
+    {{ form.path('apl_out', label="Output File", default="area_per_lipid.dat") }}
+</div>
+{{ form.checkbox('density_profile_1D', label="Density Profile") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+<!-- separate common selections from custom selections, include ± buttons
+     for custom selections -->
+    {{ form.checkbox('dp1d_center', label="Perform Membrane Centering") }}
+
+    {{ form.checkbox('dp1d_all', label="all") }}
+    {{ form.positive_integer('dp1d_all_interval', label="Frame Interval") }}
+    {{ form.path('dp1d_all_out', label="Output File", default="density_all.dat") }}
+    {{ form.select('dp1d_all_axis', ['X', 'Y', ('Z', 'Z', True)], label="Axis") }}
+
+    {{ form.checkbox('dp1d_custom', label="custom") }}
+    <!-- todo finish this -->
+</div>
+{{ form.checkbox('helix_tilt', label="Helix Tilt Angle") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('order_param', label="Lipid Order Parameter") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('RMSD', label="RMSD") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('RMSF', label="RMSF") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('sterol_tilt', label="Sterol Tilt Angle") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('system_size', label="System Size") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{{ form.checkbox('membrane_thickness', label="Membrane Thickness") }}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+</div>
+{%- endfilter %}

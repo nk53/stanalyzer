@@ -1,0 +1,57 @@
+{# returns a CSS selector string; useful for debugging #}
+{%- macro css_selector(tag=None, id=None, classes=None) -%}
+    {% if tag is not none %}{{ tag }}{% endif -%}
+    {% if id is not none %}#{{ id }}{% endif -%}
+    {% if classes is not none %}.{{ classes|join('.') }}{% endif -%}
+    {% for attr, value in kwargs.items() -%}
+        [{{ attr }}="{{ value }}"]
+    {%- endfor %}
+{%- endmacro -%}
+
+{# wraps css_selector(...) in an HTML comment #}
+{%- macro comment_css_sel(args=None) -%}
+{%- if args is none %}{% set args = {} %}{% endif -%}
+{%- if kwargs is none %}{% set kwargs = {} %}{% endif -%}
+{%- do kwargs.update(args) -%}
+    <!-- {{ css_selector(**kwargs) }} -->
+{%- endmacro -%}
+
+{# concatenate tag attributes other than class #}
+{%- macro cat_attrs(args=None) -%}
+    {%- if args is not none %}{% do kwargs.update(args) %}{% endif -%}
+    {%- for attr, value in kwargs.items() %}
+        {%- if attr is sameas 'classes' -%}
+            {{ ' ' ~ cat_classes(value) }}
+        {%- elif attr is sameas 'visibility' -%}
+            {{ ' data-visibility' }}="{{ value|tojson|forceescape }}"
+        {%- else -%}
+            {{ ' ' ~ attr }}="{{ value }}"
+        {%- endif -%}
+    {%- endfor -%}
+{%- endmacro -%}
+
+{%- macro cat_classes(classes) -%}
+    {%- if classes is not none -%}
+        class="{{ classes|unique|join(' ') }}"
+    {%- endif -%}
+{%- endmacro -%}
+
+{# import this macro with context if included path needs context #}
+{%- macro include_indented(path) -%}
+{% filter indent(**kwargs) %}
+{%- include path -%}
+{% endfilter %}
+{%- endmacro -%}
+
+{# return a page-safe ID; must import with context to use this macro #}
+{%- macro get_id_attr(id=None) -%}
+{%- if id is not none -%}
+{{ ' ' }}id="{{ get_id(id) }}"
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro get_id(id=None) -%}
+{%- if id is not none -%}
+{{ page_id }}_{{ id }}
+{%- endif -%}
+{%- endmacro -%}

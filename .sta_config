@@ -1,0 +1,14 @@
+DN=/dev/null
+
+if ! which conda >$DN 2>$DN; then
+    echo "Please load or install conda before running this script" >&2
+    if [ $SHLVL -gt 1 ]; then
+        exit 1
+    fi
+else
+    if ! which activate >$DN 2>$DN; then
+        return
+    fi
+    conda activate sta || exit 2
+fi
+

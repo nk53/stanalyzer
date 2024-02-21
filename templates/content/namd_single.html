@@ -1,0 +1,29 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+<form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
+{%- filter indent(_indent_level+4) %}
+{{ form.path('namd_path', value='/soft/applications/NAMD/namd3',
+         label="Path to NAMD executable") }}
+{{ form.path('namd_script', value='equ_test.namd', label="NAMD script path") }}
+{{ form.path('namd_out', value='equ_test.output', label="NAMD output path") }}
+{{ form.non_negative_integer('gpus', value=4, label="Number of GPUs") }}
+{{ form.select('system', [
+    ('any', 'Any'),
+    ('polaris', 'Polaris', True)], label="System") }}
+{{ pbs.resources(default_chunks="1:system=polaris") }}
+{%- endfilter %}
+<pre id="{{ page_id }}_script_tpl" class="code" style="display: none;">#!/bin/bash -l
+<span id="{{ page_id }}_pbs_opts">#PBS placeholder_text</span>
+
+EXE=<span data-src="namd_path"></span>
+
+cd ${PBS_O_WORKDIR}
+mpiexec -n 1 --ppn 1 --depth=16 --cpu-bind depth $EXE +p 16 +devices <span data-function="num_to_range_list" data-src="gpus"></span> <span data-src="namd_script"></span> &gt; <span data-src="namd_out"></span>
+</pre>
+{%- filter indent(_indent_level+4) %}
+<h2>The Code</h2>
+{{ form.textarea('code', classes=['code']) }}
+{%- endfilter -%}
+{% filter indent(_indent_level) %}
+</form><!-- form#namd_form -->
+{%- endfilter -%}

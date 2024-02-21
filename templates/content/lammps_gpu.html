@@ -1,0 +1,50 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+<form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
+{%- filter indent(_indent_level+4) %}
+{{ form.path('lammps_path', value='/home/knight/bin/lammps_polaris_nvhpc',
+         label="Path to LAMMPS executable") }}
+{{ form.path('lammps_args', value='-in in.rhodo -pk gpu ${NGPUS} -pk omp 0 -sf hybrid gpu omp',
+         label="LAMMPS arguments") }}
+{{ form.positive_integer('mpi[nranks]', value=4, label="Number of MPI ranks") }}
+{{ form.positive_integer('mpi[depth]', value=8, label="MPI Depth") }}
+{{ form.positive_integer('omp[nthreads]', value=1, label="Number of OMP threads") }}
+{{ form.positive_integer('ngpus', value=4, label="Number of GPUs") }}
+{{ form.select('system', [
+    ('any', 'Any'),
+    ('polaris', 'Polaris', True)], label="System") }}
+{{ pbs.resources(default_chunks="1:system=polaris") }}
+{%- endfilter %}
+<pre id="{{ page_id }}_script_tpl" class="code" style="display: none;">#!/bin/bash -l
+<span id="{{ page_id }}_pbs_opts">#PBS placeholder_text</span>
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+
+NNODES=`wc -l &lt; $PBS_NODEFILE`
+
+# per-node settings
+NRANKS=<span data-src="mpi[nranks]"></span>
+NDEPTH=<span data-src="mpi[depth]"></span>
+NTHREADS=<span data-src="omp[nthreads]"></span>
+NGPUS=<span data-src="ngpus"></span>
+
+NTOTRANKS=$(( NNODES * NRANKS ))
+
+EXE=<span data-src="lammps_path"></span>
+EXE_ARG="<span data-src="lammps_args"></span>"
+
+# more MPI ranks per GPU likely needed for performance
+
+MPI_ARG="-n ${NTOTRANKS} --ppn ${NRANKS} --depth=${NDEPTH} --cpu-bind depth --env OMP_NUM_THREADS=${NTHREADS} --env OMP_PROC_BIND=spread --env OMP_PLACES=cores"
+
+COMMAND="mpiexec ${MPI_ARG} ${EXE} ${EXE_ARG}"
+echo "COMMAND= ${COMMAND}"
+${COMMAND}
+</pre>
+{%- filter indent(_indent_level+4) %}
+<h2>The Code</h2>
+{{ form.textarea('code', classes=['code']) }}
+{%- endfilter -%}
+{%- filter indent(_indent_level) %}
+</form><!-- form#lammps_gpu_form -->
+{%- endfilter -%}

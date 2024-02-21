@@ -1,0 +1,156 @@
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
+.code {
+    font-family: Courier New;
+}
+
+.main, .sidebar {
+    display: block;
+    width: 100%;
+}
+
+body {
+    font-family: Helvetica, sans-serif;
+}
+
+a.ui-btn-icon-notext.ui-corner-all {
+    -webkit-border-radius: .3125em;
+    border-radius: .3125em;
+}
+
+div.expanded-nav-left {
+    display: none;
+    width: 0;
+    z-index: 1;
+}
+
+/* needed to override some jqm defaults for 28em */
+@media all and (max-width: 36rem) {
+    div.ui-field-contain > label {
+        width: unset;
+    }
+}
+
+/* 576+ px width assuming 16px font */
+@media all and (min-width: 36rem) {
+    /*.main {
+        float: left;
+        width: 60%;
+    }*/
+    div.ui-field-contain {
+        display: flex;
+    }
+    div.ui-field-contain > label {
+        width: 30%;
+    }
+}
+
+/* 800+ px width */
+@media all and (min-width: 50rem) {
+    /*.main {
+        width: 80%;
+    }*/
+    div.expanded-nav-left {
+        margin: 1em 1em 1em 0;
+        display: block;
+        visibility: visible;
+        position: relative;
+        float: left;
+        left: 0;
+        clip: initial;
+        width: 20%;
+        /* autoexpand submenus */
+        min-width: max-content;
+    }
+    /* :not(#fakeID) pseudo-selector needed to add selector weight */
+    a[id$=nav_btn]:not(#nav_btn) {
+        display: none;
+    }
+    div.expanded-nav-left li:not(:hover) a::after {
+        display: none;
+    }
+    /*div.expanded-nav-left li a.ui-btn {
+        background-color: unset;
+    }*/
+}
+
+/* remove extra border for collapsible lists */
+.ui-listview > li.ui-li-static {
+    padding: 0;
+    /*border-width: 0;*/
+}
+.ui-listview > li.ui-li-static div.ui-collapsible-content,
+li.ui-collapsible > h2.ui-collapsible-heading > a {
+    border-width: 0;
+}
+.ui-listview > li.ui-li-static div.ui-collapsible-content,
+li.ui-collapsible li.ui-first-child {
+    border-top-width: 1px;
+}
+
+/* no special padding for collapsible lists */
+.ui-listview > li.ui-li-static ul.ui-listview {
+    padding-left: 1em;
+    background-color: #FCFCFC;
+}
+.ui-listview > li.ui-li-static ul.ui-listview a:not(:hover) {
+    background-color: #FCFCFC;
+}
+li.ui-collapsible > h2.ui-collapsible-heading {
+    margin: 0;
+}
+
+div.controlgroup-textinput {
+    padding-top: .25em;
+    padding-bottom: .25em;
+}
+
+div.controlgroup-textinput.ui-mini {
+    padding-top: .12em;
+    padding-bottom: .12em;
+}
+
+div.ui-field-contain {
+    align-items: center;
+    justify-content: left;
+}
+
+div.ui-field-contain > label {
+    float: none;
+    margin: auto 2% auto 0;
+}
+
+div.ui-field-contain div.ui-controlgroup-controls {
+    width: 100%;
+}
+
+.ui-field-contain.memory-size div.ui-input-text {
+    width: 25%;
+}
+
+.ui-btn.sta-tooltip-btn:not(#fake_button_id) {
+    background: none;
+    border: 0;
+}
+
+/* matching ST-Analyzer webpage colors somewhat */
+.ui-overlay-a, .ui-page-theme-a, .ui-page-theme-a .ui-panel-wrapper {
+    background-color: #fff;
+}
+.ui-bar-a, .ui-page-theme-a .ui-bar-inherit, html .ui-bar-a .ui-bar-inherit, html .ui-body-a .ui-bar-inherit, html body .ui-group-theme-a .ui-bar-inherit, .ui-page-theme-a .ui-btn, .ui-page-theme-a .ui-btn:visited {
+    background-color: #eee;
+    color: #606060;
+    font-weight: normal;
+}
+.ui-page-theme-a a.ui-btn.active {
+    color: #f99600;
+    font-weight: normal;
+}
+
+/* not sure why, but jqm theme leaves unhovered, selected text unreadable */
+.ui-page-theme-a div.expanded-nav-left .ui-btn.ui-btn-active:not(:hover) {
+    color: rgb(51, 51, 51);
+    text-shadow: unset;
+}

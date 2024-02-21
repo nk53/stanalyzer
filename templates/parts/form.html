@@ -1,0 +1,208 @@
+{%- import 'parts/utils.html' as utils with context -%}
+
+{%- macro tooltip(id, lookup=None) -%}
+{%- if lookup is none %}{% set lookup = id %}{% endif -%}
+{%- set text = auto_tooltip(lookup) -%}
+{%- if text is not none -%}
+<!-- {{ text }} -->
+{{ tooltip_anchor(id) }}
+{{ tooltip_div(id, text) }}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro tooltip_anchor(href_id) -%}
+<a href="#{{ href_id }}" data-rel="popup" data-transition="none" class="sta-tooltip-btn ui-btn ui-alt-icon ui-nodisc-icon ui-btn-inline ui-icon-info ui-btn-icon-notext" title="Learn more">Learn more</a>
+{%- endmacro -%}
+
+{%- macro tooltip_div(id, text) -%}
+{%- set attrs = {
+    'classes': ['ui-content'],
+    'data-theme': 'a',
+    'style': 'max-width: 350px;',
+} -%}
+{%- do attrs['classes'].extend(kwargs.pop('classes', [])) -%}
+{%- do attrs.update(kwargs) -%}
+<div data-role="popup" id="{{ id }}"{{ utils.cat_attrs(**attrs) }}>
+    {% autoescape false %}{{ text }}{% endautoescape %}
+</div>
+{%- endmacro -%}
+
+{%- macro field_contain(add_div) -%}
+{%- do kwargs.setdefault('wrapper_attrs', {}) -%}
+{%- do kwargs['wrapper_attrs'].setdefault('classes', ['ui-field-contain']) -%}
+{{ wrap_tag('div', wrap=add_div, **kwargs) }}
+{%- endmacro -%}
+
+{%- macro wrap_tag(tag, wrap=True, wrapper_attrs=None) -%}
+{%- if wrap -%}
+<{{ tag }}{{ utils.cat_attrs(wrapper_attrs) }}>
+    {{ caller(kwargs)|indent }}
+</{{ tag }}>{{ utils.comment_css_sel(wrapper_attrs) -}}
+{%- else -%}
+{{ caller(kwargs) }}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro label_field(text, _for=None) -%}
+{%- if text is not none -%}
+{%- set tt = kwargs.pop('tooltip', None) -%}
+{%- if tt %}{{ tooltip_div(_for~'_tooltip', tt) }}{% endif -%}
+<label{% if _for is not none %} for="{{ _for }}"{% endif -%}
+{{ utils.cat_attrs(**kwargs) }}>{{ text|e }}{% if tt %}{{ tooltip_anchor(_for~'_tooltip') }}{% endif %}</label>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro legend_field(text) -%}
+{%- if text is not none -%}
+    <legend{{ utils.cat_attrs(**kwargs) }}>{{ text|e }}</legend>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro input(name, value='', type='text', size=20, label=None, add_div=True, mini=False) -%}
+{%- call(kwargs) field_contain(add_div, **kwargs) -%}
+<!-- input[name="{{ name }}"] -->
+{{ label_field(label, _for=utils.get_id(name), tooltip=auto_tooltip(name)) }}
+<input type="{{ type }}"{{ utils.get_id_attr(name) }} name="{{ name }}" value="{{ value|e
+        }}"{% if size is not none %} size="{{ size }}"{% endif -%}
+        {% if mini %} data-mini="true"{% endif -%}
+        {{ utils.cat_attrs(**kwargs) }}>
+{%- endcall -%}
+{%- endmacro -%}
+
+{%- macro checkbox(name, checked=False, label=None) -%}
+<input type="checkbox"{{ utils.get_id_attr(name) }} name="{{ name }}"{{ utils.cat_attrs(**kwargs) }}>
+{{ label_field(label, _for=utils.get_id(name)) }}
+{{ tooltip(name~'_tooltip', name) }}
+{%- endmacro -%}
+
+{%- macro checkbox_group(id, options, legend=None, horizontal=False) -%}
+<fieldset{{ utils.get_id_attr(id) }} data-role="controlgroup"
+     {%- if horizontal %} data-type="horizontal"{% endif %}>
+{%- if legend is not none %}
+<legend>{{ legend }}{{ tooltip(id~'_tooltip', id) }}</legend>
+{%- endif -%}
+{%- for option in options -%}
+    {%- if option is mapping -%}
+        {%- set label = option.get('label', None) -%}
+        {%- set name = option['name'] -%}
+        {%- set id = option.get('id', name) -%}
+        {%- set checked = option.get('checked', '') -%}
+        {%- if checked %}{% set checked = ' checked' -%}
+        {%- else %}{% set checked = '' %}{%- endif %}
+        <input type="checkbox" name="{{ name }}"{{ utils.get_id_attr(id) }}{{ checked }}>
+    {{ label_field(label, _for=utils.get_id(id)) }}
+    {%- elif option is not string and option is sequence -%}
+        {%- set id = option[0] %}
+        {%- set name = option[0] %}
+        {%- set label = option[1] %}
+        {%- set checked = option|length is ge 3 and option[2] %}
+        {%- if checked %}{% set checked = ' checked' %}
+        {%- else %}{% set checked = '' %}{% endif %}
+    <input type="checkbox" name="{{ name }}"{{ utils.get_id_attr(id) }}{{ checked }}>
+    {{ label_field(label, _for=utils.get_id(id)) }}
+    {%- else -%}
+    <input type="checkbox" name="{{ option }}"{{ utils.get_id_attr(option) }}>
+    {{ label_field(option, _for=utils.get_id(option)) }}
+    {%- endif -%}
+{%- endfor %}
+</fieldset>
+{%- endmacro -%}
+
+{%- macro textarea(name, value='', label=None) -%}
+{{ label_field(label, _for=utils.get_id(name), classes=['textarea-label'], tooltip=auto_tooltip(name)) }}
+<textarea{{ utils.get_id_attr(name) }} name="{{ name }}" {{ utils.cat_attrs(**kwargs) }}>{{ value|e }}</textarea>
+{%- endmacro -%}
+
+{%- macro path(name, add_div=True) -%}
+    {%- do kwargs.setdefault('classes', []) -%}
+    {%- do kwargs['classes'].append('code') -%}
+    {{- input(name, add_div=add_div, **kwargs) -}}
+{%- endmacro -%}
+
+{%- macro select(name, options, label=None, add_div=True) -%}
+{%- call(kwargs) field_contain(add_div) -%}
+{{ label_field(label, _for=utils.get_id(name), tooltip=auto_tooltip(name)) }}
+<select{{ utils.get_id_attr(name) }} name="{{ name }}">
+{%- for option in options %}
+    {%- if option is mapping %}
+    <option value="{{ option['value'] }}"
+    {%- if option.get('selected', False) %} selected{% endif %}>{{ option['text'] }}</option>
+    {%- elif option is not string and option is sequence %}
+    <option value="{{ option[0] }}"
+    {%- if option|length is ge 3 and option[2] %} selected{% endif %}>{{ option[1] }}</option>
+    {%- else %}
+    <option value="{{ option }}">{{ option }}</option>
+    {%- endif %}
+{%- endfor %}
+</select>{{ utils.comment_css_sel(tag='select', id=utils.get_id(name), name=name) }}
+{%- endcall -%}
+{%- endmacro -%}
+
+{%- macro radio(name, options, legend=None, add_fieldset=True, horizontal=False, mini=False, no_enhance=False) -%}
+{% if add_fieldset %}
+<fieldset data-role="controlgroup"{% if horizontal %} data-type="horizontal"{% endif -%}
+          {% if mini %} data-mini="True"{% endif %}{% if no_enhance %} data-enhanced="true"{% endif %}>
+{% endif -%}
+    {{ legend_field(legend, _for=name, tooltip=auto_tooltip(name)) }}
+    {%- for option in options %}
+        {%- if option is mapping %}
+            {%- set value = option['value'] %}
+            {%- set id = "{}-{}".format(name, value) %}
+<input type="radio"{{ utils.get_id_attr(id) }} name="{{ name }}" value="{{ value }}"
+        {%- if option.get('checked', False)%} checked="checked"{% endif -%}{% if no_enhance %} data-enhanced="true"{% endif %}>
+{{ label_field(option.get('label', option['value']), _for=utils.get_id(id)) }}
+    {%- elif option is not string and option is sequence %}
+        {%- set id = "{}-{}".format(name, option[0]) %}
+        {%- set value = option[1] -%}
+<input type="radio"{{ utils.get_id_attr(id) }} name="{{ name }}" value="{{ value }}"
+        {%- if option|length is ge 3 and option[2] %} checked="checked"{% endif -%}{% if no_enhance %} data-enhanced="true"{% endif %}>
+{{ label_field(option[1], _for=utils.get_id(id)) }}
+    {%- else %}
+        {%- set id = "{}-{}".format(name, option) %}
+<input type="radio"{{ utils.get_id_attr(id) }} name="{{ name }}" value="{{ option }}"{% if no_enhance %} data-enhanced="true"{% endif %}>
+{{ label_field(option, _for=utils.get_id(id)) }}
+    {%- endif %}
+    {%- endfor %}
+{%- if add_fieldset %}
+</fieldset>
+{% endif -%}
+{%- endmacro -%}
+
+{%- macro input_integer(name, value=0, pattern="-?[0-9]+", size=None) -%}
+    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
+    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- endmacro -%}
+
+{%- macro non_negative_integer(name, value=0, pattern="[0-9]+", size=None) -%}
+    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
+    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- endmacro -%}
+
+{%- macro positive_integer(name, value=1, pattern="[1-9][0-9]*", optional=False, size=None) -%}
+    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
+    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- endmacro -%}
+
+{%- macro memory_size(name, value=0, pattern="[1-9][0-9]*", label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
+{%- if num_opts is none %}{% set num_opts = {} %}{% endif -%}
+{%- do num_opts.setdefault('placeholder', '#') -%}
+{%- do num_opts.setdefault('mini', True) -%}
+{%- do num_opts.setdefault('data-wrapper-class', 'controlgroup-textinput ui-btn') -%}
+{%- if no_enhance %}{% do num_opts.setdefault('data-enhanced', 'true') %}{% endif -%}
+
+{%- if radio_opts is none %}{% set radio_opts = {} %}{% endif -%}
+{%- do radio_opts.setdefault('add_fieldset', False) -%}
+{%- do radio_opts.setdefault('no_enhance', no_enhance) -%}
+
+{%- set iname = name+'[num]' -%}
+{%- set sname = name+'[scale]' -%}
+<div class="ui-field-contain memory-size">
+{%- filter indent %}
+{{ label_field(label, _for=name, tooltip=auto_tooltip(name)) }}
+<div{{ utils.get_id_attr(name) }} data-role="controlgroup" data-type="horizontal" data-mini="True">
+{{ positive_integer(iname, add_div=False, value=value, pattern=pattern, **num_opts) }}
+{{ radio(sname, [('GB', 'GB', True), 'MB', 'kB'], **radio_opts) }}
+</div><!-- horizontal controlgroup -->
+{%- endfilter %}
+</div><!-- .ui-field-contain -->
+{%- endmacro -%}
