@@ -1,0 +1,51 @@
+apl:
+  label: Average area per lipid
+  options:
+    x:
+      type: form.positive_integer
+      label: System Size (X)
+      value: 50
+    y:
+      type: form.positive_integer
+      label: System Size (Y)
+      value: 50
+    center:
+      type: form.checkbox
+      label: Perform membrane centering
+    voronoi:
+      label: Use Voronoi diagram
+      options:
+        query:
+          type: form.textarea
+          label: Query
+          classes: ['code']
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: area_per_lipid.dat
+density_profile_1D:
+  label: Density profile (1D)
+  options:
+    center:
+      type: form.checkbox
+      label: Perform membrane centering
+    all:
+      label: All
+      options:
+        interval:
+          label: Frame interval
+          type: form.positive_integer
+        out:
+          label: Output file
+          type: form.path
+          value: density_all.dat
+        axis:
+          type: form.select
+          label: Axis
+          options:
+            - X
+            - Y
+            - ['Z', 'Z', True]

@@ -1,6 +1,7 @@
 import re
 from typing import Any, Union
 
+import jinja2
 import yaml
 
 # groups strings[like][this] into their individual tokens
@@ -12,6 +13,17 @@ def read_yaml(filename: str) -> Any:
     """Load a YAML file by name"""
     with open(filename) as file_obj:
         return yaml.load(file_obj, Loader=yaml.FullLoader)
+
+
+@jinja2.pass_context
+def call_macro_by_name(ctx, name, *args, **kwargs):
+    for varname in name.split('.'):
+        getter = getattr(ctx, 'get', None)
+        if getter is not None:
+            ctx = ctx.get(varname)
+        elif isinstance(ctx, jinja2.environment.TemplateModule):
+            ctx = getattr(ctx, varname)
+    return ctx(*args, **kwargs)
 
 
 def auto_tooltip(name: str, debug: bool = False) -> Union[str, None]:

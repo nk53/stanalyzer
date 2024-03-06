@@ -1,10 +1,41 @@
 {%- import 'parts/utils.html' as utils with context -%}
 {%- import 'parts/form.html' as form with context -%}
-
 {%- macro analysis(name, options, label) -%}
 {{ form.checkbox(name, label=label) }}
-{{- for option in options -}}
-{{- endfor -}}
+<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
+    {%- for option in options -%}
+        {%- if options is mapping -%}
+            {%- set optname = name ~ "_" ~ option -%}
+            {%- set option = options[option].copy() -%}
+            {%- if "type" in option -%}
+                {%- set optinput = option.pop('type') -%}
+                {{ call_macro_by_name(optinput, optname, **option) }}
+            {%- else -%}
+            {{ analysis(optname, option['options'], label=option['label']) }}
+            {%- endif -%}
+        {%- else -%}
+            {%- set optinput = option.pop(0) -%}
+            {%- set optname = name ~ "_" ~ option.pop(0) -%}
+            {%- set optargs = [] -%}
+            {%- set optkwargs = {} -%}
+            {%- for item in option -%}
+                {%- if item is mapping %}{% do optkwargs.update(item) -%}
+                {%- elif item is sequence %}{% do optargs.extend(item) -%}
+                {%- else %}Unsupported option{% endif -%}
+            {%- endfor -%}
+
+            {%- if optinput is sameas analysis -%}
+            {{ option|pprint }}<br>
+            {{ optname|pprint }}<br>
+            {{ optargs|pprint }}<br>
+            {{ optkwargs|pprint }}<br>
+            {{ analysis(optname, optargs, **optkwargs) }}
+            {%- else -%}
+            {{ optinput(optname, *optargs, **optkwargs) }}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor -%}
+</div>
 {%- endmacro -%}
 
 {%- macro resources() -%}
