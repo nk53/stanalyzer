@@ -9,6 +9,7 @@ else
     if ! which activate >$DN 2>$DN; then
         return
     fi
+    source `which activate` || exit 1
     conda activate sta || exit 2
 fi
 
