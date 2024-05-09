@@ -1,5 +1,6 @@
+import json
 import re
-from typing import Any, Union
+from typing import Any, List, Optional
 
 import jinja2
 import yaml
@@ -15,6 +16,12 @@ def read_yaml(filename: str) -> Any:
         return yaml.load(file_obj, Loader=yaml.FullLoader)
 
 
+def read_json(filename: str) -> Any:
+    """Load a JSON file by name"""
+    with open(filename) as file_obj:
+        return json.load(file_obj)
+
+
 @jinja2.pass_context
 def call_macro_by_name(ctx, name, *args, **kwargs):
     for varname in name.split('.'):
@@ -26,7 +33,7 @@ def call_macro_by_name(ctx, name, *args, **kwargs):
     return ctx(*args, **kwargs)
 
 
-def auto_tooltip(name: str, debug: bool = False) -> Union[str, None]:
+def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:
     """Return tooltip string if it exists, else None
 
     Tooltip names derive from the field name, which is subscripted with
@@ -80,8 +87,7 @@ def auto_tooltip(name: str, debug: bool = False) -> Union[str, None]:
         while keys and tooltip is None:
             if key:
                 key = f"{keys.pop()}_{key}"
-                key = '_'.join([keys.pop(), key])
-            elif len(key) > 1:
+            elif len(keys) > 1:
                 key, keys = '_'.join(keys[-2:]), keys[:-2]
             else:
                 break
@@ -104,3 +110,29 @@ def auto_tooltip(name: str, debug: bool = False) -> Union[str, None]:
         return get_tooltip(keys)
 
     return get_tooltip([name])
+
+
+def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]] = None) -> dict:
+    if path is None:
+        path = []
+
+    def get_setting(settings, option):
+        return settings.get('_'.join(path + [option]), False)
+
+    results = {}
+    for analysis_type in analysis.keys():
+        analysis_key = '_'.join(path + [analysis_type])
+        if settings.get(analysis_key, None):
+            result = {}
+            if sub_opts := {k: v for (k,v) in analysis[analysis_type]['options'].items()
+                            if isinstance(v, dict) and 'options' in v}:
+                result.update(
+                    get_active_settings(settings, sub_opts, path + [analysis_type])
+                )
+            for opt, attrs in analysis[analysis_type]['options'].items():
+                if 'options' not in attrs:
+                    result[opt] = get_setting(settings, analysis_type+'_'+opt)
+
+            results[analysis_type] = result
+
+    return results

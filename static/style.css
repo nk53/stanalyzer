@@ -6,6 +6,10 @@ h1, h2, h3, h4, h5, h6 {
     font-family: Courier New;
 }
 
+span.code {
+    display: inline;
+}
+
 .main, .sidebar {
     display: block;
     width: 100%;

@@ -1,0 +1,48 @@
+{%- import 'parts/form.html' as form with context -%}
+{%- import 'parts/pbs.html' as pbs with context -%}
+<form id="{{ page_id }}_form" action="/{{ page_id }}" data-method="put">
+{%- filter indent(_indent_level+4) %}
+<input type="hidden" id="{{ page_id }}_json" value="{{ projects }}">
+<input type="hidden" id="{{ page_id }}_id" name="id">
+{{ form.select('project', projects_menu, label='Select project',
+               onchange='load_project_json(this)', **{'data-setup': 'load_project_json(this)'}) }}
+{{ form.input('title', label='Title') }}
+{{ form.path('input_path', label='Input path') }}
+{{ form.path('output_path', label='Output path') }}
+{{ form.path('python_path', label='Python path',
+             **{'data-default': python_path}) }}
+{{ form.path('application_path', label='Application path',
+             **{'data-default': application_path}) }}
+{{ form.path('shell_path', label='Shell path', **{'data-default': '/bin/bash'}) }}
+{{ form.path('psf', label='Structure File') }}
+{{ form.path('traj_pattern', label='Trajectory pattern') }}
+{{ form.time_step('time_step', label='Time step', num_opts={'data-default': 0.1}) }}
+<div><!-- somehow this div is necessary to ensure radio appears before text area -->
+{{ form.radio('scheduler', ['PBS', 'SLURM', ('interactive', 'Interactive (none)', True)],
+              legend='Resource manager type', horizontal=True) }}
+</div>
+{%- endfilter -%}
+{{ form.textarea('PBS', label='PBS settings', visibility={'allowed_scheduler': 'PBS'},
+                 classes=['code'], **{'data-default': """#PBS -l nodes=1:ppn=1
+#PBS -l mem=500mb
+#PBS -l walltime=24:00:00
+#PBS -l cput=24:00:00
+#PBS -q default"""}) }}
+{{ form.textarea('SLURM', label='SLURM settings', visibility={'allowed_scheduler': 'SLURM'},
+                 classes=['code'], **{'data-default': """#SBATCH --partition=default
+#SBATCH -t 24:00:00"""}) }}
+{%- filter indent(_indent_level+4) %}
+{{ form.button('update_project', value='Update Settings',
+              visibility={'disallowed_project': 'add_new'}, onclick='submit_async(this)',
+              **{'data-method': 'put', 'data-success': 'update_projects_menu'}) }}
+{{ form.confirm_dialog('delete', button_text="Delete Project", confirm_button_text="Delete",
+       confirm_header='Are you sure you want to delete this project?',
+       confirm_body='You will be unable to access any completed analyses through '
+       'ST-Analyzer. They can still be accessed manually.',
+       confirm_button_attrs={'data-method': 'delete', 'data-success': 'update_projects_menu',
+                             'onclick': 'submit_async(this)'},
+       visibility={'disallowed_project': 'add_new'}) }}
+{{ form.input('add_project', value='Add Project', type='button',
+              visibility={'allowed_project': 'add_new'}, onclick='submit_async(this)',
+              **{'data-method': 'post', 'data-success': 'update_projects_menu'}) }}
+{%- endfilter %}

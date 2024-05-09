@@ -166,6 +166,214 @@ function toggle_email(assign_page) {
     }
 }
 
+function update_visibility(elem) {
+    function update_elem_visibility(elem) {
+        const elem_id = elem.attr('id');
+        const elem_label = $(`label[for="${elem_id}"]`);
+        const elem_type = elem.attr('type');
+
+        let is_allowed = true;
+
+        const new_rules = elem.data('visibility');
+        for (const [rule_str, rule_value] of Object.entries(new_rules)) {
+            const rule = rule_str.split('_');
+            const rule_type = rule[0];
+
+            const ref_elem_sel = rule.slice(1).join('_');
+            const ref_elem = $(`#${active_page} [name="${ref_elem_sel}"]`);
+            const ref_elem_type = ref_elem.attr('type');
+
+            let vis_init = ref_elem.data('vis-init');
+            if (!vis_init)
+                vis_init = {};
+            if (!vis_init[elem_id]) {
+                ref_elem.on('change', () => update_elem_visibility(elem));
+                vis_init[elem_id] = 1;
+            }
+            ref_elem.data('vis-init', vis_init);
+
+            let ref_value;
+            switch (ref_elem_type) {
+                case 'radio':
+                    ref_value = ref_elem.filter(':checked').val();
+                    break;
+                default:
+                    ref_value = ref_elem.val();
+            }
+
+            switch (rule_type) {
+                case 'allowed':
+                    is_allowed = is_allowed && (ref_value == rule_value);
+                    break;
+                case 'disallowed':
+                    is_allowed = is_allowed && (ref_value != rule_value);
+                    break;
+                default:
+                    console.log(`Unrecognized rule type: '${rule_type}'`);
+            }
+
+            if (!is_allowed)
+                break;
+        }
+
+        let target = elem;
+        if (elem_type == 'button')
+            // hide button's div.ui-field-contain parent
+            target = $(target.parents()[1]);
+
+        if (is_allowed) {
+            target.show();
+            elem_label.show();
+            target.filter('textarea').trigger('keyup');
+        } else {
+            target.hide();
+            elem_label.hide();
+        }
+    }
+
+    if (elem)
+        update_elem_visibility($(elem));
+    else
+        $(`#${active_page} [data-visibility]`).each(function(index, elem) {
+          update_elem_visibility($(elem));
+        });
+}
+
+function toggle_visibility(elem) {
+    function toggle_elem_visibility(toggle) {
+        toggle = $(toggle);
+        const target = toggle.data('target');
+        if (toggle[0].checked)
+            target.show();
+        else
+            target.hide();
+    };
+
+    if (elem)
+        toggle_elem_visibility(elem);
+    else
+        $(`#${active_page} [data-target]`).each(
+            (idx, elem) => toggle_elem_visibility(elem)
+        );
+}
+
+function get_current_project(elem=null) {
+    if (elem === null)
+        elem = jq_id('project');
+
+    const selected = Number.parseInt($(elem).val());
+
+    if (!Number.isInteger(selected))
+        return undefined;
+
+    const settings = JSON.parse(jq_id('json').val());
+    const selected_project = settings[selected];
+
+    return selected_project;
+}
+
+function confirm_project_then(elem, callback) {
+    const message = $(elem).data('confirm-msg');
+
+    if (confirm(message))
+        return callback(elem);
+
+    return false;
+}
+
+function submit_async(elem=null) {
+    const form = $(`form#${active_page}_form`);
+
+    const settings = {
+        url: form.attr('action'),
+        method: form.attr('method'),
+        data: JSON.stringify(form.serializeJSON()),
+        contentType: 'application/json',
+        success: console.log,
+        failure: console.log,
+    }
+
+    const eval_settings = ["data", "success", "failure"];
+
+    if (elem !== null) {
+        elem = $(elem);
+        for (let key of Object.keys(settings)) {
+            const value = elem.data(key);
+            if (value !== undefined) {
+                if (eval_settings.includes(key))
+                    settings[key] = eval(value);
+                else
+                    settings[key] = value;
+            }
+        }
+    }
+
+    console.log(settings);
+    $.ajax(settings);
+}
+
+function update_projects_menu(response_json) {
+    const request_type = response_json.request_type;
+    const new_menu = response_json.data;
+    const settings_elem = jq_id('json');
+    const menu_elem = jq_name('project');
+
+    // update in-form JSON representation
+    settings_elem.val(JSON.stringify(new_menu));
+
+    // TODO: on delete or post, set active menu item
+    // what to do if only remaining item is add_new?
+    //if (request_type == 'post') {
+
+    //}
+
+    // remove previous options
+    menu_elem.children(':not(option[value=add_new])').remove();
+    $.each(new_menu, function(id, obj) {
+        const text = obj.title;
+        menu_elem.prepend(`<option value="${id}">${text}</option>`);
+    });
+}
+
+function load_project_json(elem) {
+    const selected = Number.parseInt($(elem).val());
+    if (Number.isInteger(selected)) {
+        const settings = JSON.parse(jq_id('json').val());
+        const selected_project = settings[selected];
+
+        if (!selected_project)
+            console.log("No selected project");
+
+        for (const [key, value] of Object.entries(selected_project)) {
+            if (key == 'time_step') {
+                const [ts_num, ts_scale] = value.split(' ');
+                jq_name('time_step[num]').val(ts_num);
+                jq_label(`time_step[scale]-${ts_scale}`).click();
+
+                continue;
+            }
+            const update_elem = jq_name(key);
+            if (update_elem) {
+                if (update_elem.attr('type') == 'radio')
+                    jq_label(`${key}-${value}`).click();
+                else
+                    update_elem.val(value);
+            }
+        }
+    } else {
+        $(`#${active_page} form :is(input[type=text], input[type=number], textarea)`).each(
+            function (index, elem) {
+                elem = $(elem);
+                const name = elem.attr('name');
+                console.log(name);
+                if (name && name.includes('time_step'))
+                    console.log('hi');
+                elem.val(elem.data('default') || '');
+                elem.filter('textarea').trigger('keyup');
+            });
+    }
+}
+
 var active_page = null;
 var loaded_pages = [];
 
@@ -184,10 +392,22 @@ function setup_form(event, ui) {
     if (['home', '404'].includes(active_page))
         return;
 
-    $(`#${active_page} [data-visibility]`).each(function(index, elem) {
-        let rules = JSON.parse($(elem).attr('data-visibility'));
-        console.log(rules);
+    $(`#${active_page} [data-toggle]`).each(function(index, elem) {
+        elem = $(elem);
+        const toggle_id = elem.attr('data-toggle');
+        const toggle = $(`#${active_page} #${toggle_id}`);
+
+        toggle.data('target', elem);
+        toggle.on('click', () => toggle_visibility(toggle));
+        toggle_visibility(toggle);
     });
+
+    $(`#${active_page} [data-setup]`).each(function(index, elem)  {
+        eval($(elem).data('setup'));
+    });
+
+    toggle_visibility();
+    update_visibility();
 }
 
 $(document).on('pageload', function(event, ui) {

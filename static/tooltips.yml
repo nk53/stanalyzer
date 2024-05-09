@@ -1,3 +1,18 @@
+input_path: Absolute path to directory containing trajectory and structure files
+output_path: Absolute path to directory to save analysis results
+python_path: Absolute path to Python executable
+application_path: Absolute path to ST-Analyzer root directory
+shell_path: Absolute path to Bash executable
+psf: Path (relative to Input path) to PSF or other file containing system topology
+traj_pattern: |
+  Path (relative to Input path) to trajectory files. Allows globbing wildcards. See
+  <a href="https://www.man7.org/linux/man-pages/man7/glob.7.html">glob</a>
+  documentation. E.g. <span class="code">step7_*.dcd</span> will match
+  <span class="code">step7_1.dcd</span>, <span class="code">step7_20.dcd</span>,
+  but not <span class="code">step6_1.dcd</span>.
+time_step:
+  Amount of time between frames in trajectory files; the frame writing frequency.
+# TODO: delete examples below from HPC-GUI
 mpi:
   nranks:
     When GPUs are available, each MPI rank is associated with a different GPU

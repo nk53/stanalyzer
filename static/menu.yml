@@ -4,8 +4,8 @@ home:
   path: /
 docs:
   text: Documentation
-project_settings:
-  text: Project
+project:
+  text: Projects
 host_settings:
   text: Hosts
 analysis:

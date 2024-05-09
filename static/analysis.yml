@@ -26,26 +26,31 @@ apl:
       label: Output file
       type: form.path
       value: area_per_lipid.dat
-density_profile_1D:
-  label: Density profile (1D)
+rmsd:
+  label: RMSD
   options:
-    center:
-      type: form.checkbox
-      label: Perform membrane centering
-    all:
-      label: All
-      options:
-        interval:
-          label: Frame interval
-          type: form.positive_integer
-        out:
-          label: Output file
-          type: form.path
-          value: density_all.dat
-        axis:
-          type: form.select
-          label: Axis
-          options:
-            - X
-            - Y
-            - ['Z', 'Z', True]
+    align_sel:
+      label: Atom selection for alignment
+      type: form.textarea
+      value: segid PROA and name CA
+    calc_sel:
+      label: Atom selection for RMSD calculation
+      type: form.textarea
+      value: segid PROA and name CB
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: rmsd.dat
+system_size:
+  label: System size
+  options:
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: system_size.dat

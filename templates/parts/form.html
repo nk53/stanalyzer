@@ -69,6 +69,30 @@
 {%- endcall -%}
 {%- endmacro -%}
 
+{%- macro button(name, value='') -%}
+{%- do kwargs.setdefault('size', None) -%}
+{{ input(name, value, type='button', **kwargs) }}
+{%- endmacro -%}
+
+{%- macro confirm_dialog(id, button_text='', confirm_header='', confirm_body='', confirm_button_attrs=none, confirm_button_text='OK', label=None, mini=True, add_div=True) -%}
+{%- if confirm_button_attrs is none %}{% set confirm_button_attrs = {} %}{% endif -%}
+{%- call(kwargs) field_contain(add_div, **kwargs) -%}
+{{ label_field(label, _for=utils.get_id(name), tooltip=auto_tooltip(name)) }}
+<a href="#{{ utils.get_id(id) }}" class="ui-btn ui-corner-all ui-shadow" data-rel="popup"{% if mini %} data-mini="true"{% endif %}data-transition="pop"{{ utils.cat_attrs(**kwargs) }}>{{ button_text }}</a>
+<div data-role="popup"{{ utils.get_id_attr(id) }}>
+    <div data-role="header">
+        <h1>Danger Zone</h1>
+    </div>
+    <div role="main" class="ui-content">
+        <h3 class="ui-title">{{ confirm_header }}</h3>
+        <p>{{ confirm_body }}</p>
+        <a href="#" class="ui-btn ui-btn-inline" data-rel="back">Cancel</a>
+        <a href="#" class="ui-btn ui-btn-inline" data-rel="back" data-transition="flow" {{ utils.cat_attrs(**confirm_button_attrs) }} >{{ confirm_button_text }}</a>
+    </div>
+</div>
+{%- endcall -%}
+{%- endmacro -%}
+
 {%- macro checkbox(name, checked=False, label=None) -%}
 <input type="checkbox"{{ utils.get_id_attr(name) }} name="{{ name }}"{{ utils.cat_attrs(**kwargs) }}>
 {{ label_field(label, _for=utils.get_id(name)) }}
@@ -120,9 +144,9 @@
 {%- endmacro -%}
 
 {%- macro select(name, options, label=None, add_div=True) -%}
-{%- call(kwargs) field_contain(add_div) -%}
+{%- call(kwargs) field_contain(add_div, **kwargs) -%}
 {{ label_field(label, _for=utils.get_id(name), tooltip=auto_tooltip(name)) }}
-<select{{ utils.get_id_attr(name) }} name="{{ name }}">
+<select{{ utils.get_id_attr(name) }} name="{{ name }}"{{ utils.cat_attrs(**kwargs) }}>
 {%- for option in options %}
     {%- if option is mapping %}
     <option value="{{ option['value'] }}"
@@ -153,7 +177,7 @@
 {{ label_field(option.get('label', option['value']), _for=utils.get_id(id)) }}
     {%- elif option is not string and option is sequence %}
         {%- set id = "{}-{}".format(name, option[0]) %}
-        {%- set value = option[1] -%}
+        {%- set value = option[0] -%}
 <input type="radio"{{ utils.get_id_attr(id) }} name="{{ name }}" value="{{ value }}"
         {%- if option|length is ge 3 and option[2] %} checked="checked"{% endif -%}{% if no_enhance %} data-enhanced="true"{% endif %}>
 {{ label_field(option[1], _for=utils.get_id(id)) }}
@@ -202,6 +226,30 @@
 <div{{ utils.get_id_attr(name) }} data-role="controlgroup" data-type="horizontal" data-mini="True">
 {{ positive_integer(iname, add_div=False, value=value, pattern=pattern, **num_opts) }}
 {{ radio(sname, [('GB', 'GB', True), 'MB', 'kB'], **radio_opts) }}
+</div><!-- horizontal controlgroup -->
+{%- endfilter %}
+</div><!-- .ui-field-contain -->
+{%- endmacro -%}
+
+{%- macro time_step(name, value=0, pattern="[1-9][0-9]*", label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
+{%- if num_opts is none %}{% set num_opts = {} %}{% endif -%}
+{%- do num_opts.setdefault('placeholder', '#') -%}
+{%- do num_opts.setdefault('mini', True) -%}
+{%- do num_opts.setdefault('data-wrapper-class', 'controlgroup-textinput ui-btn') -%}
+{%- if no_enhance %}{% do num_opts.setdefault('data-enhanced', 'true') %}{% endif -%}
+
+{%- if radio_opts is none %}{% set radio_opts = {} %}{% endif -%}
+{%- do radio_opts.setdefault('add_fieldset', False) -%}
+{%- do radio_opts.setdefault('no_enhance', no_enhance) -%}
+
+{%- set iname = name+'[num]' -%}
+{%- set sname = name+'[scale]' -%}
+<div class="ui-field-contain memory-size">
+{%- filter indent %}
+{{ label_field(label, _for=name, tooltip=auto_tooltip(name)) }}
+<div{{ utils.get_id_attr(name) }} data-role="controlgroup" data-type="horizontal" data-mini="True">
+{{ input(iname, add_div=False, type="number", value=value, **num_opts) }}
+{{ radio(sname, ['ms', 'µs', ('ns', 'ns', True), 'ps', 'fs'], **radio_opts) }}
 </div><!-- horizontal controlgroup -->
 {%- endfilter %}
 </div><!-- .ui-field-contain -->
