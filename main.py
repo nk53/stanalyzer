@@ -2,22 +2,21 @@
 import json
 import os
 import sys
-from typing import Optional
+from pathlib import Path
 
 # webserver modules
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-from pydantic import BaseModel, EmailStr
 
 # CLI modules
 import invoke
 
 # intra-package
-from . import utils
-from .bin import analyze
-from .db import db
+from stanalyzer import utils
+from stanalyzer.db import db
+from stanalyzer import validation
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -30,32 +29,6 @@ ANALYSIS = utils.read_yaml('static/analysis.yml')
 
 
 db.setup_db()
-
-
-class Timestep(BaseModel):
-    num: float
-    scale: str
-
-
-class Project(BaseModel):
-    id: Optional[int | str]
-    title: str
-    input_path: str
-    output_path: str
-    python_path: str
-    application_path: str
-    shell_path: str
-    traj_pattern: str
-    time_step: Timestep
-    psf: str
-    scheduler: str
-    SLURM: Optional[str]
-    PBS: Optional[str]
-
-
-class User(BaseModel):
-    name: str
-    email: Optional[EmailStr]
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -79,7 +52,6 @@ async def page(request: Request, page: str):
         context['projects_menu'] = [
             (p['id'], p['title']) for p in db.get_user_projects(uid=1).values()
         ]
-
     elif page == 'project':
         projects = db.get_user_projects(uid=1)
         projects_json = projects.copy()
@@ -98,15 +70,39 @@ async def page(request: Request, page: str):
 @app.post("/analysis")
 async def insert_analysis(settings: dict):
     job_settings = utils.get_active_settings(settings, ANALYSIS)
+    project_id = int(settings['project'])
+    project_settings = db.get_user_projects(uid=1).get(project_id)
 
-    # this should ONLY be used when localhost is allow
-    invoke.run(f'python bin/stanalyzer.py')
+    pids = []
+    for analysis, analysis_settings in job_settings.items():
+        # setup streams
+        analysis_id = db.insert_analysis(db.Analysis(uid=1, project_id=project_id))
+        out_dir = Path(project_settings['output_path'])
+        out_file = Path(out_dir / f"analysis_{analysis_id}.out")
+        err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
-    return job_settings
+        settings_file = Path(out_dir / f"settings_{analysis_id}.json")
+        utils.write_settings(settings_file, analysis_settings)
+
+        # this should ONLY be used when localhost is allowed
+        breakpoint()
+        promise = invoke.run(f'python bin/stanalyzer.py -s {settings_file} {analysis}',
+                             out_stream=out_file.open(), err_stream=err_file.open(),
+                             asynchronous=True)
+
+        # get PID and update analysis info
+        if isinstance(promise, invoke.Promise) and isinstance(promise.runner, invoke.Local):
+            pid = promise.runner.process.pid
+            db.set_analysis_pid(analysis_id=analysis_id, process_id=pid)
+            pids.append(pid)
+        else:
+            print('something has gone wrong with ', analysis)
+
+    return pids
 
 
 @app.put("/project")
-async def update_project(settings: Project):
+async def update_project(settings: validation.Project):
     time_step = settings.time_step
 
     model_dict = settings.model_dump()
@@ -122,7 +118,7 @@ async def update_project(settings: Project):
 
 
 @app.post("/project")
-async def insert_project(request: Request, settings: Project):
+async def insert_project(request: Request, settings: validation.Project):
     time_step = settings.time_step
 
     model_dict = settings.model_dump()
@@ -139,7 +135,7 @@ async def insert_project(request: Request, settings: Project):
 
 
 @app.delete("/project")
-async def delete_project(settings: Project):
+async def delete_project(settings: validation.Project):
     model_dict = settings.model_dump()
     model_dict['uid'] = 1   # TODO: get user id
 

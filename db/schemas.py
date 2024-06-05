@@ -18,8 +18,15 @@ class Project(SQLModel, table=True):
     application_path: str
     shell_path: str
     psf: str
-    traj_pattern: str
+    traj: str
     time_step: str
     scheduler: str
     SLURM: Optional[str]
     PBS: Optional[str]
+
+
+class Analysis(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    uid: int = Field(foreign_key="user.id")
+    project_id: int = Field(foreign_key="project.id")
+    process_id: Optional[int] = None

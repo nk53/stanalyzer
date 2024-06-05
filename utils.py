@@ -1,4 +1,5 @@
 import json
+import pathlib
 import re
 from typing import Any, List, Optional
 
@@ -20,6 +21,13 @@ def read_json(filename: str) -> Any:
     """Load a JSON file by name"""
     with open(filename) as file_obj:
         return json.load(file_obj)
+
+
+def write_settings(path: pathlib.Path, data: Any, mode: str = 'w'):
+    if not path.parent.exists():
+        path.parent.mkdir()
+    with path.open(mode=mode) as file_obj:
+        json.dump(data, file_obj)
 
 
 @jinja2.pass_context

@@ -4,7 +4,7 @@ python_path: Absolute path to Python executable
 application_path: Absolute path to ST-Analyzer root directory
 shell_path: Absolute path to Bash executable
 psf: Path (relative to Input path) to PSF or other file containing system topology
-traj_pattern: |
+traj: |
   Path (relative to Input path) to trajectory files. Allows globbing wildcards. See
   <a href="https://www.man7.org/linux/man-pages/man7/glob.7.html">glob</a>
   documentation. E.g. <span class="code">step7_*.dcd</span> will match

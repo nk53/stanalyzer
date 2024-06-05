@@ -1,8 +1,9 @@
 import os
 from sqlmodel import Session, SQLModel, create_engine, select
 from .schemas import (
-    User,
+    Analysis,
     Project,
+    User,
 )
 
 DB_PATH = 'database.db'
@@ -16,6 +17,29 @@ def setup_db():
         with Session(engine) as session:
             session.add(User(name="admin"))
             session.commit()
+
+
+def insert_analysis(analysis: Analysis):
+    with Session(engine) as session:
+        session.add(analysis)
+        session.commit()
+
+        # explicit attribute access automatically refreshes value from DB
+        return analysis.id
+
+
+def set_analysis_pid(analysis_id: int, process_id: int):
+    with Session(engine) as session:
+        # get matching analysis
+        statement = select(Analysis).where(Analysis.id == analysis_id)
+        analysis = session.exec(statement).one()
+
+        # update new PID
+        analysis.pid = process_id
+
+        # commit changes
+        session.add(analysis)
+        session.commit()
 
 
 def get_user_projects(uid: int):
@@ -34,7 +58,8 @@ def get_user_projects(uid: int):
 def update_project(settings: Project):
     with Session(engine) as session:
         # get matching project
-        statement = select(Project).where(Project.uid == settings.uid, Project.id == settings.id)
+        statement = select(Project).where(Project.uid == settings.uid,
+                                          Project.id == settings.id)
         project = session.exec(statement).one()
 
         # update new values

@@ -15,7 +15,7 @@
              **{'data-default': application_path}) }}
 {{ form.path('shell_path', label='Shell path', **{'data-default': '/bin/bash'}) }}
 {{ form.path('psf', label='Structure File') }}
-{{ form.path('traj_pattern', label='Trajectory pattern') }}
+{{ form.path('traj', label='Trajectory pattern') }}
 {{ form.time_step('time_step', label='Time step', num_opts={'data-default': 0.1}) }}
 <div><!-- somehow this div is necessary to ensure radio appears before text area -->
 {{ form.radio('scheduler', ['PBS', 'SLURM', ('interactive', 'Interactive (none)', True)],
