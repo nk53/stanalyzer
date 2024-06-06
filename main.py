@@ -1,6 +1,7 @@
 # built-ins
 import json
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -73,32 +74,48 @@ async def insert_analysis(settings: dict):
     project_id = int(settings['project'])
     project_settings = db.get_user_projects(uid=1).get(project_id)
 
-    pids = []
+    in_dir = Path(project_settings['input_path'])
+    out_dir = Path(project_settings['output_path'])
+    settings_path = Path(in_dir / "project.json")
+    utils.write_settings(settings_path, project_settings)
+
+    ctx = invoke.Context()
+    processes = []
     for analysis, analysis_settings in job_settings.items():
         # setup streams
         analysis_id = db.insert_analysis(db.Analysis(uid=1, project_id=project_id))
-        out_dir = Path(project_settings['output_path'])
         out_file = Path(out_dir / f"analysis_{analysis_id}.out")
         err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
-        settings_file = Path(out_dir / f"settings_{analysis_id}.json")
-        utils.write_settings(settings_file, analysis_settings)
-
         # this should ONLY be used when localhost is allowed
-        breakpoint()
-        promise = invoke.run(f'python bin/stanalyzer.py -s {settings_file} {analysis}',
-                             out_stream=out_file.open(), err_stream=err_file.open(),
-                             asynchronous=True)
+        with ctx.cd(in_dir):
+            # setup invocation args
+            program = f'python -m stanalyzer {analysis}'
+            args = ' '.join(f'--{k} {v}' for k,v in analysis_settings.items())
+            args = f"{program} {args}"
 
-        # get PID and update analysis info
-        if isinstance(promise, invoke.Promise) and isinstance(promise.runner, invoke.Local):
-            pid = promise.runner.process.pid
-            db.set_analysis_pid(analysis_id=analysis_id, process_id=pid)
-            pids.append(pid)
-        else:
-            print('something has gone wrong with ', analysis)
+            # log invocation for user
+            out_stream = out_file.open('w')
+            print('args:', args, file=out_stream)
+            out_stream.flush()  # avoids race cond. w/ ctx.run
 
-    return pids
+            # ignore end of child process; prevents "zombie" proc status
+            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+            # init program
+            promise = ctx.run(args, asynchronous=True,
+                              out_stream=out_stream, err_stream=err_file.open('w'))
+
+            # get PID and update analysis info
+            if isinstance(promise, invoke.Promise) and isinstance(promise.runner, invoke.Local):
+                pid = promise.runner.process.pid
+                db.set_analysis_pid(analysis_id=analysis_id, process_id=pid)
+                processes.append({'args': args, 'pid': pid})
+            else:
+                print('something has gone wrong with ', analysis)
+
+    print(processes)
+    return processes
 
 
 @app.put("/project")

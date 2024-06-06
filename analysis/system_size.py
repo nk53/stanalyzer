@@ -20,11 +20,15 @@ def header(outfile: Optional[FileLike] = None, include_angles: bool = False) -> 
     return header_str
 
 
-def write_system_size(psf: FileLike | str, traj: list[FileLike | str], out: FileLike | str,
-                      time_step: float, interval: int = 1, include_angles: bool = False) -> None:
+def write_system_size(psf: FileLike | str, traj: list[FileLike | str],
+                      out: FileLike | str, time_step: float | str,
+                      interval: int = 1, include_angles: bool = False) -> None:
     """Writes system size to `out` file"""
     n_fields = 8 if include_angles else 5
     output_fmt = ' '.join(["{:.2f}"]*n_fields)
+
+    if isinstance(time_step, str):
+        time_step = float(time_step.split()[0])
 
     sim_time = time_step
     step_num = 1

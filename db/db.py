@@ -1,4 +1,6 @@
 import os
+from typing import Sequence, cast
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlmodel import Session, SQLModel, create_engine, select
 from .schemas import (
     Analysis,
@@ -10,7 +12,7 @@ DB_PATH = 'database.db'
 engine = create_engine(f"sqlite:///{DB_PATH}")
 
 
-def setup_db():
+def setup_db() -> None:
     if not os.path.exists(DB_PATH):
         SQLModel.metadata.create_all(engine)
 
@@ -19,13 +21,42 @@ def setup_db():
             session.commit()
 
 
-def insert_analysis(analysis: Analysis):
+def insert_analysis(analysis: Analysis) -> int | None:
     with Session(engine) as session:
         session.add(analysis)
         session.commit()
 
         # explicit attribute access automatically refreshes value from DB
-        return analysis.id
+        return analysis.id  # on failure, returns None
+
+
+def get_project_analysis(project_id: int) -> Sequence[Analysis]:
+    with Session(engine) as session:
+        statement = select(Analysis).where(Analysis.project_id == project_id)
+        analysis = session.exec(statement).all()
+
+        return analysis
+
+
+def delete_analysis(*analysis_id: int) -> int:
+    """Returns the number of deleted rows"""
+    with Session(engine) as session:
+        # mypy doesn't believe Analysis.id.in_ exists w/o this annotation
+        aid = cast(InstrumentedAttribute[int], Analysis.id)
+
+        # find all matching analyses by id
+        statement = select(Analysis).where(aid.in_(analysis_id))
+        analysis = session.exec(statement).all()
+
+        # delete them
+        for obj in analysis:
+            session.delete(obj)
+        session.commit()
+
+        # return the number of matched objects
+        return len(analysis)
+
+    return 0
 
 
 def set_analysis_pid(analysis_id: int, process_id: int):
@@ -35,7 +66,7 @@ def set_analysis_pid(analysis_id: int, process_id: int):
         analysis = session.exec(statement).one()
 
         # update new PID
-        analysis.pid = process_id
+        analysis.process_id = process_id
 
         # commit changes
         session.add(analysis)
