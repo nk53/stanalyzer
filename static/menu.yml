@@ -4,14 +4,18 @@ home:
   path: /
 docs:
   text: Documentation
+  path: /404
 project:
   text: Projects
 host_settings:
   text: Hosts
+  path: /404
 analysis:
   text: Analysis
 plugin_settings:
   text: Plugins
+  path: /404
 settings:
   text: Settings
   icon: gear
+  path: /404
