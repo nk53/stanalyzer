@@ -217,7 +217,7 @@ function update_visibility(elem) {
         }
 
         let target = elem;
-        if (elem_type == 'button')
+        if (['button', 'number', 'text'].includes(elem_type))
             // hide button's div.ui-field-contain parent
             target = $(target.parents()[1]);
 

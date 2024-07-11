@@ -2,13 +2,13 @@ import argparse
 import sys
 from typing import Optional
 
-from stanalyzer.bin.stanalyzer import FileLike, add_project_args, get_settings, from_settings
+import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda    # type: ignore
 
 ANALYSIS_NAME = 'system_size'
 
 
-def header(outfile: Optional[FileLike] = None, include_angles: bool = False) -> str:
+def header(outfile: Optional[sta.FileLike] = None, include_angles: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file"""
     if include_angles:
         header_str = "#time xtla xtlb xtlc alpha beta gamma volume"
@@ -20,8 +20,8 @@ def header(outfile: Optional[FileLike] = None, include_angles: bool = False) -> 
     return header_str
 
 
-def write_system_size(psf: FileLike | str, traj: list[FileLike | str],
-                      out: FileLike | str, time_step: float | str,
+def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
+                      out: sta.FileRef, time_step: float | str,
                       interval: int = 1, include_angles: bool = False) -> None:
     """Writes system size to `out` file"""
     n_fields = 8 if include_angles else 5
@@ -63,12 +63,12 @@ def write_system_size(psf: FileLike | str, traj: list[FileLike | str],
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='stanalyzer system_size')
-    add_project_args(parser, 'psf', 'traj')
+    sta.add_project_args(parser, 'psf', 'traj')
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
                         help="File to write results (default: stdout)")
-    parser.add_argument('-ts', '--time_step', type=float, default=from_settings,
+    parser.add_argument('-ts', '--time_step', type=float, default=sta.from_settings,
                         help="Amount of time between frames in trajectory files")
-    parser.add_argument('-i', '--interval', type=int, default=from_settings)
+    parser.add_argument('-i', '--interval', type=int, default=sta.from_settings)
     parser.add_argument('-a', '--include_angles', action='store_true')
 
     return parser
@@ -76,7 +76,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 def main(settings: Optional[dict] = None) -> None:
     if settings is None:
-        settings = dict(get_settings(ANALYSIS_NAME))
+        settings = dict(sta.get_settings(ANALYSIS_NAME))
 
     write_system_size(**settings)
 

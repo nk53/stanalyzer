@@ -2,23 +2,23 @@ apl:
   label: Average area per lipid
   options:
     x:
-      type: form.positive_integer
       label: System Size (X)
+      type: form.positive_integer
       value: 50
     y:
-      type: form.positive_integer
       label: System Size (Y)
+      type: form.positive_integer
       value: 50
     center:
-      type: form.checkbox
       label: Perform membrane centering
+      type: form.checkbox
     voronoi:
       label: Use Voronoi diagram
       options:
         query:
-          type: form.textarea
           label: Query
-          classes: ['code']
+          type: form.textarea
+          classes: [code]
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -29,14 +29,35 @@ apl:
 rmsd:
   label: RMSD
   options:
-    align_sel:
-      label: Atom selection for alignment
-      type: form.textarea
-      value: segid PROA and name CA
-    calc_sel:
+    sel:
       label: Atom selection for RMSD calculation
       type: form.textarea
-      value: segid PROA and name CB
+      classes: [code]
+      value: segid PROA and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    ref_coor:
+      label: Use different coordinate file for reference structure
+      options:
+        path:
+          label: Reference structure coordinates
+          type: form.path
+    ref_frame_type:
+      label: Reference type
+      type: form.select
+      options:
+        specific: Specific frame
+        average: Average structure
+    ref_frame_num:
+      label: Reference frame number
+      type: form.positive_integer
+      value: 1
+      visibility:
+        allowed_rmsd_ref_frame_type: specific
     interval:
       label: Frame interval
       type: form.positive_integer

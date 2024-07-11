@@ -20,9 +20,9 @@
 {%- macro cat_attrs(args=None) -%}
     {%- if args is not none %}{% do kwargs.update(args) %}{% endif -%}
     {%- for attr, value in kwargs.items() %}
-        {%- if attr is sameas 'classes' -%}
+        {%- if attr is eq 'classes' -%}
             {{ ' ' ~ cat_classes(value) }}
-        {%- elif attr is sameas 'visibility' -%}
+        {%- elif attr is eq 'visibility' -%}
             {{ ' data-visibility' }}="{{ value|tojson|forceescape }}"
         {%- else -%}
             {{ ' ' ~ attr }}="{{ value }}"

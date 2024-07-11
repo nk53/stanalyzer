@@ -27,7 +27,7 @@ def write_settings(path: pathlib.Path, data: Any, mode: str = 'w'):
     if not path.parent.exists():
         path.parent.mkdir()
     with path.open(mode=mode) as file_obj:
-        json.dump(data, file_obj)
+        json.dump(data, file_obj, indent=4)
 
 
 @jinja2.pass_context
@@ -127,20 +127,39 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
     def get_setting(settings, option):
         return settings.get('_'.join(path + [option]), False)
 
+    def has_sub_opts(values):
+        if not isinstance(values, dict):
+            return False
+        if 'options' not in values:
+            return False
+        if 'select' in values.get('type', ''):
+            return False
+        return True
+
     results = {}
     for analysis_type in analysis.keys():
         analysis_key = '_'.join(path + [analysis_type])
         if settings.get(analysis_key, None):
-            result = {}
+            if path:
+                result = results
+            else:
+                result = {}
+
             if sub_opts := {k: v for (k,v) in analysis[analysis_type]['options'].items()
-                            if isinstance(v, dict) and 'options' in v}:
+                            if has_sub_opts(v)}:
                 result.update(
                     get_active_settings(settings, sub_opts, path + [analysis_type])
                 )
             for opt, attrs in analysis[analysis_type]['options'].items():
-                if 'options' not in attrs:
-                    result[opt] = get_setting(settings, analysis_type+'_'+opt)
+                opt_long = f"{analysis_type}_{opt}"
+                if path:
+                    opt = opt_long
+                if not has_sub_opts(attrs):
+                    result[opt] = get_setting(settings, opt_long)
+                elif 'select' in attrs.get('type', ''):
+                    result[opt] = get_setting(settings, opt_long)
 
-            results[analysis_type] = result
+            if not path:
+                results[analysis_type] = result
 
     return results

@@ -87,11 +87,14 @@ async def insert_analysis(settings: dict):
         out_file = Path(out_dir / f"analysis_{analysis_id}.out")
         err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
+        if analysis_id is None:
+            return {'error': 'failed to insert'}
+
         # this should ONLY be used when localhost is allowed
         with ctx.cd(in_dir):
             # setup invocation args
             program = f'python -m stanalyzer {analysis}'
-            args = ' '.join(f'--{k} {v}' for k,v in analysis_settings.items())
+            args = ' '.join(f'--{k} "{v}"' for k,v in analysis_settings.items())
             args = f"{program} {args}"
 
             # log invocation for user

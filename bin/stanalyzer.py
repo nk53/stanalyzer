@@ -59,6 +59,11 @@ class LazyFile:
             # if file cannot be accessed, this may raise an OSError
             self._lazyfile_obj = open(*self._lazyfile_args, **self._lazyfile_kwargs)
 
+    def resolve(self) -> io.TextIOWrapper:
+        """Returns the file handle, opening it, if necessary"""
+        self._lazyfile_resolve()
+        return self._lazyfile_obj
+
 
 class LazyJSONReader:
     def __init__(self, json_filename):
@@ -95,11 +100,11 @@ def add_project_args(subparser, *args):
     defstr = '(default: use project settings)'
     if 'psf' in args:
         subparser.add_argument(
-            '-p', '--psf', type=ExistingFile, default=from_settings,
+            '-p', '--psf', type=ExistingFile, default=from_settings, metavar='FILE',
             help=f"File containing system topology {defstr}")
     if 'traj' in args:
         subparser.add_argument(
-            '-t', '--traj', type=ExistingFile, nargs='+', default=from_settings,
+            '-t', '--traj', type=ExistingFile, nargs='+', default=from_settings, metavar='FILE',
             help=f"One or more coordinate containing files {defstr}")
 
 
@@ -174,6 +179,14 @@ def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
     return sorted(pattern, key=lambda p: list(int(n) for n in re_num.findall(p.name)))
 
 
+def resolve_file(file_ref: LazyFile | io.TextIOBase | str, mode: str = 'r') -> io.TextIOBase:
+    if isinstance(file_ref, str):
+        return cast(io.TextIOBase, open(file_ref, mode))
+    if isinstance(file_ref, LazyFile):
+        return file_ref.resolve()
+    return file_ref
+
+
 def main(analysis_name: Optional[str] = None, settings: Optional["DictLike"] = None) -> Any:
     if settings is None:
         settings = get_settings()
@@ -191,6 +204,8 @@ def main(analysis_name: Optional[str] = None, settings: Optional["DictLike"] = N
 # type aliases
 DictLike: TypeAlias = LazyJSONReader | dict
 FileLike: TypeAlias = LazyFile | io.TextIOBase
+FileRef: TypeAlias = FileLike | str
+FileRefList: TypeAlias = list[FileRef]
 
 # module containing analysis to run
 analysis = None
