@@ -136,7 +136,7 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
             return False
         return True
 
-    results = {}
+    results: dict = {}
     for analysis_type in analysis.keys():
         analysis_key = '_'.join(path + [analysis_type])
         if settings.get(analysis_key, None):
@@ -154,9 +154,12 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
                 opt_long = f"{analysis_type}_{opt}"
                 if path:
                     opt = opt_long
+                opt_type = attrs.get('type', '')
                 if not has_sub_opts(attrs):
                     result[opt] = get_setting(settings, opt_long)
-                elif 'select' in attrs.get('type', ''):
+                    if 'checkbox' in opt_type:
+                        result[opt] = bool(result[opt])
+                elif 'select' in opt_type:
                     result[opt] = get_setting(settings, opt_long)
 
             if not path:

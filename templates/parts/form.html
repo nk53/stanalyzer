@@ -94,7 +94,10 @@
 {%- endmacro -%}
 
 {%- macro checkbox(name, checked=False, label=None) -%}
-<input type="checkbox"{{ utils.get_id_attr(name) }} name="{{ name }}"{{ utils.cat_attrs(**kwargs) }}>
+{%- if checked %}{% set checked = " checked" -%}
+{%- else %}{% set checked = "" -%}
+{%- endif -%}
+<input type="checkbox"{{ utils.get_id_attr(name) }} name="{{ name }}"{{ checked }}{{ utils.cat_attrs(**kwargs) }}>
 {{ label_field(label, _for=utils.get_id(name)) }}
 {{ tooltip(name~'_tooltip', name) }}
 {%- endmacro -%}

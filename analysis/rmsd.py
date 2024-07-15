@@ -59,19 +59,19 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 
     with sta.resolve_file(out, 'w') as outfile:
         # TODO: infer fmt from settings
-        np.savetxt(outfile, output, fmt='%.1f %.2f', header=header(np_formatted=True))
+        np.savetxt(outfile, output, fmt='%10.5f %10.5f', header=header(np_formatted=True))
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog='stanalyzer system_size')
-    sta.add_project_args(parser, 'psf', 'traj')
+    parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
+    sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
     parser.add_argument('-rp', '--ref_psf', '--ref_psf_path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="PSF to use for reference, if not same as --psf")
     parser.add_argument('-rc', '--ref_coor', '--ref_coor_path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="Coordinate file to use for reference, if not same as --traj")
-    parser.add_argument('-s', '--sel', metavar='selection',
+    parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for RMSD calculation")
     parser.add_argument('-rt', '--ref_frame_type', choices=['specific', 'average'],
                         default='specific', metavar='TYPE',
@@ -80,10 +80,6 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-rn', '--ref_frame_num', type=int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                         "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
-                        metavar='FILE',
-                        help="File to write results to (default: stdout)")
-    parser.add_argument('-i', '--interval', type=int, default=sta.from_settings)
 
     return parser
 

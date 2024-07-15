@@ -9,16 +9,18 @@ apl:
       label: System Size (Y)
       type: form.positive_integer
       value: 50
+    sel:
+      label: Head group selection
+      type: form.textarea
+      classes: [code]
+      value:
+        segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])
     center:
       label: Perform membrane centering
       type: form.checkbox
     voronoi:
       label: Use Voronoi diagram
-      options:
-        query:
-          label: Query
-          type: form.textarea
-          classes: [code]
+      type: form.checkbox
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -26,6 +28,26 @@ apl:
       label: Output file
       type: form.path
       value: area_per_lipid.dat
+thickness:
+  label: Membrane thickness
+  options:
+    sel:
+      label: Head group selection
+      type: form.textarea
+      classes: [code]
+      value:
+        segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+      checked: true
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: thickness.dat
 rmsd:
   label: RMSD
   options:

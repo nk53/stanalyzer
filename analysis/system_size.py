@@ -25,7 +25,7 @@ def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
                       interval: int = 1, include_angles: bool = False) -> None:
     """Writes system size to `out` file"""
     n_fields = 8 if include_angles else 5
-    output_fmt = ' '.join(["{:.2f}"]*n_fields)
+    output_fmt = ' '.join(["{:0<#10.5g}"]*n_fields)
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -33,10 +33,7 @@ def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
     sim_time = time_step
     step_num = 1
 
-    if isinstance(out, str):
-        out = open(out, 'w')
-
-    with out as outfile:
+    with sta.resolve_file(out) as outfile:
         header(outfile, include_angles)
         for traj_file in traj:
             u = mda.Universe(psf, traj_file)
@@ -62,13 +59,8 @@ def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog='stanalyzer system_size')
-    sta.add_project_args(parser, 'psf', 'traj')
-    parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
-                        help="File to write results (default: stdout)")
-    parser.add_argument('-ts', '--time_step', type=float, default=sta.from_settings,
-                        help="Amount of time between frames in trajectory files")
-    parser.add_argument('-i', '--interval', type=int, default=sta.from_settings)
+    parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
+    sta.add_project_args(parser, 'psf', 'traj', 'out', 'time_step', 'interval')
     parser.add_argument('-a', '--include_angles', action='store_true')
 
     return parser

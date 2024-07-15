@@ -94,7 +94,10 @@ async def insert_analysis(settings: dict):
         with ctx.cd(in_dir):
             # setup invocation args
             program = f'python -m stanalyzer {analysis}'
-            args = ' '.join(f'--{k} "{v}"' for k,v in analysis_settings.items())
+            bool_args = tuple(f'--{k} "{v}"' for k,v in analysis_settings.items() if v is not True)
+            other_args = tuple(f'--{k}' for k,v in analysis_settings.items() if v is True)
+            args = ' '.join(bool_args + other_args)
+
             args = f"{program} {args}"
 
             # log invocation for user
