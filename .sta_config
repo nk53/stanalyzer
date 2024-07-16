@@ -10,6 +10,6 @@ else
         return
     fi
     source `which activate` || exit 1
-    conda activate sta || exit 2
+    conda activate sta-dev || exit 2
 fi
 

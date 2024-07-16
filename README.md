@@ -1,55 +1,57 @@
 # Installation
 
-Currently, HPC-GUI assumes you have the following installed and loaded:
+Currently, ST-Analyzer should be installed through Conda/Anaconda. Conda's installation instructions begin [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-1. Conda/Anaconda
-2. A conda environment named `balsam`
+ST-Analyzer has only been tested on macOS 14.5. It is unlikely to work on Windows in its current state, but may work on Linux.
 
-If not, you should install Balsam by following the instructions shown [here](https://balsam.readthedocs.io/en/latest/user-guide/installation/).
+## Conda installation
 
-Alternative installation approaches:
-
-## Conda
+You should install all ST-Analyzer dependencies in a separate environment so that they do not conflict with any other versions of packages you have. All relevant dependencies are included in `envs/sta-dev.yml`. To install them in a new `sta-dev` environment, run this command:
 
 ```bash
-# optionally create an environment
-conda create --name hpcgui python=3.9
-conda activate hpcgui
-
-# install required packages
-conda install fastapi==0.78.0 jinja2==3.1.2 uvicorn==0.18.3 pyyaml==6.0 sphinx==6.1.3 sphinx-js
-```
-
-Then, edit `.hpcgui_config` and change `conda activate balsam` to `conda activate hpcgui`.
-
-## pip
-
-I have not tested this approach at all so *caveat emptor*.
-
-```bash
-pip install fastapi==0.78.0 jinja2==3.1.2 uvicorn==0.18.3 pyyaml==6.0 sphinx==6.1.3
-```
-
-Then, edit `run_server.sh` and remove or comment-out this line:
-```bash
-source .hpcgui_config
+conda env create -f envs/sta-dev.yml
 ```
 
 # Usage
 
-HPC-GUI is in alpha development stage; it is intended to be run and accessed on your personal computer, but can be made accessible over the internet (see below).
+ST-Analyzer is in alpha development stage; it is intended to be run and accessed on your personal computer, but can be made accessible over the internet (see below).
 
-To access the GUI via local-only connection:
+## The long way
 
-1. Navigate a terminal to the HPC-GUI directory.
-2. Run `./run_server.sh`, which starts a local server session accessible *only* by the bound IP `127.0.0.1`.
-3. Open [127.0.0.1:8000](http://127.0.0.1:8000) in your web browser.
+This approach should work without any hiccups. If it does not, please refer back to the installation instructions and ensure that you installed ST-Analyzer correctly.
+
+First, navigate your terminal to the ST-Analyzer directory. Then, run these commands:
+
+```bash
+conda activate sta-dev
+uvicorn main:app --port 8000 --reload
+```
+
+This will run a web server in your shell's foreground and show you several debugging messages. The server will listen for connections on port 8000 and also automatically restart if any Python or Jinja2 files change while it is running. Note that it does not detect changes in other files (YAML, JS, CSS, etc.); to reflect changes in those files, you will need to manually restart the server.
+
+The server can be terminated by sending a keyboard interrupt signal (Ctrl-C on Mac/Linux) to its controlling terminal. To start it again, simply rerun the `uvicorn` command.
+
+Access the server by opening [127.0.0.1:8000](http://127.0.0.1:8000) in your web browser.
+
+## The short way (read long way first)
+
+If you're like me, you don't want to type more than five keys to do a common task like starting the server (especially if you need to restart it frequently) if you don't have to. The script `./run_server.sh` checks if the sta-dev environment is already loaded, loads it if necessary, starts the server, and (if using macOS) copies the web address+port to your clipboard.
+
+It has not been tested extensively, so YMMV. Check if it works like so (from ST-Analyzer root directory):
+
+```bash
+./run_server.sh
+```
+
+Since no other file in this directory should start with an `r`, this can be accomplished with five key presses: `.`, `/`, `r`, `<Tab>`, `<Enter>`. If everything worked correctly, you should be able to paste the address into your browser's address bar.
+
+## Allowing remote connections
 
 To access the GUI via IPv4:
 
 1. Edit `run_server.sh` and add the option `--host 0.0.0.0` to `uvicorn`.
 2. Run `./run_server.sh`.
-3. Enter your assigned IP or hostname in your browser's address bar, including the port, e.g. `myhostname:8000`.
+3. Enter your assigned IP in your browser's address bar, including the port, e.g. `my.local.ip.addr:8000`.
 
 You will not be able to access the site via hostname unless your network supports hostname broadcasting or your hostname is registered by DNS.
 
