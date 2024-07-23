@@ -12,6 +12,68 @@ You should install all ST-Analyzer dependencies in a separate environment so tha
 conda env create -f envs/sta-dev.yml
 ```
 
+### Temporary ModuleNotFoundError workaround
+
+Since the current installation method does not use official channels, your ST-Analyzer will probably not be located in your `PYTHONPATH`. As a result, when you attempt to use ST-Analyzer, you will probably see a message like this in your terminal:
+
+```bash
+Traceback (most recent call last):
+...
+    from stanalyzer import utils
+ModuleNotFoundError: No module named 'stanalyzer'
+```
+
+There are a few ways to fix this, but the one I recommend is shown below. Assuming you extracted the stanalyzer code into `~/path/to/stanalyzer`, then run the following commands:
+
+```bash
+# create a dir named site-packages within ~/local, and create ~/local if necessary
+$ mkdir -p ~/local/site-packages
+# add stanalyzer to site-packages
+$ cd ~/local/site-packages
+$ ln -s ~/path/to/stanalyzer .
+```
+
+We created a place to store custom Python packages in `~/local/site-packages` and made a shortcut to `stanalyzer` in it, however to let Python know about this directory, we have to use this command:
+
+```bash
+$ export PYTHONPATH="$PYTHONPATH:$HOME/local/site-packages"
+```
+
+If it worked, you should get no output when using this command:
+
+```bash
+$ python -c "import stanalyzer"
+```
+
+If you still see `ModuleNotFoundError`, check that your paths are correct.
+
+This command has to be run every time you start your shell. Rather than typing the command manually, you should add it to your shell profile. First, figure out which shell you're using:
+
+```bash
+$ echo $0
+```
+
+You'll probably see either zsh or bash (possibly prefixed by `-`). To find out where your profile is located, check the following paths in order.
+
+(For bash)
+ * `~/.profile`
+ * `~/.bash_profile`
+ * `~/.bashrc`
+
+(For zsh)
+ * `~/.zprofile`
+ * `~/.zshrc`
+
+Create the file if it doesn't exist. Then add the command `export PYTHONPATH="$PYTHONPATH:$HOME/local/site-packages"` to the file.
+
+You can tell if it worked by using this command in a new terminal:
+
+```bash
+$ echo $PYTHONPATH
+```
+
+If your result ends with something like `:/home/username/local/site-packages` or `:/Users/username/local/site-packages`, then it worked. Otherwise, try the next file in the list above.
+
 # Usage
 
 ST-Analyzer is in alpha development stage; it is intended to be run and accessed on your personal computer, but can be made accessible over the internet (see below).
