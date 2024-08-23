@@ -91,6 +91,27 @@ rmsd:
       label: Output file
       type: form.path
       value: rmsd.dat
+rmsf:
+  label: RMSF
+  options:
+    sel:
+      label: Atom selection for RMSF calculation
+      type: form.textarea
+      classes: [code]
+      value: protein and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: rmsf.dat
 system_size:
   label: System size
   options:
