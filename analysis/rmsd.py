@@ -1,5 +1,6 @@
 import argparse
 import sys
+import io
 from typing import Optional, cast
 
 import stanalyzer.bin.stanalyzer as sta
@@ -26,7 +27,7 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
 
 def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
-               out: sta.FileRef, ref_psf: Optional[sta.FileRef] = None,
+               out: sta.FileRef, align_out: io.TextIOWrapper, ref_psf: Optional[sta.FileRef] = None,
                ref_coor: Optional[sta.FileRef] = None,
                ref_frame_type: str = 'specific', ref_frame_num: int = 1,
                interval: int = 1) -> None:
@@ -48,7 +49,7 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
         print(f"unknown reference frame type: '{ref_frame_type}'", file=sys.stderr)
         sys.exit(1)
 
-    alignment = AlignTraj(mobile, ref, select=sel).run()
+    alignment = AlignTraj(mobile, ref, filename=align_out.name, select=sel).run()
 
     # TODO: infer start/step/end from settings
     start = .1
@@ -80,6 +81,9 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-rn', '--ref_frame_num', type=int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                         "Only meaningful if --ref-frame-type is 'specific'")
+    parser.add_argument('--align_out', type=argparse.FileType('w'),
+                        metavar='FILE', default=None,
+                        help="Write aligned trajectory to this path")
 
     return parser
 

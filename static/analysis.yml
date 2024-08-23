@@ -83,6 +83,10 @@ rmsd:
     interval:
       label: Frame interval
       type: form.positive_integer
+    align_out:
+      label: Where to write aligned traj
+      type: form.path
+      value: ""
     out:
       label: Output file
       type: form.path
