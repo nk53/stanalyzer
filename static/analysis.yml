@@ -48,6 +48,23 @@ thickness:
       label: Output file
       type: form.path
       value: thickness.dat
+density_z:
+  label: Z Density Profile
+  options:
+    sel:
+      label: Atom selection
+      type: form.textarea
+      classes: [code]
+      value:
+        segid TIP3 and (name OH2)
+    bin_size:
+      label: Bin size (A)
+      type: form.input
+      value: 1.0
+    out:
+      label: Output file
+      type: form.path
+      value: density_z.dat
 rmsd:
   label: RMSD
   options:
