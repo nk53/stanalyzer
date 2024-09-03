@@ -76,8 +76,6 @@ async def insert_analysis(settings: dict):
 
     in_dir = Path(project_settings['input_path'])
     out_dir = Path(project_settings['output_path'])
-    settings_path = Path(in_dir / "project.json")
-    utils.write_settings(settings_path, project_settings)
 
     ctx = invoke.Context()
     processes = []
@@ -94,7 +92,8 @@ async def insert_analysis(settings: dict):
         with ctx.cd(in_dir):
             # setup invocation args
             program = f'python -m stanalyzer {analysis}'
-            bool_args = tuple(f'--{k} "{v}"' for k,v in analysis_settings.items() if v is not True)
+            bool_args = tuple(f'--{k} "{v}"' for k,v in analysis_settings.items()
+                              if not isinstance(v, bool))
             other_args = tuple(f'--{k}' for k,v in analysis_settings.items() if v is True)
             args = ' '.join(bool_args + other_args)
 
@@ -134,6 +133,12 @@ async def update_project(settings: validation.Project):
 
     db.update_project(db.Project(**model_dict))
 
+    project_id = int(model_dict['id'])
+    project_settings = db.get_user_projects(uid=1).get(project_id)
+    in_dir = Path(project_settings['input_path'])
+    settings_path = Path(in_dir / "project.json")
+    utils.write_settings(settings_path, project_settings)
+
     return {
         'request_type': 'put',
         'data': db.get_user_projects(uid=1)
@@ -149,7 +154,13 @@ async def insert_project(request: Request, settings: validation.Project):
     model_dict['uid'] = 1   # TODO: get user id
     model_dict['time_step'] = f"{time_step.num} {time_step.scale}"
 
-    db.insert_project(db.Project(**model_dict))
+    project_id = db.insert_project(db.Project(**model_dict))
+
+    # create settings file
+    project_settings = db.get_user_projects(uid=1).get(project_id)
+    in_dir = Path(project_settings['input_path'])
+    settings_path = Path(in_dir / "project.json")
+    utils.write_settings(settings_path, project_settings)
 
     return {
         'request_type': 'post',

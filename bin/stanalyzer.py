@@ -123,19 +123,34 @@ def add_project_args(subparser, *args):
 def get_settings(analysis_name: Optional[str] = None) -> dict:
     global analysis, defaults
 
-    parser = argparse.ArgumentParser(description='TODO', prog='stanalyzer',
-                                     add_help=False)
+    parser = argparse.ArgumentParser(description='TODO', prog='stanalyzer')
     if analysis_name is None:
         parser.add_argument('analysis_name')
     parser.add_argument('-s', '--settings', metavar='file', default='project.json',
                         help='specify name of file containing settings (default: project.json)')
 
-    # show this parser's help ONLY if it is the first arg
-    if len(sys.argv) == 1 or sys.argv[1] in ['-h', '--help']:
-        parser.print_help(file=sys.stderr)
-        sys.exit()
+    # some manual parsing is required because parse_known_args() will still
+    # fail if an arg is valid both before and after analysis_name
+    full_args = sys.argv[1:]
 
-    args, remaining_args = parser.parse_known_args()
+    # get all args before analysis_name; relies on analysis_name being the
+    # first positional argument
+    if analysis_name is None:
+        main_args = []
+        prev_arg = None
+        for idx, arg in enumerate(full_args):
+            if arg.startswith('-'):
+                main_args.append(arg)
+            elif prev_arg in ['-s', '--settings']:
+                main_args.append(arg)
+            else:
+                analysis_name = arg
+                main_args.append(arg)
+                break
+            prev_arg = arg
+
+        args = parser.parse_args(main_args)
+        remaining_args = full_args[idx+1:]
 
     if Path(args.settings).exists():
         defaults = LazyJSONReader(args.settings)

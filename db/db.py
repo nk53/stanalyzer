@@ -108,6 +108,8 @@ def insert_project(settings: Project):
         session.add(settings)
         session.commit()
 
+        return settings.id
+
 
 def delete_project(pid: int, uid: int):
     with Session(engine) as session:
