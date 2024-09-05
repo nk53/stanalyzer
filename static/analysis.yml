@@ -139,3 +139,72 @@ system_size:
       label: Output file
       type: form.path
       value: system_size.dat
+
+salt_bridge:
+  label: Salt Bridge
+  options:
+    sel:
+      label: Restrict the search to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        all
+    positive_sel:
+      label: Atom selection for positively charged atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        resname ARG LYS and name NH* NZ* 
+    negative_sel:
+      label: Atom selection for negatively charged atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        resname ASP GLU and name OE* OD* 
+    dist_cutoff:
+      label: Distance cutoff between oppositely charged atoms
+      type: form.input
+      value: 4.5
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: salt_bridge.dat
+hbond:
+  label: Hydrogen Bond
+  options:
+    sel:
+      label: Restrict the search to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        all
+    hydrogens_sel:
+      label: Atom selection for hydrogens. If None, then will be identified via charge and mass.
+      type: form.textarea
+      classes: [code]
+      value:
+        None
+    acceptors_sel:
+      label: Atom selection for acceptors. If None, then will be identified via charge.
+      type: form.textarea
+      classes: [code]
+      value:
+        None
+    d_a_cutoff:
+      label: Distance cutoff for hydrogen bonds. This cutoff refers to the D-A distance.
+      type: form.input
+      value: 3.0
+    d_h_a_angle_cutoff:
+      label: D-H-A angle cutoff for hydrogen bonds (degree).
+      type: form.input
+      value: 150.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: hbond.dat
