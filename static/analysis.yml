@@ -111,11 +111,21 @@ rmsd:
 rmsf:
   label: RMSF
   options:
-    sel:
+    # sel:
+    #   label: Atom selection for RMSF calculation
+    #   type: form.textarea
+    #   classes: [code]
+    #   value: protein and name CA
+    sel_align:
+      label: Atom selection for trajectory alignment (eg TM region- name CA and resid 14-510)
+      type: form.textarea
+      classes: [code]
+      value: segid PROA and name CA and resid 14-510
+    sel_rmsf:
       label: Atom selection for RMSF calculation
       type: form.textarea
       classes: [code]
-      value: protein and name CA
+      value: segid PROA and name CA
     ref_psf:
       label: Use different PSF for reference structure
       options:
@@ -125,6 +135,10 @@ rmsf:
     interval:
       label: Frame interval
       type: form.positive_integer
+    align_out:
+      label: Output aligned trajectory name with complete path
+      type: form.path
+      value: ""
     out:
       label: Output file
       type: form.path
