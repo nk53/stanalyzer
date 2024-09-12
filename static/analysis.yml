@@ -208,3 +208,77 @@ hbond:
       label: Output file
       type: form.path
       value: hbond.dat
+radius_of_gyration:
+  label: Radius of gyration
+  options:
+    sel_align:
+      label: Atom selection for trajectory alignment (eg TM region- name CA and resid 14-510)
+      type: form.textarea
+      classes: [code]
+      value: segid PROA and name CA and resid 14-510
+    sel_rg:
+      label: Atom selection for Radius of gyration calculation
+      type: form.textarea
+      classes: [code]
+      value: segid PROA and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    ref_coor:
+      label: Use different coordinate file for reference structure
+      options:
+        path:
+          label: Reference structure coordinates
+          type: form.path
+    ref_frame_type:
+      label: Reference type
+      type: form.select
+      options:
+        specific: Specific frame
+        average: Average structure
+    ref_frame_num:
+      label: Reference frame number
+      type: form.positive_integer
+      value: 1
+      visibility:
+        allowed_radius_of_gyration_ref_frame_type: specific
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    align_out:
+      label: Output aligned trajectory name with complete path
+      type: form.path
+      value: ""
+    out:
+      label: Output file
+      type: form.path
+      value: radius_of_gyration.dat
+
+position_time:
+  label: Position with time series
+  options:
+    sel:
+      label: Atom selection to print position for
+      type: form.textarea
+      classes: [code]
+      value: name CA
+    method:
+      label: Centroid Calculation Method
+      type: form.select
+      options:
+        com: Center of Mass (COM)
+        cog: Center of Geometry (COG)
+    axis:
+      label: Coordinate Axis to Track
+      type: form.select
+      options:
+        z: Z-axis
+        x: X-axis
+        y: Y-axis  
+    out:
+      label: Output file
+      type: form.path
+      value: position_time.dat
