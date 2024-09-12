@@ -1,5 +1,6 @@
 import argparse
 from typing import Optional, cast
+import io
 
 import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda    # type: ignore
@@ -25,22 +26,29 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
     return header_str
 
-
-def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
-               out: sta.FileRef, ref_psf: Optional[sta.FileRef] = None,
-               interval: int = 1) -> None:
-    """Writes RMSF to `out` file"""
+def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf: str,
+                             out: sta.FileRef, align_out: io.TextIOWrapper, 
+                             ref_psf: Optional[sta.FileRef] = None,
+                             interval: int = 1) -> None:
+    """Writes RMSF (Root Mean Square Fluctuation) to `out` file."""
 
     if ref_psf is None:
-        ref_psf = cast(sta.FileRef, psf)
+        ref_psf = psf
 
+    # Load mobile and reference universes
     mobile = mda.Universe(psf, traj)
     ref = mda.Universe(ref_psf, traj[0])
 
-    alignment = AlignTraj(mobile, ref, select=sel, in_memory=True).run()
+    # Align the mobile trajectory to the reference based on the selection for alignment
+    alignment = AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
 
-    # Calculate RMSF using the aligned trajectory
-    rmsf_analysis = RMSF(mobile.select_atoms(sel)).run()
+    # Load the aligned trajectory from the saved file
+    aligned_mobile = mda.Universe(psf, align_out.name)
+
+
+    # Calculate RMSF using the aligned trajectory and the selection for RMSF calculation
+    # rmsf_analysis = RMSF(mobile.select_atoms(sel_rmsf)).run()
+    rmsf_analysis = RMSF(aligned_mobile.select_atoms(sel_rmsf)).run()
     atom_index = np.arange(len(rmsf_analysis.rmsf))
 
     # Combine atom index and RMSF values
@@ -54,15 +62,25 @@ def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--sel', metavar='selection',
+
+    # Add two separate selection arguments, one for alignment and one for RMSF calculation
+    parser.add_argument('--sel_align', metavar='selection_align',
+                        help="Atom selection for trajectory alignment")
+    parser.add_argument('--sel_rmsf', metavar='selection_rmsf',
                         help="Atom selection for RMSF calculation")
+    parser.add_argument('--align_out', type=argparse.FileType('w'),
+                        metavar='FILE', default=None,
+                        help="Write aligned trajectory to this path")
 
     return parser
 
 
+
 def main(settings: Optional[dict] = None) -> None:
     if settings is None:
-        settings = dict(sta.get_settings(ANALYSIS_NAME))
+        parser = get_parser()
+        args = parser.parse_args()
+        settings = vars(args)
 
     write_rmsf(**settings)
 
