@@ -153,24 +153,29 @@ system_size:
       label: Output file
       type: form.path
       value: system_size.dat
-
 salt_bridge:
   label: Salt Bridge
   options:
-    sel:
-      label: Restrict the search to only those atoms
+    positive_sel:
+      label: Restrict the search of positively charged atoms to only those atoms
       type: form.textarea
       classes: [code]
       value:
         all
-    positive_sel:
-      label: Atom selection for positively charged atoms
+    negative_sel:
+      label: Restrict the search of negatively charged atoms to only those atoms
       type: form.textarea
       classes: [code]
       value:
-        resname ARG LYS and name NH* NZ* 
-    negative_sel:
-      label: Atom selection for negatively charged atoms
+        all
+    positive_def:
+      label: Definition of positively charged atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        resname ARG LYS and name NE NH* NZ* 
+    negative_def:
+      label: Definition of negatively charged atoms
       type: form.textarea
       classes: [code]
       value:
@@ -222,6 +227,66 @@ hbond:
       label: Output file
       type: form.path
       value: hbond.dat
+water_bridge:
+  label: Water Bridge
+  options:
+    sel:
+      label: Restrict the search of atoms that are bridged by water to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        protein
+    sel2:
+      label: Optional. The second group of atoms when searching water bridges between two different groups 
+      type: form.textarea
+      classes: [code]
+      value:
+        None
+    water_sel:
+      label: Atom selection for bridging water. If None, then all water molecules will be selected 
+      type: form.textarea
+      classes: [code]
+      value:
+        resname TIP3
+    d_a_cutoff:
+      label: Distance cutoff for hydrogen bonds. This cutoff refers to the D-A distance.
+      type: form.input
+      value: 3.0
+    d_h_a_angle_cutoff:
+      label: D-H-A angle cutoff for hydrogen bonds (degree).
+      type: form.input
+      value: 150.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: water_bridge.dat
+pi_stacking:
+  label: Pi Stacking
+  options:
+    sel:
+      label: Restrict the search to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        all
+    pi_pi_dist_cutoff:
+      label: Distance cutoff between aromatic ring centers (Pi-Pi)
+      type: form.input
+      value: 6.0
+    pi_cation_dist_cutoff:
+      label: Distance cutoff between aromatic ring centers and positively charged atoms (Cation-Pi)
+      type: form.input
+      value: 6.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: pi_stacking.dat
 radius_of_gyration:
   label: Radius of gyration
   options:
@@ -270,7 +335,6 @@ radius_of_gyration:
       label: Output file
       type: form.path
       value: radius_of_gyration.dat
-
 position_time:
   label: Position with time series
   options:

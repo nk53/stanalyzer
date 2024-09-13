@@ -21,7 +21,8 @@ def header(outfile: Optional[sta.FileLike] = None) -> str:
 
 
 def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
-                      sel: str = 'all', positive_sel: str = None, negative_sel: str = None,
+                      positive_sel: str = 'all', negative_sel: str = 'all',
+                      positive_def: str = None, negative_def: str = None,
                       dist_cutoff: float = 4.5, interval: int = 1,) -> None:
     """Writes salt bridge to `out` file"""
     
@@ -30,15 +31,14 @@ def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 
     for traj_file in traj:
         u = mda.Universe(psf, traj_file)
-        atoms = u.select_atoms(sel)
-        if negative_sel is None:
-            acidic = atoms.select_atoms("(resname ASP GLU) and (name OE* OD*)")
+        if negative_def is None or negative_def.lower() == 'none':
+            acidic = u.select_atoms(negative_sel).select_atoms("(resname ASP GLU CASP CGLU NASP NGLU) and (name OE* OD*)")
         else:
-            acidic = atoms.select_atoms(negative_sel)
-        if positive_sel is None:
-            basic = atoms.select_atoms("(resname ARG LYS) and (name NH* NZ)")
+            acidic = u.select_atoms(negative_sel).select_atoms(negative_def)
+        if positive_def is None or positive_def.lower() == 'none':
+            basic = u.select_atoms(positive_sel).select_atoms("(resname ARG LYS CARG CLYS NARG NLYS) and (name NE NH* NZ)")
         else:
-            basic = atoms.select_atoms(positive_sel)
+            basic = u.select_atoms(positive_sel).select_atoms(positive_def)
         if len(acidic) == 0:
             print('Unable to find negatively charged atoms!')
             return
@@ -53,9 +53,9 @@ def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
             indices1, indices2 = np.where(contacts.contact_matrix(dist_mat, dist_cutoff))
             for i in range(len(indices1)):
                 atom1 = acidic[indices1[i]]
-                residue1 = atom1.segid + '_' + atom1.resname + str(atom1.resid)
+                residue1 = atom1.segid + '_' + atom1.resname + '_' + str(atom1.resid)
                 atom2 = basic[indices2[i]]
-                residue2 = atom2.segid + '_' + atom2.resname + str(atom2.resid)
+                residue2 = atom2.segid + '_' + atom2.resname + '_' + str(atom2.resid)
                 key = (residue1, residue2)
                 if key not in salt_bridges:
                     salt_bridges[key] = set([step_num])
@@ -80,12 +80,14 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
     parser.add_argument('--dist_cutoff', type=float, metavar='N', default='4.5',
                         help="Distance cutoff between oppositely charged atoms")
-    parser.add_argument('--sel', metavar='selection', default='all',
-                        help="Restrict the search to only those atoms")
-    parser.add_argument('--positive_sel', metavar='selection', default=None,
-                        help="Atom selection for positively charged atoms")
-    parser.add_argument('--negative_sel', metavar='selection', default=None,
-                        help="Atom selection for negatively charged atoms")
+    parser.add_argument('--positive_sel', metavar='selection', default='all',
+                        help="Restrict the search of positively charge atoms to only those atoms")
+    parser.add_argument('--negative_sel', metavar='selection', default='all',
+                        help="Restrict the search of negatively charge atoms to only those atoms")
+    parser.add_argument('--positive_def', metavar='selection', default=None,
+                        help="Definition of positively charged atoms")
+    parser.add_argument('--negative_def', metavar='selection', default=None,
+                        help="Definition of negatively charged atoms")
 
     return parser
 
