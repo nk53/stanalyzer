@@ -383,3 +383,52 @@ rdf:
       label: Output file
       type: form.path
       value: rdf.dat
+
+helix_analysis:
+  label: Helix Analysis
+  options:
+    sel_align:
+      label: Atom selection for trajectory alignment (e.g., TM region - name CA and resid 14-510)
+      type: form.textarea
+      classes: [code]
+      value: name CA and resnum 161-187
+    sel_helix:
+      label: Atom selection for Helix analysis (Global Axes, Global Tilt and All Bends)
+      type: form.textarea
+      classes: [code]
+      value: name CA and resnum 161-187
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    ref_coor:
+      label: Use different coordinate file for reference structure
+      options:
+        path:
+          label: Reference structure coordinates
+          type: form.path
+    ref_frame_type:
+      label: Reference type
+      type: form.select
+      options:
+        specific: Specific frame
+        average: Average structure
+    ref_frame_num:
+      label: Reference frame number
+      type: form.positive_integer
+      value: 1
+      visibility:
+        allowed_helix_analysis_ref_frame_type: specific
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    align_out:
+      label: Output aligned trajectory name with complete path
+      type: form.path
+      value: ""
+    out:
+      label: Output file
+      type: form.path
+      value: helix_analysis.dat
