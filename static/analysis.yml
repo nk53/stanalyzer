@@ -360,3 +360,26 @@ position_time:
       label: Output file
       type: form.path
       value: position_time.dat
+rdf:
+  label: Radial Distribution Function
+  options:
+    sel1:
+      label: atom select 1
+      type: form.textarea
+      classes: [code]
+      value:
+        resname POPC and name O1
+    sel2:
+      label: atom select 2
+      type: form.textarea
+      classes: [code]
+      value:
+        resname CHL1 and name O
+    bin_size:
+      label: bin size
+      type: form.input
+      value: 0.5
+    out:
+      label: Output file
+      type: form.path
+      value: rdf.dat
