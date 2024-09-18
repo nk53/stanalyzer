@@ -32,12 +32,12 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
     """Writes contacts to `out` file"""
 
 # Parameters
-topology_file = 'step5_input.pdb'   # Path to the topology file
-trajectory_file = 'compressed_traj.xtc'  # Path to the trajectory file
+topology_file = 'topology.pdb'   # Path to the topology file
+trajectory_file = 'trajectory.dcd'  # Path to the trajectory file
 contact_threshold = 5.0  # Contact threshold distance in Angstroms
 
 # Load the universe
-u = mda.Universe('step5_input.pdb', 'compressed_traj.xtc')
+u = mda.Universe('topology.pdb', 'trajectory.dcd')
 
 # Function to calculate contacts
 def calculate_contacts(universe, threshold):
@@ -92,7 +92,7 @@ def get_parser() -> argparse.ArgumentParser:
    return parser
 
 def main():
-   u = mda.Universe('step5_input.pdb', 'compressed_traj.xtc')
+   u = mda.Universe('topology.pdb', 'trajectory.dcd')
  
 def main(settings: Optional[dict] = None) -> None:
     if settings is None:
