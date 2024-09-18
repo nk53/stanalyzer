@@ -432,3 +432,47 @@ helix_analysis:
       label: Output file
       type: form.path
       value: helix_analysis.dat
+glycosidic_bond_distances:
+  label: Glycosidic Bond between sugars
+  options:
+    sel:
+      label: Average distance between anomeric carbon and hydroxyl group
+      type: form.textarea
+      classes: [code]
+      value: name C1 and name O1
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: glycosidic_between_sugar.dat
+contacts:
+  label: Residue contacts
+  options:
+    sel:
+      label: Atom selection for Residue contacts calculation
+      type: form.textarea
+      classes: [code]
+      value: protein and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file 
+      type: form.path
+      value: residue_contacts.dat
+
+
