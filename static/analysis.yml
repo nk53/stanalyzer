@@ -65,6 +65,27 @@ density_z:
       label: Output file
       type: form.path
       value: density_z.dat
+cov_analysis:
+  label: covariance analysis
+  options:
+    sel:
+      label: Atom selection
+      type: form.textarea
+      classes: [code]
+      value:
+        name CA
+    corr_matrix_out:
+      label: Output file
+      type: form.path
+      value: correlation_matrix.dat
+    eigenvalues_out:
+      label: Output file
+      type: form.path
+      value: eigenvalues.dat
+    eigenvectors_out:
+      label: Output file
+      type: form.path
+      value: eigenvectors.dat
 rmsd:
   label: RMSD
   options:
