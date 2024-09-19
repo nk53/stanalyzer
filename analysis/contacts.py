@@ -73,7 +73,9 @@ def calculate_contacts(universe, threshold):
                 dist = np.linalg.norm(com_i - com_j)
                 
                 if dist < threshold:
-                    contact_residues.add((residues[i].resname, residues[i].resid, residues[j].resname, residues[j].resid))
+                    contact = (residues[i].resname, residues[i].resid,
+                               residues[j].resname, residues[j].resid)
+        
                     # Increment the contact frequency
                     if contact in contact_frequency:
                         contact_frequency[contact] += 1
