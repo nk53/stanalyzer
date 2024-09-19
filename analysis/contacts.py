@@ -44,8 +44,8 @@ def calculate_contacts(universe, threshold):
     # Select all residues
     residues = u.select_atoms('all')
     
-    # Create a list to store contact information
-    contact_residues = set()
+    # Create a dictionary to store contact frequency information
+    contact_frequency = {}
     
     # Iterate over frames in the trajectory
     for ts in universe.trajectory:
@@ -74,8 +74,12 @@ def calculate_contacts(universe, threshold):
                 
                 if dist < threshold:
                     contact_residues.add((residues[i].resname, residues[i].resid, residues[j].resname, residues[j].resid))
-    
-    return contact_residues
+                    # Increment the contact frequency
+                    if contact in contact_frequency:
+                        contact_frequency[contact] += 1
+                    else:
+                        contact_frequency[contact] = 1
+    return contact_frequency
 # Calculate contacts
 contacts = calculate_contacts(u, contact_threshold)
 
@@ -90,16 +94,12 @@ def get_parser() -> argparse.ArgumentParser:
    parser.add_argument('--sel', metavar='selection')
 
    return parser
-
-def main():
-   u = mda.Universe('topology.pdb', 'trajectory.dcd')
  
 def main(settings: Optional[dict] = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 
     write_contacts(**settings)
-
 
 if __name__ == '__main__':
     main()
