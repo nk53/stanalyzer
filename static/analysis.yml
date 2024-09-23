@@ -308,6 +308,22 @@ pi_stacking:
       label: Output file
       type: form.path
       value: pi_stacking.dat
+secondary_structure:
+  label: Secondary Structure
+  options:
+    sel:
+      label: Restrict the search to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        protein
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: secondary_structure.dat
 radius_of_gyration:
   label: Radius of gyration
   options:
