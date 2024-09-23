@@ -11,7 +11,7 @@ cmake --install build
 
 # Download two dictionary files:
 curl -o /Users/myusername/DSSP/dssp/share/libcifpp/mmcif_pdbx.dic https://mmcif.wwpdb.org/dictionaries/ascii/mmcif_pdbx_v50.dic
-curl -o /Users/myusername/DSSP/dssp/share/libcifpp/components.cif2 https://files.wwpdb.org/pub/pdb/data/monomers/components.cif
+curl -o /Users/myusername/DSSP/dssp/share/libcifpp/components.cif https://files.wwpdb.org/pub/pdb/data/monomers/components.cif
 
 # The excutable is called by:
 /Users/myusername/DSSP/dssp/bin/mkdssp --output-format=dssp test.pdb test.dssp
