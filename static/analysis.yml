@@ -504,6 +504,10 @@ contacts:
         path:
           label: Reference structure PSF
           type: form.path
+    contact_threshold:
+      label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
+      type: form.input
+      value: 5.0
     interval:
       label: Frame interval
       type: form.positive_integer
