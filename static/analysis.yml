@@ -563,3 +563,52 @@ helix_analysis:
       type: form.path
       value: helix_analysis.dat
       
+helix_tilt_rotation_angle:
+  label: Helix Tilt and Rotation Angle
+  options:
+    helix_start:
+      label: Helix start residue
+      type: form.positive_integer
+      value: 463
+    helix_end:
+      label: Helix end residue
+      type: form.positive_integer
+      value: 491
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+    out:
+      label: Output file
+      type: form.path
+      value: helix_tilt_rotation_angle.dat
+
+helix_distance_crossing_angle:
+  label: Helix-helix distance and crossing angle
+  options:
+    helix1_start:
+      label: Helix1 start residue
+      type: form.positive_integer
+      value: 341
+    helix1_end:
+      label: Helix1 end residue
+      type: form.positive_integer
+      value: 368
+    helix2_start:
+      label: Helix2 start residue
+      type: form.positive_integer
+      value: 463
+    helix2_end:
+      label: Helix2 end residue
+      type: form.positive_integer
+      value: 491
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+    out:
+      label: Output file
+      type: form.path
+      value: helix_distance_crossing_angle.dat
+
+      
