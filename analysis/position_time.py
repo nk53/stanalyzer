@@ -28,12 +28,10 @@ def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
                         method: Optional[str] = None,
                         axis: Optional[str] = None) -> None:
 
-    # Load the universe
+    # Load the traj and topology
     u = mda.Universe(psf, traj)
 
-    # Select atoms for membrane and the ligand (or selected group for time series calculation)
-    
-
+    # Pass the atoms for membrane and the ligand (or selected group for time series calculation) 
     selected_atoms = u.select_atoms(sel)
     selected_head_group = u.select_atoms(head_group)
 
@@ -46,10 +44,10 @@ def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
 
     # Iterate through each frame in the trajectory
     for ts in u.trajectory:
-        # Center the membrane along Z-axis and shift the whole system accordingly
+        # Center the membrane 
         ts = center_in_box(selected_head_group, point=(0, 0, 0))(ts)
         
-        # Now calculate the centroid of the selected atoms (e.g., ligand)
+        # Centroid of the selected atoms (e.g., ligand)
         if method == 'com':
             centroid = selected_atoms.center_of_mass()
         else:
