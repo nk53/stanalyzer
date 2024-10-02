@@ -511,5 +511,29 @@ contacts:
       label: Output file 
       type: form.path
       value: residue_contacts.dat
-
+contact_res_time:
+  label: Residence time of a contact
+  options:
+    sel:
+      label: Atom selection for Residue contacts calculation
+      type: form.textarea
+      classes: [code]
+      value: protein and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    threshold:
+      label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
+      type: form.input
+      value: 5.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: contact_residence_time.dat
 
