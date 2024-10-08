@@ -79,6 +79,8 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.F
     plt.title('Correlation Matrix')
     plt.xlabel('Atomic x,y,z Coordinates')
     plt.ylabel('Atomic x,y,z Coordinates')
+    plt.xlim(0, atoms.n_atoms * 3)
+    plt.ylim(0, atoms.n_atoms * 3)
     plt.grid()
     plt.savefig('correlation_matrix_heatmap.png', format='png', dpi=300)
 
