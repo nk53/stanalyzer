@@ -74,18 +74,22 @@ cov_analysis:
       classes: [code]
       value:
         name CA
+    sel_atoms_pdb_out:
+      label: Output file
+      type: form.path
+      value: selection.pdb
+    align_traj_out:
+      label: Output file
+      type: form.path
+      value: align_traj.dcd
     corr_matrix_out:
       label: Output file
       type: form.path
       value: correlation_matrix.dat
-    eigenvalues_out:
+    projected_traj_out:
       label: Output file
       type: form.path
-      value: eigenvalues.dat
-    eigenvectors_out:
-      label: Output file
-      type: form.path
-      value: eigenvectors.dat
+      value: projected_traj.dcd
 rmsd:
   label: RMSD
   options:
