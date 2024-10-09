@@ -6,7 +6,7 @@ import numpy as np
 import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
 from MDAnalysis.analysis import align, pca
-from sklearn.decomposition import PCA
+#from sklearn.decomposition import PCA
 
 ANALYSIS_NAME = 'cov_analysis'
 
@@ -22,10 +22,11 @@ def header(outfile: Optional[sta.FileLike] = None) -> str:
 
 def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel: str,
                              time_step: float | str, interval: int = 1, 
+                             sel_atoms_pdb_out: sta.FileRef='',
+                             align_traj_out: sta.FileRef='',
                              corr_matrix_out: sta.FileRef='', 
-                             eigenvalues_out: sta.FileRef='',
-                             eigenvectors_out: sta.FileRef='') -> None:
-    """Writes correlation matrix to `out` file"""
+                             projected_traj_out: sta.FileRef='') -> None:
+    """Writes correlation matrix, selection.pdb, align_traj.dcd, projected_traj.dcd to `out` file"""
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -36,36 +37,34 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.F
         u = mda.Universe(psf, traj_file)
     
     atoms = u.select_atoms(sel) # default 'name CA'
-    ref = u.select_atoms(sel)  
 
-    aligner = align.AlignTraj(u, ref, select=sel, match_atoms=True, in_memory=True).run()
+    aligner = align.AlignTraj(u, u, sel, match_atoms=True, in_memory=True).run()
     
-    # Create a DCD writer object to write the aligned trajectory
-    # with mda.Writer("align_traj.dcd", atoms.n_atoms) as W: 
-    #     for ts in u.trajectory: 
-    #         W.write(atoms) 
+    #Create a pdb for selection atoms 
+    with mda.Writer(sel_atoms_pdb_out, atoms.n_atoms) as f:
+        u.trajectory[0]
+        f.write(atoms) 
+
+    #Aligned trajectory for selected atoms to a new DCD file
+    with mda.Writer(align_traj_out, atoms.n_atoms) as f:
+        for ts in u.trajectory:  
+            f.write(atoms)
 
     positions = []
     for ts in u.trajectory:
-        positions.append(atoms.positions.flatten())   # only CA atoms by deafult
+        positions.append(atoms.positions.flatten())  
     
     positions = np.array(positions)
     positions = positions.reshape(len(u.trajectory), len(atoms), 3)
-    #print(positions.shape)
     mean_positions = positions.mean(axis=0)
-    #print(mean_positions.shape)
     centered_positions = positions - mean_positions
-    #print(centered_positions.shape)
 
     centered_positions_flat = centered_positions.reshape(len(u.trajectory), len(atoms) * 3)
-    #print("Centered positions (flattened) shape:", centered_positions_flat.shape)
-
 
     covariance_matrix = np.cov(centered_positions_flat, rowvar=False)
-    #print(covariance_matrix.shape)
 
-    # Compute and plot the correlation matrix
-    correlation_matrix = np.corrcoef(centered_positions_flat, rowvar=False)  # normalizes the coefficients
+    # Compute correlation matrix
+    correlation_matrix = np.corrcoef(centered_positions_flat, rowvar=False)  
 
 
     with sta.resolve_file(corr_matrix_out, 'w') as outfile1:
@@ -85,48 +84,43 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.F
     plt.savefig('correlation_matrix_heatmap.png', format='png', dpi=300)
 
     # Perform PCA
-    pca = PCA()
-    pca.fit(covariance_matrix)
+    pc = pca.PCA(u, sel, align=True, mean=None, n_components=None).run()
+    ca = u.select_atoms(sel)
+    n_ca = len(ca)
 
-    explained_variance_ratio = pca.explained_variance_ratio_
-    cumulative_variance_sum = np.cumsum(explained_variance_ratio)
-    # Find the number of components that explain at least threshold of the variance
-    threshold=0.85
-    num_components = np.argmax(cumulative_variance_sum >= threshold) + 1
-    #print(f"Number of principal components explaining {threshold * 100}% of the variance: {num_components}")
+#    print(f'PC1 = {pc.variance[0]:0.5f}')
 
+#    for i in range(10):
+#        print(f'Cumulative Variance {i}: {pc.cumulated_variance[i]:0.3f}')
 
-    # Compute eigenvalues and eigenvectors
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+    transformed = pc.transform(ca, n_components=3)
 
-    # Sort eigenvalues and eigenvectors in descending order
-    sorted_indices = np.argsort(eigenvalues)[::-1]
-    eigenvalues = eigenvalues[sorted_indices]
-    eigenvectors = eigenvectors[:, sorted_indices]
+    pc1 = pc.p_components[:, 0]
+    trans1 = transformed[:, 0]
 
-    # Save eigenvalues to file
-    with sta.resolve_file(eigenvalues_out, 'w') as outfile2:
-        np.savetxt(outfile2, eigenvalues[:num_components], fmt='%.6f', header='Top Eigenvalues')
+    projected = np.outer(trans1, pc1) + pc.mean.flatten()
+    coordinates = projected.reshape(len(trans1), -1, 3)
 
-    # Save eigenvectors to file
-    with sta.resolve_file(eigenvectors_out, 'w') as outfile3:
-        np.savetxt(outfile3, eigenvectors[:num_components], fmt='%.6f', header='Top Eigenvalues')
+    proj1 = mda.Merge(ca) # new universe for selected atoms
+    proj1.load_new(coordinates, order='fac') # fac = frames, atoms, coordinates
 
-    #Print top eigenvalues and eigenvectors
-    #print("Top Eigenvalues:")
-    #print(eigenvalues[:num_components])  # should be printed as output
-    #print("Top Eigenvectors:")
-    #print(eigenvectors[:num_components]) # should be printed as output
+    n_frames= transformed.shape[0]
+
+    with mda.Writer(projected_traj_out, atoms.n_atoms) as f:
+        for i in range(n_frames):
+            coords = coordinates[i]
+            proj1.load_new(coords)
+            f.write(proj1.atoms)
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
-#    parser.add_argument('-c', '--center', action='store_true')
     parser.add_argument('--sel', metavar='selection'),
+    parser.add_argument('--sel_atoms_pdb_out', metavar='selection'),
+    parser.add_argument('--align_traj_out', metavar='selection'),
     parser.add_argument('--corr_matrix_out', metavar='selection'),
-    parser.add_argument('--eigenvalues_out', metavar='selection'),
-    parser.add_argument('--eigenvectors_out', metavar='selection',
+    parser.add_argument('--projected_traj_out', metavar='selection',
                         help="Membrane headgroup atom selection")
 
     return parser

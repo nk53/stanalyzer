@@ -28,6 +28,7 @@ apl:
       label: Output file
       type: form.path
       value: area_per_lipid.dat
+      
 thickness:
   label: Membrane thickness
   options:
@@ -48,6 +49,7 @@ thickness:
       label: Output file
       type: form.path
       value: thickness.dat
+      
 density_z:
   label: Z Density Profile
   options:
@@ -65,6 +67,7 @@ density_z:
       label: Output file
       type: form.path
       value: density_z.dat
+      
 cov_analysis:
   label: covariance analysis
   options:
@@ -89,7 +92,16 @@ cov_analysis:
     projected_traj_out:
       label: Output file
       type: form.path
+<<<<<<< HEAD
       value: projected_traj.dcd
+=======
+      value: eigenvalues.dat
+    eigenvectors_out:
+      label: Output file
+      type: form.path
+      value: eigenvectors.dat
+      
+>>>>>>> ed885ec710ccb6aeda6b9ce49d95b2f34f1dab3b
 rmsd:
   label: RMSD
   options:
@@ -133,6 +145,7 @@ rmsd:
       label: Output file
       type: form.path
       value: rmsd.dat
+      
 rmsf:
   label: RMSF
   options:
@@ -168,6 +181,7 @@ rmsf:
       label: Output file
       type: form.path
       value: rmsf.dat
+      
 system_size:
   label: System size
   options:
@@ -178,6 +192,7 @@ system_size:
       label: Output file
       type: form.path
       value: system_size.dat
+      
 salt_bridge:
   label: Salt Bridge
   options:
@@ -216,6 +231,7 @@ salt_bridge:
       label: Output file
       type: form.path
       value: salt_bridge.dat
+      
 hbond:
   label: Hydrogen Bond
   options:
@@ -252,6 +268,7 @@ hbond:
       label: Output file
       type: form.path
       value: hbond.dat
+      
 water_bridge:
   label: Water Bridge
   options:
@@ -288,6 +305,7 @@ water_bridge:
       label: Output file
       type: form.path
       value: water_bridge.dat
+      
 pi_stacking:
   label: Pi Stacking
   options:
@@ -312,6 +330,24 @@ pi_stacking:
       label: Output file
       type: form.path
       value: pi_stacking.dat
+      
+secondary_structure:
+  label: Secondary Structure
+  options:
+    sel:
+      label: Restrict the search to only those atoms
+      type: form.textarea
+      classes: [code]
+      value:
+        protein
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: secondary_structure.dat
+      
 radius_of_gyration:
   label: Radius of gyration
   options:
@@ -360,14 +396,15 @@ radius_of_gyration:
       label: Output file
       type: form.path
       value: radius_of_gyration.dat
+      
 position_time:
   label: Position with time series
   options:
     sel:
-      label: Atom selection to print position for
+      label: Atom selection to print position for (eg. segid HETA or resname <LIG>)
       type: form.textarea
       classes: [code]
-      value: name CA
+      value: segid HETA 
     method:
       label: Centroid Calculation Method
       type: form.select
@@ -381,10 +418,16 @@ position_time:
         z: Z-axis
         x: X-axis
         y: Y-axis  
+    head_group:
+      label: Head group selection for membrane centering
+      type: form.textarea
+      classes: [code]
+      value: segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9]) ## segid MEMB and not name H* 
     out:
       label: Output file
       type: form.path
       value: position_time.dat
+
 rdf:
   label: Radial Distribution Function
   options:
@@ -408,6 +451,80 @@ rdf:
       label: Output file
       type: form.path
       value: rdf.dat
+
+glycosidic_bond_distances:
+  label: Glycosidic Bond between sugars
+  options:
+    sel:
+      label: Average distance between anomeric carbon and hydroxyl group
+      type: form.textarea
+      classes: [code]
+      value: name C1 and name O1
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: glycosidic_between_sugar.dat
+      
+contacts:
+  label: Residue contacts
+  options:
+    sel:
+      label: Atom selection for Residue contacts calculation
+      type: form.textarea
+      classes: [code]
+      value: protein and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    contact_threshold:
+      label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
+      type: form.input
+      value: 5.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file 
+      type: form.path
+      value: residue_contacts.dat
+      
+contact_res_time:
+  label: Residence time of a contact
+  options:
+    sel:
+      label: Atom selection for Residue contacts calculation
+      type: form.textarea
+      classes: [code]
+      value: protein and name CA
+    ref_psf:
+      label: Use different PSF for reference structure
+      options:
+        path:
+          label: Reference structure PSF
+          type: form.path
+    threshold:
+      label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
+      type: form.input
+      value: 5.0
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    out:
+      label: Output file
+      type: form.path
+      value: contact_residence_time.dat
 
 helix_analysis:
   label: Helix Analysis
@@ -457,47 +574,53 @@ helix_analysis:
       label: Output file
       type: form.path
       value: helix_analysis.dat
-glycosidic_bond_distances:
-  label: Glycosidic Bond between sugars
+      
+helix_tilt_rotation_angle:
+  label: Helix Tilt and Rotation Angle
   options:
-    sel:
-      label: Average distance between anomeric carbon and hydroxyl group
-      type: form.textarea
-      classes: [code]
-      value: name C1 and name O1
-    ref_psf:
-      label: Use different PSF for reference structure
-      options:
-        path:
-          label: Reference structure PSF
-          type: form.path
+    helix_start:
+      label: Helix start residue
+      type: form.positive_integer
+      value: 463
+    helix_end:
+      label: Helix end residue
+      type: form.positive_integer
+      value: 491
     interval:
       label: Frame interval
       type: form.positive_integer
+      value: 1
     out:
       label: Output file
       type: form.path
-      value: glycosidic_between_sugar.dat
-contacts:
-  label: Residue contacts
+      value: helix_tilt_rotation_angle.dat
+
+helix_distance_crossing_angle:
+  label: Helix-helix distance and crossing angle
   options:
-    sel:
-      label: Atom selection for Residue contacts calculation
-      type: form.textarea
-      classes: [code]
-      value: protein and name CA
-    ref_psf:
-      label: Use different PSF for reference structure
-      options:
-        path:
-          label: Reference structure PSF
-          type: form.path
+    helix1_start:
+      label: Helix1 start residue
+      type: form.positive_integer
+      value: 341
+    helix1_end:
+      label: Helix1 end residue
+      type: form.positive_integer
+      value: 368
+    helix2_start:
+      label: Helix2 start residue
+      type: form.positive_integer
+      value: 463
+    helix2_end:
+      label: Helix2 end residue
+      type: form.positive_integer
+      value: 491
     interval:
       label: Frame interval
       type: form.positive_integer
+      value: 1
     out:
-      label: Output file 
+      label: Output file
       type: form.path
-      value: residue_contacts.dat
+      value: helix_distance_crossing_angle.dat
 
-
+      
