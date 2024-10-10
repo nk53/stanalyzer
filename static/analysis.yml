@@ -92,16 +92,7 @@ cov_analysis:
     projected_traj_out:
       label: Output file
       type: form.path
-<<<<<<< HEAD
       value: projected_traj.dcd
-=======
-      value: eigenvalues.dat
-    eigenvectors_out:
-      label: Output file
-      type: form.path
-      value: eigenvectors.dat
-      
->>>>>>> ed885ec710ccb6aeda6b9ce49d95b2f34f1dab3b
 rmsd:
   label: RMSD
   options:
