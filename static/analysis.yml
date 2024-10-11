@@ -613,5 +613,26 @@ helix_distance_crossing_angle:
       label: Output file
       type: form.path
       value: helix_distance_crossing_angle.dat
-
-      
+compressibility_modulus:
+  label: Area Compressibility Modulus
+  options:
+    cntmin:
+      label: First Trajectory Number for Analysis
+      type: form.input
+      value: 1
+    cntmax:
+      label: Last Trajectory Number for Analysis
+      type: form.input
+      value: 1
+    temp:
+      label: System Temperature (Kelvin)
+      type: form.input
+      value: 313
+    bs:
+      label: bin size
+      type: form.input
+      value: 100
+    out:
+      label: Output file
+      type: form.path
+      value: avg_ka.dat
