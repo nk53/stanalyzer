@@ -1,12 +1,11 @@
 import argparse
 from typing import Optional
-import matplotlib.pyplot as plt
-import numpy as np
 
+import matplotlib.pyplot as plt  # type: ignore
+import numpy as np
 import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
-from MDAnalysis.analysis import align, pca
-#from sklearn.decomposition import PCA
+from MDAnalysis.analysis import align, pca  # type: ignore
 
 ANALYSIS_NAME = 'cov_analysis'
 
@@ -21,51 +20,47 @@ def header(outfile: Optional[sta.FileLike] = None) -> str:
 
 
 def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel: str,
-                             time_step: float | str, interval: int = 1, 
-                             sel_atoms_pdb_out: sta.FileRef='',
-                             align_traj_out: sta.FileRef='',
-                             corr_matrix_out: sta.FileRef='', 
-                             projected_traj_out: sta.FileRef='') -> None:
+                             time_step: float | str, interval: int = 1,
+                             sel_atoms_pdb_out: sta.FileRef = '',
+                             align_traj_out: sta.FileRef = '',
+                             corr_matrix_out: sta.FileRef = '',
+                             projected_traj_out: sta.FileRef = '') -> None:
     """Writes correlation matrix, selection.pdb, align_traj.dcd, projected_traj.dcd to `out` file"""
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
 
-    step_num = 1
-
     for traj_file in traj:
         u = mda.Universe(psf, traj_file)
-    
-    atoms = u.select_atoms(sel) # default 'name CA'
 
-    aligner = align.AlignTraj(u, u, sel, match_atoms=True, in_memory=True).run()
-    
-    #Create a pdb for selection atoms 
+    atoms = u.select_atoms(sel)  # default 'name CA'
+
+    align.AlignTraj(u, u, sel, match_atoms=True, in_memory=True).run()
+
+    # Create a pdb for selection atoms
     with mda.Writer(sel_atoms_pdb_out, atoms.n_atoms) as f:
         u.trajectory[0]
-        f.write(atoms) 
+        f.write(atoms)
 
-    #Aligned trajectory for selected atoms to a new DCD file
+    # Aligned trajectory for selected atoms to a new DCD file
     with mda.Writer(align_traj_out, atoms.n_atoms) as f:
-        for ts in u.trajectory:  
+        for ts in u.trajectory:
             f.write(atoms)
 
-    positions = []
+    ts_positions = []
     for ts in u.trajectory:
-        positions.append(atoms.positions.flatten())  
-    
-    positions = np.array(positions)
+        ts_positions.append(atoms.positions.flatten())
+
+    positions = np.array(ts_positions)
     positions = positions.reshape(len(u.trajectory), len(atoms), 3)
     mean_positions = positions.mean(axis=0)
     centered_positions = positions - mean_positions
 
-    centered_positions_flat = centered_positions.reshape(len(u.trajectory), len(atoms) * 3)
-
-    covariance_matrix = np.cov(centered_positions_flat, rowvar=False)
+    centered_positions_flat = centered_positions.reshape(
+        len(u.trajectory), len(atoms) * 3)
 
     # Compute correlation matrix
-    correlation_matrix = np.corrcoef(centered_positions_flat, rowvar=False)  
-
+    correlation_matrix = np.corrcoef(centered_positions_flat, rowvar=False)
 
     with sta.resolve_file(corr_matrix_out, 'w') as outfile1:
         header(outfile1)
@@ -86,12 +81,6 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.F
     # Perform PCA
     pc = pca.PCA(u, sel, align=True, mean=None, n_components=None).run()
     ca = u.select_atoms(sel)
-    n_ca = len(ca)
-
-#    print(f'PC1 = {pc.variance[0]:0.5f}')
-
-#    for i in range(10):
-#        print(f'Cumulative Variance {i}: {pc.cumulated_variance[i]:0.3f}')
 
     transformed = pc.transform(ca, n_components=3)
 
@@ -101,10 +90,10 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList, out: sta.F
     projected = np.outer(trans1, pc1) + pc.mean.flatten()
     coordinates = projected.reshape(len(trans1), -1, 3)
 
-    proj1 = mda.Merge(ca) # new universe for selected atoms
-    proj1.load_new(coordinates, order='fac') # fac = frames, atoms, coordinates
+    proj1 = mda.Merge(ca)  # new universe for selected atoms
+    proj1.load_new(coordinates, order='fac')
 
-    n_frames= transformed.shape[0]
+    n_frames = transformed.shape[0]
 
     with mda.Writer(projected_traj_out, atoms.n_atoms) as f:
         for i in range(n_frames):
