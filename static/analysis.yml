@@ -636,3 +636,205 @@ compressibility_modulus:
       label: Output file
       type: form.path
       value: avg_ka.dat
+
+msd_solution:
+  label: (Solution) Mean square displacement
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        segid PROA and (resid 1:6 or resid 16:23) and not name H*, resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: n,y,y;y
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qcom:
+      label: Write unwrapped COM trajectories of individual molecules.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
+msd_membrane:
+  label: (Membrane) Mean square displacement
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: y,y;y
+    sel_sys:
+      label: Selections for leaflet COMs. Leaflet COM drift is corrected in trajectory unwrapping.
+      type: form.textarea
+      classes: [code]
+      value:
+        name P or name O3
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qz:
+      label: Assign leaflets based on z-positions.
+      type: form.checkbox
+    qb:
+      label: Results for the bilayer. Use only for symmetric one.
+      type: form.checkbox
+    qcommol:
+      label: Write unwrapped COM trajectories of individual molecules
+      type: form.checkbox
+    qcomsys:
+      label: Write unwrapped leafet COM trajectories.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
+scd:
+  label: SCD order paramter
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        resname DSPC and (name C22 or C32 or name P), resname DOPC and (name C22 or name C32 or name P)
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: y,y
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qz:
+      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
+      type: form.checkbox
+    qb:
+      label: Results for the bilayer. Use only for symmetric one.
+      type: form.checkbox
+    qa:
+      label: Write average SCDs for individual chains in individual molecule types.
+      type: form.checkbox
+    qt:
+      label: Write time series of SCDs for individual chains in individual molecule types.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
+voronoi_apl:
+  label: Area per lipid using Voronoi tessellation.
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: y,y;y;y
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qz:
+      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
+      type: form.checkbox
+    qb:
+      label: Results for the bilayer. Use only for symmetric one.
+      type: form.checkbox
+    qa:
+      label: Write average APLs for individual molecule types.
+      type: form.checkbox
+    qt:
+      label: Write time series of APLs for individual molecule types.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
+voronoi_contact:
+  label: Contact analysis between molecule types using Voronoi tessellation.
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: y,y;y;y
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qz:
+      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
+      type: form.checkbox
+    qb:
+      label: Results for the bilayer. Use only for symmetric one.
+      type: form.checkbox
+    qa:
+      label: Write average APLs for individual molecule types.
+      type: form.checkbox
+    qt:
+      label: Write time series of APLs for individual molecule types.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
+voronoi_shell_comp:
+  label: Shell composition analysis using Voronoi tessellation.
+  options:
+    sel:
+      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      type: form.textarea
+      classes: [code]
+      value:
+        segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
+    split:
+      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      type: form.textarea
+      classes: [code]
+      value: y,y;y;y
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+    qz:
+      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
+      type: form.checkbox
+    qb:
+      label: Results for the bilayer. Use only for symmetric one.
+      type: form.checkbox
+    qa:
+      label: Write average compositions for individual molecule types.
+      type: form.checkbox
+    qt:
+      label: Write time series of compositions for individual molecule types.
+      type: form.checkbox
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
