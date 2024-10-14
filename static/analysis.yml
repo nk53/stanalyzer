@@ -716,6 +716,12 @@ scd:
       type: form.textarea
       classes: [code]
       value: y,y
+    sel_sys:
+      label: Selections for bilayer recentering.
+      type: form.textarea
+      classes: [code]
+      value:
+        name P or name O3
     center:
       label: Perform membrane centering
       type: form.checkbox
@@ -750,6 +756,12 @@ voronoi_apl:
       type: form.textarea
       classes: [code]
       value: y,y;y;y
+    sel_sys:
+      label: Selections for bilayer recentering.
+      type: form.textarea
+      classes: [code]
+      value:
+        name P or name O3
     center:
       label: Perform membrane centering
       type: form.checkbox
@@ -784,6 +796,12 @@ voronoi_contact:
       type: form.textarea
       classes: [code]
       value: y,y;y;y
+    sel_sys:
+      label: Selections for bilayer recentering.
+      type: form.textarea
+      classes: [code]
+      value:
+        name P or name O3
     center:
       label: Perform membrane centering
       type: form.checkbox
@@ -818,6 +836,12 @@ voronoi_shell_comp:
       type: form.textarea
       classes: [code]
       value: y,y;y;y
+    sel_sys:
+      label: Selections for bilayer recentering.
+      type: form.textarea
+      classes: [code]
+      value:
+        name P or name O3
     center:
       label: Perform membrane centering
       type: form.checkbox
