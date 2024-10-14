@@ -5,6 +5,8 @@ import os,sys,re,math
 import stanalyzer.bin.stanalyzer as sta
 import numpy as np       
 import MDAnalysis as mda 
+import MDAnalysis.transformations as transformations
+from MDAnalysis.core.groups import AtomGroup
 from . import leaflet_util as myleaflet
 from . import mol_atomgroup_util as mymol
 from . import scd_util as myscd
@@ -118,7 +120,7 @@ def write_ave_std_bilayer(ntype,name_type,nchain,carbons,ncarbons,array1,array2,
 
 
 
-def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,nchain,carbons,ncarbons,array,odir):
+def write_time_series_leaflet(framenum,interval,nside,ntype,name_type,sside,nchain,carbons,ncarbons,array,odir):
   # sside : leafelt names
   # array : time series
   # odir  : output path
@@ -136,8 +138,9 @@ def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,nchain,carbon
         sout +=f'\n'
 
         for m in range(0,framenum):
+          # sout += f'{interval*m}'
           for n in range(0,nc):
-            sout +=f' {array[i][j][k][n,m]:10.5f}'
+            sout += f' {array[i][j][k][n,m]:10.5f}'
           sout += f'\n'
         fout=f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
         f = open(fout,'w') ; f.write(sout); f.close() ;
@@ -146,7 +149,7 @@ def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,nchain,carbon
 
 
 
-def write_time_series_bilayer(framenum,ntype,name_type,nchain,carbons,ncarbons,array,odir):
+def write_time_series_bilayer(framenum,interval,ntype,name_type,nchain,carbons,ncarbons,array,odir):
   side="bilayer"
   for j in range(0,ntype):
     ntail = nchain[j]
@@ -160,8 +163,9 @@ def write_time_series_bilayer(framenum,ntype,name_type,nchain,carbons,ncarbons,a
       sout +=f'\n'
 
       for m in range(0,framenum):
+        # sout += f'{interval*m}'
         for n in range(0,nc):
-          sout +=f' {array[j][k][n,m]:10.5f}'
+          sout += f' {array[j][k][n,m]:10.5f}'
         sout += f'\n'
       fout=f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
       f = open(fout,'w') ; f.write(sout); f.close() ;
@@ -180,6 +184,8 @@ def get_parser() -> argparse.ArgumentParser:
       help='Selection for individual molecule type with a format, "segid/resname/moltype MOLECULENAME and name CARBONNAMES or name REFATOMNAME". Reference atom is used for the leaflet assignment. For the CHARMM format topology, an selection for POPC can be "resname POPC and (name C22 or name C32 or name P)".')
     parser.add_argument('--split', action='store',# nargs='+',default='Y',
       help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
+    parser.add_argument('--sel_sys', metavar='selection',
+      help='Selection for system atom groups in membranes for bilayer recentering.')
     parser.add_argument('--qz', action='store_true',default=False,
       help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')
     parser.add_argument('--qb', action='store_true',default=False,
@@ -193,7 +199,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 
-def run_scd(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
+def run_scd(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
   """
   ----------
   Calculate SCD order parameters.
@@ -226,7 +232,23 @@ def run_scd(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, inter
   
   # READ topology and trajectory
   u=mda.Universe(psf,traj) # MDA universe
-  framenum=u.trajectory.n_frames  # number of frames
+  framenum=int(u.trajectory.n_frames/interval)  # number of frames to be analyzed
+
+  # if (center is True): bilayer recentering - should be done before any assignments
+  # - center in the box (an atom)
+  # - center in the box (atom group for system)
+  # - unwrap to get connectd molecules
+  # Taken from 
+  if  (center is True):
+    origin = 0, 0, 0 #np.zeros([3],dtype=float) ; it did not work
+    ag_cent = u.select_atoms(sel_sys)
+    ag_all  = u.atoms
+  
+    workflow = [transformations.center_in_box(AtomGroup([ag_cent[0]]), point = origin),\
+                transformations.center_in_box(ag_cent, point = origin),\
+                transformations.unwrap(ag_all)]
+  
+    u.trajectory.add_transformations(*workflow)
   
   # Get numbers of molecules in individual lipid types,
   # Get total number of molecules,
@@ -279,8 +301,8 @@ def run_scd(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, inter
   # Analyze SCD
   # Loop over frames
   for i in range(0,framenum):
-    print(f'# Analyze SCD: proceed {i+1}/{framenum}')
-    ts = u.trajectory[i]
+    print(f'# Analyze SCD: proceed {interval*i+1}/{interval*framenum}')
+    ts = u.trajectory[interval*i]
   
     # Calculate Raw SCD
     myscd.calculate_raw_scd(raw_scd,nmol,ag_c,ag_h,memb_norm)
@@ -308,7 +330,7 @@ def run_scd(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, inter
   
     if (qt is True):
       print(f'# Write time series output')
-      write_time_series_bilayer(framenum,ntype,name_type,nchain,carbons,ncarbons,scd,odir2)
+      write_time_series_bilayer(framenum,interval,ntype,name_type,nchain,carbons,ncarbons,scd,odir2)
   
   else: # if (qb is False):
     if (qa is True):
@@ -317,7 +339,7 @@ def run_scd(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, inter
   
     if (qt is True):
       print(f'# Write time series output')
-      write_time_series_leaflet(framenum,nside,ntype,name_type,sside,nchain,carbons,ncarbons,scd,odir2)
+      write_time_series_leaflet(framenum,interval,nside,ntype,name_type,sside,nchain,carbons,ncarbons,scd,odir2)
   
   return
 

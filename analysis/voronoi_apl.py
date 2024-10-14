@@ -5,6 +5,8 @@ import os,sys,re,math
 import stanalyzer.bin.stanalyzer as sta
 import numpy as np                                
 import MDAnalysis as mda                          
+import MDAnalysis.transformations as transformations
+from MDAnalysis.core.groups import AtomGroup
 import MDAnalysis.analysis.leaflet as mdaleaflet  
 from scipy.spatial import Voronoi                   
 from . import mol_atomgroup_util as mymol
@@ -101,7 +103,7 @@ def write_ave_std_bilayer(ntype,name_type,array1,array2,array3,odir):
 
 
 
-def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,array,odir):
+def write_time_series_leaflet(framenum,interval,nside,ntype,name_type,sside,array,odir):
   # sside: leaflet names
   # array: time series
   # odir : output path
@@ -115,7 +117,7 @@ def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,array,odir):
     for i in range(0,framenum):
       # ct = (dt*(i+1) + (cnt - 1)) # 
       # sout+= f' {ct}'
-      sout += f' {i:10d}'
+      sout += f' {interval*i:10d}'
       for k in range(0,ntype):
         sout += f' {array[i,j,k]:10.5f}'
       sout += f'\n'
@@ -127,7 +129,7 @@ def write_time_series_leaflet(framenum,nside,ntype,name_type,sside,array,odir):
 
 
 
-def write_time_series_bilayer(framenum,ntype,name_type,array,odir):
+def write_time_series_bilayer(framenum,interval,ntype,name_type,array,odir):
   # array: time series
   # odir : output path
   side="bilayer"
@@ -139,7 +141,7 @@ def write_time_series_bilayer(framenum,ntype,name_type,array,odir):
   for i in range(0,framenum):
     # ct = (dt*(i+1) + (cnt - 1)) # 
     # sout += f' {ct}'
-    sout += f' {i:10d}'
+    sout += f' {interval*i:10d}'
     for j in range(0,ntype):
       sout += f' {array[i,j]:10.5f}'
     sout += f'\n'
@@ -160,6 +162,8 @@ def get_parser() -> argparse.ArgumentParser:
       help='Selection for individual molecule type with a format, "segid/resname/moltype MOLECULENAME and name ATOMNAMES". For the CHARMM format topology, an selection for POPC can be "resname POPC and (name C2 or name C21 or name C31)".')
     parser.add_argument('--split', action='store',
       help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
+    parser.add_argument('--sel_sys', metavar='selection',
+      help='Selection for system atom groups for membrane recentering.')
     parser.add_argument('--qz', action='store_true',default=False,
       help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')
     parser.add_argument('--qb', action='store_true',default=False,
@@ -173,7 +177,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 
-def run_voronoi_apl(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
+def run_voronoi_apl(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
   """
   ----------
   Calculate area per lipid (APL) of inidividual molecul types.
@@ -192,14 +196,33 @@ def run_voronoi_apl(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefLis
   print(f'Write results for bilayer',qb)
   print(f'Write averge APLs',qa)
   print(f'Write time sereis output',qt)
+  print(f'Bilayer is recentered at z = 0 using {sel_sys}:',center)
+  print(f'Analysis will be done every {interval}frames')
   
   # make output dir
   odir="./voronoi/apl";       os.system(f'mkdir -p {odir}');
   
   # READ topology and trajectory
   u=mda.Universe(psf,traj) # MDA universe
-  framenum=u.trajectory.n_frames  # number of frames
+  framenum=int(u.trajectory.n_frames/interval)  # number of frames to be analyzed
+
+  # if (center is True): bilayer recentering - should be done before any assignments
+  # - center in the box (an atom)
+  # - center in the box (atom group for system)
+  # - unwrap to get connectd molecules
+  # Taken from 
+  if  (center is True):
+    origin = 0, 0, 0 #np.zeros([3],dtype=float) ; it did not work
+    ag_cent = u.select_atoms(sel_sys)
+    ag_all  = u.atoms
   
+    workflow = [transformations.center_in_box(AtomGroup([ag_cent[0]]), point = origin),\
+                transformations.center_in_box(ag_cent, point = origin),\
+                transformations.unwrap(ag_all)]
+  
+    u.trajectory.add_transformations(*workflow)
+  
+  # Generate molecule atom groups
   name_type0,nmol_type0,nmol0,id_type0,ag0 = \
    mymol.generate_mol_groups(u,ntype,selection,qsplit)
   
@@ -219,8 +242,8 @@ def run_voronoi_apl(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefLis
   # START: LOOP over frames
   for i in range(0,framenum): 
     #  ct=(cnt-1)+dt*(i+1) # in ns
-    print(f'# processing {i+1}/{framenum}')
-    ts=u.trajectory[i] # Is this update frame ?
+    print(f'# processing {interval*i+1}/{interval*framenum}')
+    ts=u.trajectory[interval*i] 
   
     # get box size
     xtla,xtlb,xtlc=ts.dimensions[:3]
@@ -299,9 +322,9 @@ def run_voronoi_apl(sel,split,qz,qb,qt,qa, psf:sta.FileRef, traj: sta.FileRefLis
     print(f'# Write time series output')
     # dt=1.0/float(framenum) # increment in time
     if (qb is True):
-      write_time_series_bilayer(framenum,ntype,name_type,apl,odir)
+      write_time_series_bilayer(framenum,interval,ntype,name_type,apl,odir)
     else: # if (qb is False):
-      write_time_series_leaflet(framenum,nside,ntype,name_type,sside,apl,odir)
+      write_time_series_leaflet(framenum,interval,nside,ntype,name_type,sside,apl,odir)
   
   return
 

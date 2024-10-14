@@ -5,6 +5,8 @@ import os,sys,re,math
 import stanalyzer.bin.stanalyzer as sta
 import numpy as np                              
 import MDAnalysis as mda  
+import MDAnalysis.transformations as transformations
+from MDAnalysis.core.groups import AtomGroup
 from . import mol_atomgroup_util as mymol
 from . import msd_util as mymsd
 
@@ -48,13 +50,13 @@ def process_args(sel,split,sel_sys):
 
 
 # Write system COM
-def write_com_sys(traj_com_sys_unwrap,nside,framenum,odir,sside):
+def write_com_sys(traj_com_sys_unwrap,nside,framenum,interval,odir,sside):
   for i in range(0,nside):
     sout =f'#     frame       COM\n'
     sout+=f'#                   x           y          z\n'
     for j in range(0,framenum):
       tcom = traj_com_sys_unwrap[i][j]
-      sout+=f' {j:10d} {tcom[0]:10.5f} {tcom[1]:10.5f} {tcom[2]:10.5f}\n'
+      sout+=f' {interval*j:10d} {tcom[0]:10.5f} {tcom[1]:10.5f} {tcom[2]:10.5f}\n'
     # print(sout)
     fout=f'{odir}/{sside[i]}_com_sys_unwrapped.dat'
     f=open(fout,'w'); f.write(sout); f.close();
@@ -63,14 +65,14 @@ def write_com_sys(traj_com_sys_unwrap,nside,framenum,odir,sside):
 
 
 # Write unwrapped COMs of individual molecule
-def write_com_mol(traj_com_unwrap,nside,nmol,framenum,odir,sside):
+def write_com_mol(traj_com_unwrap,nside,nmol,framenum,interval,odir,sside):
   for i in range(0,nside):
     sout =f'#  leaflet {sside[i]}\n'
     sout+=f'#     frame       COM\n'
     sout+=f'#                   x           y          z\n'
     for j in range(0,framenum):
       tcom = traj_com_unwrap[i][j]
-      sout+=f' {0:10d}'.format(j) 
+      sout+=f' {interval*j:10d}' 
       for k in range(0,nmol[i]):
         for m in range(0,3):
           sout+=f' {tcom[k,m]:10.5f}' 
@@ -139,7 +141,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--split', action='store',# nargs='+',default='Y',
       help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
     parser.add_argument('--sel_sys', metavar='selection',
-      help='Selection for system atom groups for leaflet COM drift correction.')
+      help='Selection for system atom groups for leaflet COM drift correction and bilayer recentering.')
     parser.add_argument('--qz', action='store_true',default=False,
       help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')
     parser.add_argument('--qb', action='store_true',default=False,
@@ -177,12 +179,29 @@ def run_msd_membrane(sel,split,sel_sys,qz,qb,qcomsys,qcommol, psf:sta.FileRef, t
   print(f'Writing unwrapped COM of leaflets:',qcomsys)
   print(f'Writing unwrapped COM of individual molecules:',qcommol)
   print(f'MSD will be caulated every {interval} frames in delay time')
+  print(f'Bilayer is recentered at z = 0 using {sel_sys}:',center)
   
   odir = "msd" ; os.system(f'mkdir -p {odir}');
   
   # READ topology and trajectory
   u=mda.Universe(psf,traj) # MDA universe
-  framenum=u.trajectory.n_frames  # number of frames
+  framenum=int(u.trajectory.n_frames/interval)  # number of frames to be analyzed
+
+  # if (center is True): bilayer recentering - should be done before any assignments
+  # - center in the box (an atom)
+  # - center in the box (atom group for system)
+  # - unwrap to get connectd molecules
+  # Taken from 
+  if  (center is True):
+    origin = 0, 0, 0 #np.zeros([3],dtype=float) ; it did not work
+    ag_cent = u.select_atoms(sel_sys)
+    ag_all  = u.atoms
+  
+    workflow = [transformations.center_in_box(AtomGroup([ag_cent[0]]), point = origin),\
+                transformations.center_in_box(ag_cent, point = origin),\
+                transformations.unwrap(ag_all)]
+  
+    u.trajectory.add_transformations(*workflow)
   
   # LEAFLETs are assigned in this stage and will not be altered.
   # Generate molecule groups
@@ -238,8 +257,8 @@ def run_msd_membrane(sel,split,sel_sys,qz,qb,qcomsys,qcommol, psf:sta.FileRef, t
   ## sys.exit(0)
   for i in range(0,framenum):
     #  ct=(cnt-1)+dt*(i+1) # in ns
-    print(f'# processing {i+1}/{framenum}')
-    ts=u.trajectory[i] # Is this update frame ?
+    print(f'# processing {interval*i+1}/{interval*framenum}')
+    ts=u.trajectory[interval*i] # Is this update frame ?
   
     # get box size
     xtla,xtlb,xtlc=ts.dimensions[:3]
@@ -288,16 +307,15 @@ def run_msd_membrane(sel,split,sel_sys,qz,qb,qcomsys,qcommol, psf:sta.FileRef, t
   
   if (qcomsys is True):
     print(f'# Write unwrapped COM of leaflets')
-    write_com_sys(traj_com_sys_unwrap,nside,framenum,odir,sside)
+    write_com_sys(traj_com_sys_unwrap,nside,framenum,interval,odir,sside)
   
   if (qcommol is True):
     print(f'# Write unwrapped COMs of individual molecules')
-    write_com_mol(traj_com_unwrap,nside,nmol,framenum,odir,sside)
+    write_com_mol(traj_com_unwrap,nside,nmol,framenum,interval,odir,sside)
   
   print(f'# MSD calculations')
   # Loop over delay times with given interval
-  nfreq = int(framenum/interval)
-  taus = []; [taus.append(interval*i) for i in range(0,nfreq)];
+  taus = []; [taus.append(interval*i) for i in range(0,framenum)];
   ntau = len(taus) # number of data points along the delay time
   
   # Setup msd for individual molecule types

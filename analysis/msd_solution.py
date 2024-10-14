@@ -41,7 +41,7 @@ def process_args(sel,split):
 
 
 
-def write_com_mol(traj_com_unwrap,nmol,framenum,odir):
+def write_com_mol(traj_com_unwrap,nmol,framenum,interval,odir):
   """
   ----------
   Write unwrapped COMs of individual molecules
@@ -52,7 +52,7 @@ def write_com_mol(traj_com_unwrap,nmol,framenum,odir):
   sout+=f'#                   x           y          z\n'
   for i in range(0,framenum):
     tcom = traj_com_unwrap[i]
-    sout+=f' {i:10d}'
+    sout+=f' {interval*i:10d}'
     for j in range(0,nmol):
       for k in range(0,3):
         sout+=f' {tcom[j,k]:10.5f}'
@@ -131,7 +131,7 @@ def run_msd_solution(sel,split,qcom, psf:sta.FileRef, traj: sta.FileRefList, int
   
   # READ topology and trajectory
   u=mda.Universe(psf,traj) # MDA universe
-  framenum=u.trajectory.n_frames  # number of frames
+  framenum=int(u.trajectory.n_frames/interval)  # number of frames to be analyzed
   
   # Generate molecule groups
   name_type,nmol_type,nmol,id_type,ag =\
@@ -162,8 +162,8 @@ def run_msd_solution(sel,split,qcom, psf:sta.FileRef, traj: sta.FileRefList, int
   print(f'# UNWRAP trajectories')
   for i in range(0,framenum):
     #  ct=(cnt-1)+dt*(i+1) # in ns
-    print(f'# processing {i+1}/{framenum}')
-    ts=u.trajectory[i] # Is this update frame ?
+    print(f'# processing {interval*i+1}/{interval*framenum}')
+    ts=u.trajectory[interval*i] 
   
     # get box size
     xtla,xtlb,xtlc=ts.dimensions[:3]
@@ -206,11 +206,10 @@ def run_msd_solution(sel,split,qcom, psf:sta.FileRef, traj: sta.FileRefList, int
   # Want to write unwrapped coordinates?
   if (qcom is True):
     print(f'# Write unwrapped COM of individual molecules')
-    write_com_mol(traj_com_unwrap,nmol,framenum,odir)
+    write_com_mol(traj_com_unwrap,nmol,framenum,interval,odir)
   
   print(f'# MSD calculations')
-  nfreq = int(framenum/interval)
-  taus = []; [taus.append(interval*i) for i in range(0,nfreq)];
+  taus = []; [taus.append(interval*i) for i in range(0,framenum)];
   ntau = len(taus) # number of data points along the delay time
   
   # Setup msd arrays for individual molecule types
