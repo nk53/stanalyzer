@@ -162,12 +162,16 @@ def get_settings(analysis_name: Optional[str] = None) -> dict:
         analysis_name = args.analysis_name
 
     try:
-        analysis = import_module(f"stanalyzer.analysis.{analysis_name}")
-    except ModuleNotFoundError:
+        _import_name = f"stanalyzer.analysis.{analysis_name}"
+        analysis = import_module(_import_name)
+    except ModuleNotFoundError as exc:
         # TODO: show registered analysis modules in a convenient list
-        print(f"Error: Not a known analysis type: {analysis_name}", file=sys.stderr)
-        parser.print_usage(file=sys.stderr)
-        sys.exit(1)
+        if exc.name == _import_name:
+            print(f"Error: Not a known analysis type: {analysis_name}", file=sys.stderr)
+            parser.print_usage(file=sys.stderr)
+            sys.exit(1)
+
+        raise  # analysis_name found, but causes ModuleNotFoundError
 
     analysis_parser = analysis.get_parser()
     analysis_settings = analysis_parser.parse_args(remaining_args)
