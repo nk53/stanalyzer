@@ -4,6 +4,8 @@ import numpy as np
 
 import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
+from MDAnalysis.transformations import center_in_box  # type: ignore
+from MDAnalysis.core.groups import AtomGroup  # type: ignore
 
 ANALYSIS_NAME = 'density_z'
 
@@ -18,8 +20,8 @@ def header(outfile: Optional[sta.FileLike] = None) -> str:
 
 
 def write_density(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel: str,
-                  time_step: float | str, center: bool = False, interval: int = 1,
-                  bin_size: float | str = 1.0) -> None:
+                  center_sel: str, time_step: float | str, interval: int = 1,
+                  center: bool = False, bin_size: float | str = 1.0) -> None:
     """Writes density to `out` file"""
     n_fields = 2
     output_fmt = ' '.join(["{:0<#10.5g}"]*n_fields)
@@ -30,18 +32,31 @@ def write_density(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
 
+    if center_sel:
+        center = True
+    if center and not center_sel:
+        center_sel = sel
+
     step_num = 1
 
-    zc = []  # list of z coordiantes for selected atoms
+    zc = []  # list of z coordinates for selected atoms
     for traj_file in traj:
         u = mda.Universe(psf, traj_file)
         head_group = u.select_atoms(sel)
+        if center:
+            cen_group = u.select_atoms(center_sel)
         for ts in u.trajectory:
             if step_num % interval == 0:
+                if center:
+                    origin = 0, 0, 0
+
+                    # picking a single atom ensures pbc boundary doesn't interfere
+                    ts = center_in_box(AtomGroup([cen_group[0]]), point=origin)(ts)
+                    ts = center_in_box(cen_group, point=origin)(ts)
+
                 z_cor = u.atoms.positions[:, 2]  # done on all the atoms
                 zc.append(head_group.positions[:, 2])  # appended the list for selected atoms
                 step_num += 1
-                continue
 
     # computed over all the atoms
     z_min = z_cor.min()
@@ -64,19 +79,24 @@ def write_density(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel
 
     with sta.resolve_file(out, 'w') as outfile:
         header(outfile)
-
         for bin_center, density in zip(bin_centers, density_profile):
             output = output_fmt.format(bin_center, density)
             print(output, file=outfile)
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
+    program_name = f'stanalyzer {ANALYSIS_NAME}'
+    description = "Computes a number density profile for selected atoms along the Z axis."
+    parser = argparse.ArgumentParser(prog=program_name, description=description)
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
-    parser.add_argument('-c', '--center', action='store_true')
-    parser.add_argument('--sel', metavar='selection'),
+    parser.add_argument('--sel', metavar='selection', required=True,
+                        help="atoms to compute density along Z axis"),
+    parser.add_argument('-c', '--center', action='store_true',
+                        help="Perform trajectory centering")
+    parser.add_argument('--center-sel', metavar='selection', help="(implies -c) the selection "
+                        "to use for centering (default: same as --sel)")
     parser.add_argument('--bin_size', metavar='selection', type=float,
-                        help="Membrane headgroup atom selection")
+                        default=1., help="Number density bin size in angstrom (default: 1.0)")
 
     return parser
 

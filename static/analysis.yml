@@ -28,7 +28,6 @@ apl:
       label: Output file
       type: form.path
       value: area_per_lipid.dat
-      
 thickness:
   label: Membrane thickness
   options:
@@ -49,7 +48,6 @@ thickness:
       label: Output file
       type: form.path
       value: thickness.dat
-      
 density_z:
   label: Z Density Profile
   options:
@@ -59,6 +57,16 @@ density_z:
       classes: [code]
       value:
         segid TIP3 and (name OH2)
+    center_sel:
+      label: Center group selection
+      type: form.textarea
+      classes: [code]
+      value:
+        segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+      checked: true
     bin_size:
       label: Bin size (A)
       type: form.input
@@ -67,7 +75,6 @@ density_z:
       label: Output file
       type: form.path
       value: density_z.dat
-      
 cov_analysis:
   label: Covariance analysis
   options:
@@ -136,7 +143,6 @@ rmsd:
       label: Output file
       type: form.path
       value: rmsd.dat
-      
 rmsf:
   label: RMSF
   options:
@@ -172,7 +178,6 @@ rmsf:
       label: Output file
       type: form.path
       value: rmsf.dat
-      
 system_size:
   label: System size
   options:
@@ -183,7 +188,6 @@ system_size:
       label: Output file
       type: form.path
       value: system_size.dat
-      
 salt_bridge:
   label: Salt Bridge
   options:
@@ -222,7 +226,6 @@ salt_bridge:
       label: Output file
       type: form.path
       value: salt_bridge.dat
-      
 hbond:
   label: Hydrogen Bond
   options:
@@ -259,7 +262,6 @@ hbond:
       label: Output file
       type: form.path
       value: hbond.dat
-      
 water_bridge:
   label: Water Bridge
   options:
@@ -296,7 +298,6 @@ water_bridge:
       label: Output file
       type: form.path
       value: water_bridge.dat
-      
 pi_stacking:
   label: Pi Stacking
   options:
@@ -321,7 +322,6 @@ pi_stacking:
       label: Output file
       type: form.path
       value: pi_stacking.dat
-      
 secondary_structure:
   label: Secondary Structure
   options:
@@ -338,7 +338,6 @@ secondary_structure:
       label: Output file
       type: form.path
       value: secondary_structure.dat
-      
 radius_of_gyration:
   label: Radius of gyration
   options:
@@ -387,7 +386,6 @@ radius_of_gyration:
       label: Output file
       type: form.path
       value: radius_of_gyration.dat
-      
 position_time:
   label: Position with time series
   options:
@@ -418,7 +416,6 @@ position_time:
       label: Output file
       type: form.path
       value: position_time.dat
-
 rdf:
   label: Radial Distribution Function
   options:
@@ -442,7 +439,6 @@ rdf:
       label: Output file
       type: form.path
       value: rdf.dat
-
 glycosidic_bond_distances:
   label: Glycosidic Bond between sugars
   options:
@@ -464,7 +460,6 @@ glycosidic_bond_distances:
       label: Output file
       type: form.path
       value: glycosidic_between_sugar.dat
-      
 contacts:
   label: Residue contacts
   options:
@@ -490,7 +485,6 @@ contacts:
       label: Output file 
       type: form.path
       value: residue_contacts.dat
-      
 contact_res_time:
   label: Residence time of a contact
   options:
@@ -516,7 +510,6 @@ contact_res_time:
       label: Output file
       type: form.path
       value: contact_residence_time.dat
-
 helix_analysis:
   label: Helix Analysis
   options:
@@ -565,7 +558,6 @@ helix_analysis:
       label: Output file
       type: form.path
       value: helix_analysis.dat
-      
 helix_tilt_rotation_angle:
   label: Helix Tilt and Rotation Angle
   options:
@@ -585,7 +577,6 @@ helix_tilt_rotation_angle:
       label: Output file
       type: form.path
       value: helix_tilt_rotation_angle.dat
-
 helix_distance_crossing_angle:
   label: Helix-helix distance and crossing angle
   options:
@@ -636,7 +627,6 @@ compressibility_modulus:
       label: Output file
       type: form.path
       value: avg_ka.dat
-
 msd_solution:
   label: (Solution) Mean square displacement
   options:
@@ -661,7 +651,6 @@ msd_solution:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
 msd_membrane:
   label: (Membrane) Mean square displacement
   options:
@@ -701,7 +690,6 @@ msd_membrane:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
 scd:
   label: SCD order paramter
   options:
@@ -741,7 +729,6 @@ scd:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
 voronoi_apl:
   label: Area per lipid using Voronoi tessellation.
   options:
@@ -781,7 +768,6 @@ voronoi_apl:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
 voronoi_contact:
   label: Contact analysis between molecule types using Voronoi tessellation.
   options:
@@ -821,7 +807,6 @@ voronoi_contact:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
 voronoi_shell_comp:
   label: Shell composition analysis using Voronoi tessellation.
   options:
@@ -861,4 +846,3 @@ voronoi_shell_comp:
       label: Frame interval
       type: form.positive_integer
       value: 1
-
