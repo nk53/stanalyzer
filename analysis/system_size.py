@@ -1,5 +1,4 @@
 import argparse
-import sys
 from typing import Optional
 
 import stanalyzer.bin.stanalyzer as sta
