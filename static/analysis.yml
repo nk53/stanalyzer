@@ -846,3 +846,30 @@ voronoi_shell_comp:
       label: Frame interval
       type: form.positive_integer
       value: 1
+sasa:
+  label: SASA
+  options:
+    sel:
+      label: Atom selection for SASA calculation
+      type: form.textarea
+      classes: [code]
+      value: segid PROA
+    probe_radius:
+      label: Probe radius (Å)
+      type: form.input
+      value: 1.4
+    algorithm:
+      label: SASA Algorithm
+      type: form.select
+      options:
+        shrake: Shrake-Rupley
+        lee: Lee-Richards
+      value: shrake
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+    out:
+      label: Output file
+      type: form.path
+      value: sasa_output_freesasa.dat
