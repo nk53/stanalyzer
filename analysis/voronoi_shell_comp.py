@@ -222,6 +222,22 @@ def run_voronoi_shell_comp(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj:
   # READ topology and trajectory
   u=mda.Universe(psf,traj) # MDA universe
   framenum=int(u.trajectory.n_frames/interval) # number of frames to be analyzed
+
+  # if (center is True): bilayer recentering - should be done before any assignments
+  # - center in the box (an atom)
+  # - center in the box (atom group for system)
+  # - unwrap to get connectd molecules
+  # Taken from 
+  if  (center is True):
+    origin = 0, 0, 0 #np.zeros([3],dtype=float) ; it did not work
+    ag_cent = u.select_atoms(sel_sys)
+    ag_all  = u.atoms
+
+    workflow = [transformations.center_in_box(AtomGroup([ag_cent[0]]), point = origin),\
+                transformations.center_in_box(ag_cent, point = origin),\
+                transformations.unwrap(ag_all)]
+
+    u.trajectory.add_transformations(*workflow)
   
   # generate molecule atom groups
   name_type0,nmol_type0,nmol0,id_type0,ag0 = \
@@ -242,6 +258,17 @@ def run_voronoi_shell_comp(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj:
     #  ct=(cnt-1)+dt*(i+1) # in ns
     print(f'# processing {interval*i+1}/{interval*framenum}')
     ts=u.trajectory[interval*i] 
+
+    # do frame-wise bilayer recentering - remaining translation
+    if (center is True):
+      Lag_ref = myleaflet.assign_leaflet(u,ag_cent)
+      zref = np.zeros([2],dtype=float)
+      for i in range(0,nside):
+        zref[i] = np.mean(Lag_ref[i].positions[:,2])
+      # translation for z-centering
+      tran = 0,0,-np.mean(zref)
+      ts = transformations.translate(tran)(ts)
+      ts = transformations.unwrap(ag_all)(ts)
   
     # get box size
     xtla,xtlb,xtlc=ts.dimensions[:3]

@@ -244,6 +244,17 @@ def run_voronoi_apl(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj: sta.Fi
     #  ct=(cnt-1)+dt*(i+1) # in ns
     print(f'# processing {interval*i+1}/{interval*framenum}')
     ts=u.trajectory[interval*i] 
+
+    # do frame-wise bilayer recentering - remaining translation
+    if (center is True):
+      Lag_ref = myleaflet.assign_leaflet(u,ag_cent)
+      zref = np.zeros([2],dtype=float)
+      for i in range(0,nside):
+        zref[i] = np.mean(Lag_ref[i].positions[:,2])
+      # translation for z-centering
+      tran = 0,0,-np.mean(zref)
+      ts = transformations.translate(tran)(ts)
+      ts = transformations.unwrap(ag_all)(ts)
   
     # get box size
     xtla,xtlb,xtlc=ts.dimensions[:3]
