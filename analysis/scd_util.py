@@ -308,7 +308,7 @@ def calculate_raw_scd(raw_scd,nmol,ag_c,ag_h,memb_norm):
 
         # SCD = 1/2 * ( 3 * cos^2(thet) - 1)
         # angle between the membrane normal and CD vector
-        cos_thet2 = np.inner(vec,memb_norm) / np.linalg.norm(vec)
+        cos_thet2 = np.inner(vec,memb_norm) / np.linalg.norm(vec,axis=1)
         cos_thet2 = np.square(cos_thet2)
         tscd = 0.5 * (3.0*np.mean(cos_thet2) - 1.0)
 
