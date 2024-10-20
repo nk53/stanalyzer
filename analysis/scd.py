@@ -306,7 +306,7 @@ def run_scd(sel,split,qz,qb,qt,qa,sel_sys, psf:sta.FileRef, traj: sta.FileRefLis
 
     # do frame-wise bilayer recentering - remaining translation
     if (center is True):
-      Lag_ref = myleaflet.assign_leaflet(u,ag_cent)
+      Lag_ref = myleaflet.assign_leaflet_zpos(u,ag_cent)
       zref = np.zeros([2],dtype=float)
       for i in range(0,nside):
         zref[i] = np.mean(Lag_ref[i].positions[:,2])

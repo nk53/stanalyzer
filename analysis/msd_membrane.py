@@ -262,7 +262,7 @@ def run_msd_membrane(sel,split,sel_sys,qz,qb,qcomsys,qcommol, psf:sta.FileRef, t
 
     # do frame-wise bilayer recentering - remaining translation
     if (center is True):
-      Lag_ref = myleaflet.assign_leaflet(u,ag_cent)
+      Lag_ref = myleaflet.assign_leaflet_zpos(u,ag_cent)
       zref = np.zeros([2],dtype=float)
       for i in range(0,nside):
         zref[i] = np.mean(Lag_ref[i].positions[:,2])
