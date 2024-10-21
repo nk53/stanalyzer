@@ -339,7 +339,7 @@ secondary_structure:
       type: form.path
       value: secondary_structure.dat
 radius_of_gyration:
-  label: Radius of gyration
+  label: Radius of gyration (TODO)
   options:
     sel_align:
       label: Atom selection for trajectory alignment (eg TM region- name CA and resid 14-510)
@@ -440,7 +440,7 @@ rdf:
       type: form.path
       value: rdf.dat
 glycosidic_bond_distances:
-  label: Glycosidic Bond between sugars
+  label: Glycosidic bond between sugars (TODO)
   options:
     sel:
       label: Average distance between anomeric carbon and hydroxyl group
@@ -526,7 +526,7 @@ chol_tilt:
       type: form.path
       value: contact_residence_time.dat
 helix_analysis:
-  label: Helix Analysis
+  label: Helix Analysis (TODO)
   options:
     sel_align:
       label: Atom selection for trajectory alignment (e.g., TM region - name CA and resid 14-510)
@@ -574,7 +574,7 @@ helix_analysis:
       type: form.path
       value: helix_analysis.dat
 helix_tilt_rotation_angle:
-  label: Helix Tilt and Rotation Angle
+  label: Helix Tilt and Rotation Angle (TODO)
   options:
     helix_start:
       label: Helix start residue
@@ -593,7 +593,7 @@ helix_tilt_rotation_angle:
       type: form.path
       value: helix_tilt_rotation_angle.dat
 helix_distance_crossing_angle:
-  label: Helix-helix distance and crossing angle
+  label: Helix-helix distance and crossing angle (TODO)
   options:
     helix1_start:
       label: Helix1 start residue
