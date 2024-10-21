@@ -510,6 +510,21 @@ contact_res_time:
       label: Output file
       type: form.path
       value: contact_residence_time.dat
+chol_tilt:
+  label: Cholesterol Tilt Angle
+  options:
+    sel:
+      label: Sterol lipid selection
+      type: form.textarea
+      value: segid MEMB and resname CHL1
+    center:
+      label: Perform membrane centering
+      type: form.checkbox
+      checked: true
+    out:
+      label: Output file
+      type: form.path
+      value: contact_residence_time.dat
 helix_analysis:
   label: Helix Analysis
   options:
