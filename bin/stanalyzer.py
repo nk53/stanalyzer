@@ -152,14 +152,20 @@ def get_settings(analysis_name: Optional[str] = None) -> dict:
         args = parser.parse_args(main_args)
         remaining_args = full_args[idx+1:]
 
+    # TODO: allow only registered imports
+    if analysis_name is None:
+        analysis_name = args.analysis_name
+
+    if analysis_name == 'config':
+        # run config tool and exit
+        from . import config
+        config.main()
+        sys.exit(0)
+
     if Path(args.settings).exists():
         defaults = LazyJSONReader(args.settings)
     else:
         print(f"Warning: skipping non-existent settings file '{args.settings}'", file=sys.stderr)
-
-    # TODO: allow only registered imports
-    if analysis_name is None:
-        analysis_name = args.analysis_name
 
     try:
         _import_name = f"stanalyzer.analysis.{analysis_name}"
