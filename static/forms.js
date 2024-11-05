@@ -197,6 +197,9 @@ function update_visibility(elem) {
                 case 'radio':
                     ref_value = ref_elem.filter(':checked').val();
                     break;
+                case 'checkbox':
+                    ref_value = ref_elem.prop('checked');
+                    break;
                 default:
                     ref_value = ref_elem.val();
             }
@@ -243,10 +246,13 @@ function toggle_visibility(elem) {
     function toggle_elem_visibility(toggle) {
         toggle = $(toggle);
         const target = toggle.data('target');
-        if (toggle[0].checked)
+        if (toggle[0].checked) {
             target.show();
-        else
+            target.filter('textarea').pushStack(
+                target.find('textarea')).trigger('keyup');
+        } else {
             target.hide();
+        }
     };
 
     if (elem)

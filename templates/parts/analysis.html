@@ -25,10 +25,6 @@
             {%- endfor -%}
 
             {%- if optinput is sameas analysis -%}
-            {{ option|pprint }}<br>
-            {{ optname|pprint }}<br>
-            {{ optargs|pprint }}<br>
-            {{ optkwargs|pprint }}<br>
             {{ analysis(optname, optargs, **optkwargs) }}
             {%- else -%}
             {{ optinput(optname, *optargs, **optkwargs) }}

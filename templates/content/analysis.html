@@ -6,27 +6,5 @@
 {%- for name, settings in analysis_form.items() %}
 {{ analysis.analysis(name, settings['options'], label=settings['label']) }}
 {%- endfor %}
-{# TODO: incorporate below into analysis.yml #}
-{#{{ form.checkbox('helix_tilt', label="Helix Tilt Angle") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('order_param', label="Lipid Order Parameter") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('RMSD', label="RMSD") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('RMSF', label="RMSF") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('sterol_tilt', label="Sterol Tilt Angle") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('system_size', label="System Size") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>
-{{ form.checkbox('membrane_thickness', label="Membrane Thickness") }}
-<div data-inset="true" class="ui-body ui-body-a ui-corner-all">
-</div>#}
 {{ form.button('submit', value='Submit Analysis', onclick='submit_async(this)') }}
 {%- endfilter %}

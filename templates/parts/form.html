@@ -157,6 +157,8 @@
     {%- elif option is not string and option is sequence %}
     <option value="{{ option[0] }}"
     {%- if option|length is ge 3 and option[2] %} selected{% endif %}>{{ option[1] }}</option>
+    {%- elif options is mapping %}
+    <option value="{{ option }}">{{ options[option] }}</option>
     {%- else %}
     <option value="{{ option }}">{{ option }}</option>
     {%- endif %}

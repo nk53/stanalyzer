@@ -888,3 +888,27 @@ sasa:
       label: Output file
       type: form.path
       value: sasa_output_freesasa.dat
+bond_statistics:
+  label: Bond Statistics
+  options:
+    use_input_file:
+      label: Use index file
+      options:
+        input_file:
+          label: Input filename
+          type: form.path
+          value: input.txt
+    atom_groups:
+      label: Atom groups
+      type: form.textarea
+      classes: [code]
+      value:
+        atom_groups(1,2,3)(4,5,6)
+      visibility:
+        allowed_bond_statistics_use_input_file: false
+    centroid:
+      label: Centroid type
+      type: form.select
+      options:
+        com: Center of mass
+        cog: Center of geometry
