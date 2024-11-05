@@ -229,8 +229,8 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
     _sta_no_interact_fields = ['id', 'SLURM', 'PBS']
     _sta_no_write_fields = ['id']
     _sta_default_overrides = {
-        'output_path': Path('.'),
-        'input_path': Path('.'),
+        'output_path': Path('.').resolve(),
+        'input_path': Path('.').resolve(),
     }
 
     @classmethod
