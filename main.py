@@ -88,8 +88,12 @@ async def insert_analysis(settings: dict):
         if analysis_id is None:
             return {'error': 'failed to insert'}
 
-        # this should ONLY be used when localhost is allowed
+        # TODO: this should ONLY be used when localhost is allowed
         with ctx.cd(in_dir):
+            # CLI opts expect '-' word sep, not '_'
+            analysis_settings = {k.replace('_', '-'): v
+                                 for k, v in analysis_settings.items()}
+
             # setup invocation args
             program = f'python -m stanalyzer {analysis}'
             bool_args = tuple(f'--{k} "{v}"' for k,v in analysis_settings.items()

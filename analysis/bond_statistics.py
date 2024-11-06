@@ -22,7 +22,6 @@ def calculate_atomgroup_positions(u, groups, method="cog"):
     """Calculates the position of each group of atoms using center of geometry
     or center of mass based on user input."""
     atomgroup_positions = defaultdict(list)
-    print('hi')
     for ts in u.trajectory:
         for group, indices in groups.items():
             selected_atoms = u.atoms[np.array(indices) - 1]
@@ -66,7 +65,6 @@ def calculate_bond_dihedrals(atomgroup_positions, dihedrals):
     """Calculates dihedral angles for each dihedral and frame."""
     dihedral_angles = defaultdict(list)
     for dihedral in dihedrals:
-        print(dihedral)
         for pos1, pos2, pos3, pos4 in zip(atomgroup_positions[dihedral.group1],
                                           atomgroup_positions[dihedral.group2],
                                           atomgroup_positions[dihedral.group3],
@@ -210,7 +208,7 @@ def process_bond_parameters(filename_or_str: sta.FileRef, index: bool = False):
     raise ValueError("Need either an index file or an atom group str")
 
 
-def analyze_bond_parameters_from_process(universe: mda.Universe, input_file: OptFileLike = None,
+def analyze_bond_parameters_from_process(universe: mda.Universe, index_file: OptFileLike = None,
                                          atom_groups: str = '', centroid: str = 'cog'):
 
     """Determines whether to run read_index_file or convert_atom_groups based
@@ -229,8 +227,8 @@ def analyze_bond_parameters_from_process(universe: mda.Universe, input_file: Opt
              and dihedrals
     """
 
-    filename_or_str = input_file or atom_groups
-    index = input_file is not None
+    filename_or_str = index_file or atom_groups
+    index = index_file is not None
 
     # Process the bond parameters
     bond_parameters = process_bond_parameters(filename_or_str, index=index)
@@ -347,7 +345,7 @@ def get_parser() -> argparse.ArgumentParser:
                        help="Atom indices for groups to analyze. Number of groups given "
                        "determines analysis type. 2: bond, 3: angle, 4: dihedral. "
                        "Bond example: (1,2,3)(4,5,6).")
-    group.add_argument('-i', '--input-file', metavar='FILE',
+    group.add_argument('-i', '--index-file', metavar='FILE',
                        help="File containing indices to read.")
     parser.add_argument('-bo', '--bond-out', metavar='FILE', default='bond_lengths.dat',
                         help="Location to write bonds.")

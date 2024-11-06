@@ -125,6 +125,7 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
         path = []
 
     def get_setting(settings, option):
+        nonlocal path
         return settings.get('_'.join(path + [option]), False)
 
     def has_sub_opts(values):
@@ -135,6 +136,13 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
         if 'select' in values.get('type', ''):
             return False
         return True
+
+    def allowed(setting_name, required_value):
+        nonlocal settings
+        value = settings.get(setting_name)
+        if isinstance(required_value, bool):
+            value = bool(value)
+        return value == required_value
 
     results: dict = {}
     for analysis_type in analysis.keys():
@@ -156,11 +164,17 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
                     opt = opt_long
                 opt_type = attrs.get('type', '')
                 if not has_sub_opts(attrs):
-                    result[opt] = get_setting(settings, opt_long)
+                    setting = get_setting(settings, opt_long)
                     if 'checkbox' in opt_type:
-                        result[opt] = bool(result[opt])
+                        setting = bool(result[opt])
                 elif 'select' in opt_type:
-                    result[opt] = get_setting(settings, opt_long)
+                    setting = get_setting(settings, opt_long)
+                else:
+                    continue
+
+                _requires = attrs.get('_requires', {})
+                if all(allowed(name, req) for name, req in _requires.items()):
+                    result[opt] = setting
 
             if not path:
                 results[analysis_type] = result
