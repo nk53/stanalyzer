@@ -76,3 +76,40 @@ PBS:
         Amount of physical memory per chunk
       mpiprocs:
         Number of MPI processes to create in each chunk
+
+bond_statistics_atom_groups: |
+  <p>Define atom groups by enclosing a list of one or more atom numbers in
+  parentheses. The computed property at each time step is determined by the
+  number of atom groups:</p>
+  <ul>
+    <li>2 groups: bond length (in angstrom)</li>
+    <li>3 groups: angle (in degrees)</li>
+    <li>4 groups: dihedral angle (in degrees)</li>
+  </ul>
+  <p>E.g., the group list "(1,2,3)(4,5,6)" corresponds to the length
+  between the centroids of the first group (1,2,3) and the second group
+  (4,5,6).</p>
+  <p>To compute multiple properties, use an index file.</p>
+bond_statistics_use_input_file_input_file: |
+  <p>Example index file contents:</p>
+  <blockquote class="code">
+    [INDEX]<br>
+    [G1]<br>
+    1 2 3<br>
+    [G2]<br>
+    4 5 6<br>
+    [G3]<br>
+    7 8 9<br>
+    [G4]<br>
+    10 11 12<br><br>
+    [ANGLES]<br>
+    G1 G2 G3<br>
+    [DIHEDRALS]<br>
+    G1 G2 G3 G4<br>
+    G2 G3 G4 G1<br>
+  </blockquote>
+  <p>Groups are defined in the INDEX section and may consist of any number
+  of atoms. A group definition consists of a group name in brackets, followed
+  by a list of one or more atom indices.</p>
+  <p>Group position at any time step is the selected atoms' centroid.</p>
+bond_statistics_centroid: Method used to calculate a group's centroid.

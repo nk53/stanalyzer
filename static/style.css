@@ -10,6 +10,12 @@ span.code {
     display: inline;
 }
 
+blockquote.code {
+    background-color: #f6f6f6;
+    padding: .75em;
+    margin: .5em 1em;
+}
+
 .main, .sidebar {
     display: block;
     width: 100%;

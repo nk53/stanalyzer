@@ -895,15 +895,15 @@ bond_statistics:
       label: Use index file
       options:
         input_file:
-          label: Input filename
+          label: Index filename
           type: form.path
-          value: input.txt
+          value: index.ndx
     atom_groups:
       label: Atom groups
       type: form.textarea
       classes: [code]
       value:
-        atom_groups(1,2,3)(4,5,6)
+        (1,2,3)(4,5,6)
       visibility:
         allowed_bond_statistics_use_input_file: false
     centroid:
