@@ -1,12 +1,11 @@
 import argparse
-import sys
 from typing import Optional, TypeAlias, cast
 
-import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
 import numpy as np
 
-from MDAnalysis.analysis.align import AverageStructure  # type: ignore
+import stanalyzer.bin.stanalyzer as sta
+from stanalyzer.bin.validators import p_int, p_float
 
 ANALYSIS_NAME = 'contact_res_time'
 CONTACT: TypeAlias = tuple[str, int, str, int]  # RESNAME-RESID RESNAME-RESID of contact pair
@@ -31,7 +30,7 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                            out: sta.FileRef, threshold: float = 5.0,
                            ref_psf: Optional[sta.FileRef] = None,
-                           ref_coor: Optional[sta.FileRef] = None,ref_frame_num: int = 1,
+                           ref_coor: Optional[sta.FileRef] = None, ref_frame_num: int = 1,
                            interval: int = 1) -> None:
     """Writes RMSD to `out` file"""
 
@@ -40,7 +39,6 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
     if ref_coor is None:
         ref_coor = cast(sta.FileRef, traj[0])
 
-    ref = mda.Universe(ref_psf, ref_coor)
     universe = mda.Universe(psf, traj)
 
     # Initialize dictionaries to track contact frames and residence times
@@ -49,7 +47,10 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
     residence_dist: dict[CONTACT, FRAME_DIST] = {}
 
     # Iterate over frames in the trajectory
-    for ts in universe.trajectory:
+    for step_num, ts in enumerate(universe.trajectory, start=1):
+        if step_num % interval:
+            continue
+
         all_atoms = universe.select_atoms(sel)
         print(all_atoms)
         # Group residues from selected atoms
@@ -73,8 +74,8 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 
                 if dist < threshold:
                     # Track contact frame
-                    contact_frames[contact]=contact_frames.get(contact,0) +1
-                    
+                    contact_frames[contact] = contact_frames.get(contact, 0) + 1
+
                 else:
                     # Reset count if contact is lost
                     if contact in contact_frames:
@@ -95,7 +96,8 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
         residence_dist[contact] = (0.0, 0.0)  # Handle case with no events
 
     with sta.resolve_file(out, 'w') as outfile:
-        print("# Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Mean_Time Std", file=outfile)
+        print("# Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Mean_Time Std",
+              file=outfile)
         for contact, (mean, std) in residence_dist.items():
             # res_i_name, res_i_id, res_j_name, res_j_id = contact
             print(*contact, f"{mean:.5g} {std:.5g}", file=outfile)
@@ -106,17 +108,17 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('-rp', '--ref_psf', '--ref_psf_path', type=sta.ExistingFile,
+    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref_coor', '--ref_coor_path', type=sta.ExistingFile,
+    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="Coordinate file to use for reference, if not same as --traj")
     parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for RMSD calculation")
-    parser.add_argument('--threshold', type=float, metavar='N', default='5.0',
+    parser.add_argument('--threshold', type=p_float, metavar='N', default='5.0',
                         help="Distance cutoff for calculating the residence time.")
-    parser.add_argument('-rn', '--ref_frame_num', type=int, default=1, metavar='N',
+    parser.add_argument('-rn', '--ref-frame-num', type=p_int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                         "Only meaningful if --ref-frame-type is 'specific'")
 

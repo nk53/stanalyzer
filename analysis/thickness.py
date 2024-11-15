@@ -1,16 +1,16 @@
 import argparse
 import sys
-from typing import Optional
 
-import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
 from MDAnalysis.transformations import center_in_box  # type: ignore
 from MDAnalysis.core.groups import AtomGroup  # type: ignore
 
+import stanalyzer.bin.stanalyzer as sta
+
 ANALYSIS_NAME = 'thickness'
 
 
-def header(outfile: Optional[sta.FileLike] = None) -> str:
+def header(outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
     header_str = "#time thickness"
 
@@ -91,7 +91,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

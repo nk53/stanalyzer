@@ -72,9 +72,9 @@ def write_tilt_rotation_angle(psf: sta.FileRef, traj: sta.FileRefList,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--helix_start', type=int, required=True,
+    parser.add_argument('--helix-start', type=int, required=True,
                         help="Starting residue number of the helix")
-    parser.add_argument('--helix_end', type=int, required=True,
+    parser.add_argument('--helix-end', type=int, required=True,
                         help="Ending residue number of the helix")
 
     return parser

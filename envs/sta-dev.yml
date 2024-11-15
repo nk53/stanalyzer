@@ -18,3 +18,5 @@ dependencies:
  - pylsp-mypy==0.6.8
  - sphinx==7.2.6
  - sphinx-js==3.2.2
+ - hole2
+ - freesasa

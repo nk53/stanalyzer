@@ -328,16 +328,10 @@ def write_files(results: dict[str, t.Any],
 
 
 def get_parser() -> argparse.ArgumentParser:
-    def cog_com(value: str) -> str:
-        if value in ('cog', 'com'):
-            return value
-        raise ValueError(f"Invalid centroid type '{value}'. Expected 'com' or 'cog'")
-
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj')
-    parser.add_argument('-c', '--centroid', metavar='OPT', default='cog', type=cog_com,
-                        help="Either 'com' (center of mass) or 'cog' "
-                             "(center of geometry). Default: cog.")
+    parser.add_argument('-c', '--centroid', metavar='OPT', default='cog', choices=['cog', 'com'],
+                        help="com: center of mass; cog: center of geometry. Default: cog")
 
     # either -a or -i must be passed, but not both
     group = parser.add_mutually_exclusive_group(required=True)

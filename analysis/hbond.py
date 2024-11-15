@@ -109,19 +109,19 @@ def write_hbond(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--d_a_cutoff', type=float, metavar='N', default='3.0',
+    parser.add_argument('--d-a-cutoff', type=float, metavar='N', default='3.0',
                         help="Distance cutoff for hydrogen bonds. This cutoff refers to the D-A distance.")
-    parser.add_argument('--d_h_a_angle_cutoff', type=float, metavar='N', default='150.0',
+    parser.add_argument('--d-h-a-angle-cutoff', type=float, metavar='N', default='150.0',
                         help="D-H-A angle cutoff for hydrogen bonds (degrees).")
     parser.add_argument('--sel', metavar='selection', default='all',
                         help="Restrict the search to only those atoms")
-    parser.add_argument('--hydrogens_sel', metavar='selection', default=None,
+    parser.add_argument('--hydrogens-sel', metavar='selection', default=None,
                         help="Atom selection for hydrogens. If None, then will be identified via charge and mass.")
-    parser.add_argument('--acceptors_sel', metavar='selection', default=None,
+    parser.add_argument('--acceptors-sel', metavar='selection', default=None,
                         help="Atom selection for acceptors. If None, then will be identified via charge.")
     ## Only use if the universe topology does not contain bonding information,
     ## otherwise donor-hydrogen pairs may be incorrectly assigned.
-    #parser.add_argument('--donors_sel', metavar='selection', default=None,
+    #parser.add_argument('--donors-sel', metavar='selection', default=None,
     #                    help="Atom selection for donors. If None, then will be identified via the topology.")
 
     return parser

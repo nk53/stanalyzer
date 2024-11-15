@@ -2,10 +2,12 @@ import argparse
 from typing import Optional
 import numpy as np
 
-import stanalyzer.bin.stanalyzer as sta
 import MDAnalysis as mda  # type: ignore
 from MDAnalysis.transformations import center_in_box  # type: ignore
 from MDAnalysis.core.groups import AtomGroup  # type: ignore
+
+import stanalyzer.bin.stanalyzer as sta
+from stanalyzer.bin.validators import p_float
 
 ANALYSIS_NAME = 'density_z'
 
@@ -95,7 +97,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Perform trajectory centering")
     parser.add_argument('--center-sel', metavar='selection', help="(implies -c) the selection "
                         "to use for centering (default: same as --sel)")
-    parser.add_argument('--bin_size', metavar='selection', type=float,
+    parser.add_argument('--bin-size', metavar='selection', type=p_float,
                         default=1., help="Number density bin size in angstrom (default: 1.0)")
 
     return parser

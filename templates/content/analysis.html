@@ -3,8 +3,12 @@
 <form id="{{ page_id }}_form" action="/{{ page_id }}" method="post">
 {%- filter indent(_indent_level+4) %}
 {{ form.select('project', projects_menu, label='Select project') }}
-{%- for name, settings in analysis_form.items() %}
+{%- for category in categories.values() -%}
+<h3>{{ category['label'] }}</h3>
+{%- for name in category['options'] -%}
+{%- set settings = analysis_form[name] %}
 {{ analysis.analysis(name, settings['options'], label=settings['label']) }}
+{%- endfor %}
 {%- endfor %}
 {{ form.button('submit', value='Submit Analysis', onclick='submit_async(this)') }}
 {%- endfilter %}

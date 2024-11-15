@@ -1,15 +1,16 @@
 import argparse
-from typing import Optional
+import os
+
+import MDAnalysis as mda  # type: ignore
+import freesasa  # type: ignore
 
 import stanalyzer.bin.stanalyzer as sta
-import MDAnalysis as mda
-import freesasa
-import os
+from stanalyzer.bin.validators import p_float
 
 ANALYSIS_NAME = 'sasa'
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: sta.FileLike | None = None, np_formatted=False) -> str:
     """Returns a header string and, optionally writes it to a file."""
     if np_formatted:
         header_str = "frame SASA"
@@ -61,14 +62,14 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
     parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for SASA calculation")
-    parser.add_argument('--probe_radius', type=float,
+    parser.add_argument('--probe-radius', type=p_float,
                         default=1.4, help='Probe radius in Ångstroms')
     parser.add_argument('--algorithm', default='shrake',
                         choices=['shrake', 'lee'], help='Algorithm for SASA calculation')
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

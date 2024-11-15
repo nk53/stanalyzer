@@ -1,5 +1,5 @@
 apl:
-  label: Average area per lipid
+  label: Average area per lipid (TODO)
   options:
     x:
       label: System Size (X)
@@ -322,8 +322,12 @@ pi_stacking:
 secondary_structure:
   label: Secondary Structure
   options:
+    mkdssp_path:
+      label: Path to mkdssp
+      type: form.path
+      placeholder: Leave blank to infer from PATH
     sel:
-      label: Restrict the search to only those atoms
+      label: Restrict the search to only these atoms
       type: form.textarea
       classes: [code]
       value:

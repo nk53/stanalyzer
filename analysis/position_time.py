@@ -89,7 +89,7 @@ def get_parser() -> argparse.ArgumentParser:
                         default='com', metavar='TYPE')
     parser.add_argument('-axis', '--axis', choices=['x', 'y', 'z'],
                         default='z', metavar='TYPE')
-    parser.add_argument('--head_group', metavar='selection',
+    parser.add_argument('--head-group', metavar='selection',
                         help="Membrane headgroup atom selection")
     return parser
 

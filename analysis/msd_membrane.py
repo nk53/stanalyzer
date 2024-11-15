@@ -140,7 +140,7 @@ def get_parser() -> argparse.ArgumentParser:
       help='Selection for individual molecule. MSD will be calculated for COMs of individual molecules.')
     parser.add_argument('--split', action='store',# nargs='+',default='Y',
       help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
-    parser.add_argument('--sel_sys', metavar='selection',
+    parser.add_argument('--sel-sys', metavar='selection',
       help='Selection for system atom groups for leaflet COM drift correction and bilayer recentering.')
     parser.add_argument('--qz', action='store_true',default=False,
       help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')

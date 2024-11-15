@@ -107,8 +107,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--sel', metavar='selection', required=True),
     parser.add_argument('--corr-matrix-out', metavar='filename', required=True),
     parser.add_argument('--eigenvalues-out', metavar='filename', required=True),
-    parser.add_argument('--eigenvectors-out', metavar='filename', required=True,
-                        help="Membrane headgroup atom selection")
+    parser.add_argument('--eigenvectors-out', metavar='filename', required=True)
 
     return parser
 

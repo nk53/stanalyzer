@@ -73,13 +73,13 @@ def write_helix_distance_crossing_angle(psf: sta.FileRef, traj: sta.FileRefList,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--helix1_start', type=int, required=True,
+    parser.add_argument('--helix1-start', type=int, required=True,
                         help="Starting residue number of the first helix")
-    parser.add_argument('--helix1_end', type=int, required=True,
+    parser.add_argument('--helix1-end', type=int, required=True,
                         help="Ending residue number of the first helix")
-    parser.add_argument('--helix2_start', type=int, required=True,
+    parser.add_argument('--helix2-start', type=int, required=True,
                         help="Starting residue number of the second helix")
-    parser.add_argument('--helix2_end', type=int, required=True,
+    parser.add_argument('--helix2-end', type=int, required=True,
                         help="Ending residue number of the second helix")
 
     return parser

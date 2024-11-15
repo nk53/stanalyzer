@@ -125,9 +125,9 @@ def write_pi_stacking(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--pi_pi_dist_cutoff', type=float, metavar='N', default='6.0',
+    parser.add_argument('--pi-pi-dist-cutoff', type=float, metavar='N', default='6.0',
                         help="Distance cutoff between aromatic ring centers")
-    parser.add_argument('--pi_cation_dist_cutoff', type=float, metavar='N', default='6.0',
+    parser.add_argument('--pi-cation-dist-cutoff', type=float, metavar='N', default='6.0',
                         help="Distance cutoff between aromatic ring centers and positively charged groups")
     parser.add_argument('--sel', metavar='selection', default='all',
                         help="Restrict the search to only those atoms")

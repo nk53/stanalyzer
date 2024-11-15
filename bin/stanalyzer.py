@@ -6,8 +6,9 @@ import sys
 from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Optional, TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
+from .validators import p_int, p_float
 from ..utils import read_json
 
 
@@ -112,15 +113,15 @@ def add_project_args(subparser, *args):
             help="File to write results (default: stdout)")
     if 'time_step' in args:
         subparser.add_argument(
-            '-ts', '--time_step', type=float, default=from_settings,
+            '-ts', '--time_step', type=p_float, default=from_settings,
             help="Amount of time between frames in trajectory files")
     if 'interval' in args:
         subparser.add_argument(
-            '-i', '--interval', type=int, default=1,
+            '-i', '--interval', type=p_int, default=1,
             help="step size when reading frames (default: 1 = read every frame)")
 
 
-def get_settings(analysis_name: Optional[str] = None) -> dict:
+def get_settings(analysis_name: str | None = None) -> dict:
     global analysis, defaults
 
     parser = argparse.ArgumentParser(description='TODO', prog='stanalyzer')
@@ -224,7 +225,13 @@ def resolve_file(file_ref: LazyFile | io.TextIOBase | str, mode: str = 'r') -> i
     return file_ref
 
 
-def main(analysis_name: Optional[str] = None, settings: Optional["DictLike"] = None) -> Any:
+def resolve_ts(time_step: int | float | str) -> float:
+    if isinstance(time_step, str):
+        return float(time_step.split()[0])
+    return float(time_step)
+
+
+def main(analysis_name: str | None = None, settings: "DictLike | None" = None) -> Any:
     # MDAnalysis and its imports like to throw dev warnings that are hard to disable
     if not sys.warnoptions:
         import warnings

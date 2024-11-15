@@ -107,24 +107,24 @@ def write_helix_analysis(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('-rp', '--ref_psf', '--ref_psf_path', type=sta.ExistingFile,
+    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref_coor', '--ref_coor_path', type=sta.ExistingFile,
+    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="Coordinate file to use for reference, if not same as --traj")
-    parser.add_argument('--sel_align', metavar='selection',
+    parser.add_argument('--sel-align', metavar='selection',
                         help="Atom selection for trajectory alignment")
-    parser.add_argument('--sel_helix', metavar='selection',
+    parser.add_argument('--sel-helix', metavar='selection',
                         help="Atom selection for helix analysis")
-    parser.add_argument('-rt', '--ref_frame_type', choices=['specific', 'average'],
+    parser.add_argument('-rt', '--ref-frame-type', choices=['specific', 'average'],
                         default='specific', metavar='TYPE',
                         help="specific: use a given frame as the reference; "
                              "average: use average structure")
-    parser.add_argument('-rn', '--ref_frame_num', type=int, default=1, metavar='N',
+    parser.add_argument('-rn', '--ref-frame-num', type=int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                              "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('--align_out', type=argparse.FileType('w'),
+    parser.add_argument('--align-out', type=argparse.FileType('w'),
                         metavar='FILE', default=None,
                         help="Write aligned trajectory to this path")
 

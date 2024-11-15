@@ -27,6 +27,7 @@ templates = Jinja2Templates(directory="templates",
 MENU = utils.read_yaml('static/menu.yml')
 PAGES = utils.read_yaml('static/pages.yml')
 ANALYSIS = utils.read_yaml('static/analysis.yml')
+ANALYSIS_CATEGORIES = utils.read_yaml('static/analysis.category.yml')
 
 
 db.setup_db()
@@ -53,6 +54,7 @@ async def page(request: Request, page: str):
         context['projects_menu'] = [
             (p['id'], p['title']) for p in db.get_user_projects(uid=1).values()
         ]
+        context['categories'] = ANALYSIS_CATEGORIES
     elif page == 'project':
         projects = db.get_user_projects(uid=1)
         projects_json = projects.copy()

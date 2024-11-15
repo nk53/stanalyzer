@@ -27,8 +27,9 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
 
 def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rg: str,
-                             out: sta.FileRef, align_out: io.TextIOWrapper, 
-                             ref_psf: Optional[sta.FileRef] = None, ref_coor: Optional[sta.FileRef] = None,
+                             out: sta.FileRef, align_out: io.TextIOWrapper,
+                             ref_psf: Optional[sta.FileRef] = None,
+                             ref_coor: Optional[sta.FileRef] = None,
                              ref_frame_type: str = 'specific', ref_frame_num: int = 1,
                              interval: int = 1) -> None:
     """Writes the radius of gyration to `out` file"""
@@ -41,7 +42,7 @@ def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align:
     # Load mobile and reference universes
     mobile = mda.Universe(psf, traj)
     ref = mda.Universe(ref_psf, ref_coor)
-    
+
     # Select reference frame
     if ref_frame_type == 'specific':
         ref.transfer_to_memory(start=ref_frame_num-1, stop=ref_frame_num)
@@ -53,19 +54,19 @@ def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align:
         sys.exit(1)
 
     # Align the mobile trajectory to the reference and save the aligned trajectory
-    alignment = AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
 
     # Load the aligned trajectory from the saved file
     aligned_mobile = mda.Universe(psf, align_out.name)
 
     # Calculate radius of gyration for the aligned trajectory
     protein = aligned_mobile.select_atoms(sel_rg)
-    
-    Rgyr = []
-    for ts in aligned_mobile.trajectory:  # Iterate over the aligned trajectory
-        Rgyr.append((aligned_mobile.trajectory.time, protein.radius_of_gyration()))
-    
-    Rgyr = np.array(Rgyr)
+
+    Rgyr_list = []
+    for ts in aligned_mobile.trajectory[::interval]:  # Iterate over the aligned trajectory
+        Rgyr_list.append((aligned_mobile.trajectory.time, protein.radius_of_gyration()))
+
+    Rgyr = np.array(Rgyr_list)
 
     with sta.resolve_file(out, 'w') as outfile:
         np.savetxt(outfile, Rgyr, fmt='%10.5f %10.5f', header=header(np_formatted=True))
@@ -74,24 +75,24 @@ def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('-rp', '--ref_psf', '--ref_psf_path', type=sta.ExistingFile,
+    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref_coor', '--ref_coor_path', type=sta.ExistingFile,
+    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.ExistingFile,
                         metavar='FILE',
                         help="Coordinate file to use for reference, if not same as --traj")
-    parser.add_argument('--sel_align', metavar='selection',
+    parser.add_argument('--sel-align', metavar='selection',
                         help="Atom selection for trajectory alignment")
-    parser.add_argument('--sel_rg', metavar='selection',
+    parser.add_argument('--sel-rg', metavar='selection',
                         help="Atom selection for radius of gyration calculation")
-    parser.add_argument('-rt', '--ref_frame_type', choices=['specific', 'average'],
+    parser.add_argument('-rt', '--ref-frame-type', choices=['specific', 'average'],
                         default='specific', metavar='TYPE',
                         help="specific: use a given frame as the reference; "
                              "average: use average structure")
-    parser.add_argument('-rn', '--ref_frame_num', type=int, default=1, metavar='N',
+    parser.add_argument('-rn', '--ref-frame-num', type=p_int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                              "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('--align_out', type=argparse.FileType('w'),
+    parser.add_argument('--align-out', type=argparse.FileType('w'),
                         metavar='FILE', default=None,
                         help="Write aligned trajectory to this path")
 

@@ -184,7 +184,7 @@ def get_parser() -> argparse.ArgumentParser:
       help='Selection for individual molecule type with a format, "segid/resname/moltype MOLECULENAME and name CARBONNAMES or name REFATOMNAME". Reference atom is used for the leaflet assignment. For the CHARMM format topology, an selection for POPC can be "resname POPC and (name C22 or name C32 or name P)".')
     parser.add_argument('--split', action='store',# nargs='+',default='Y',
       help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
-    parser.add_argument('--sel_sys', metavar='selection',
+    parser.add_argument('--sel-sys', metavar='selection',
       help='Selection for system atom groups in membranes for bilayer recentering.')
     parser.add_argument('--qz', action='store_true',default=False,
       help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')
