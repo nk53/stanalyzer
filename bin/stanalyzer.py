@@ -7,8 +7,7 @@ from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, cast
-
-from .validators import p_int, p_float
+from .validators import exec_name, p_int, p_float
 from ..utils import read_json
 
 
@@ -93,6 +92,37 @@ class LazyJSONReader:
     def _lazyjsonreader_resolve(self):
         if self._lazyjsonreader_data is None:
             self._lazyjsonreader_data = read_json(self._lazyjsonreader_file)
+
+
+def add_exec_args(subparser, *args: str) -> None:
+    def add_exec_arg(arg):
+        default = exec_name(arg, error=False)
+
+        def path_or_raise(value: str):
+            if value:
+                return exec_name(value)
+
+            if default:
+                return default
+
+            raise argparse.ArgumentTypeError(f"No {arg} in PATH")
+
+        if not arg:
+            raise ValueError("arg cannot be empty")
+
+        arg_safe = f"--{arg.replace('_ ', '-')}-path"
+        if default is None:
+            print(f"Warning: no {arg} in PATH", file=sys.stderr)
+            subparser.add_argument(arg_safe, metavar='PATH', type=path_or_raise, required=True,
+                                   help=f"Path to {arg} executable. "
+                                        f"REQUIRED because {arg} is not in PATH.")
+        else:
+            subparser.add_argument(arg_safe, metavar='PATH', type=path_or_raise,
+                                   help=f"Path to {arg} executable. "
+                                        f"REQUIRED because {arg} is not in PATH.")
+
+    for arg in args:
+        add_exec_arg(arg)
 
 
 def add_project_args(subparser, *args):

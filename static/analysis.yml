@@ -330,8 +330,7 @@ secondary_structure:
       label: Restrict the search to only these atoms
       type: form.textarea
       classes: [code]
-      value:
-        protein
+      value: protein
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -339,6 +338,37 @@ secondary_structure:
       label: Output file
       type: form.path
       value: secondary_structure.dat
+hole:
+  label: Pore Radius Histogram
+  options:
+    hole_path:
+      label: Path to hole
+      type: form.path
+      placeholder: Leave blank to infer from PATH
+    sel:
+      label: Atom selection containing pore
+      type: form.textarea
+      classes: [code]
+      value: protein
+    bins:
+      label: Number of histogram bins in output
+      type: form.positive_integer
+      value: 100
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+    hist_out:
+      label: Histogram output (image)
+      type: form.path
+      value: hist.png
+    midpoints_out:
+      label: Bin midpoints output
+      type: form.path
+      value: midpoints.dat
+    means_out:
+      label: Bin means output
+      type: form.path
+      value: means.dat
 radius_of_gyration:
   label: Radius of gyration (TODO)
   options:

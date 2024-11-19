@@ -30,6 +30,7 @@ protein_dna:
   label: Proteins and Nucleic Acids
   options:
     - secondary_structure
+    - hole
 dist_angle:
   label: Distances and Angles
   options:
