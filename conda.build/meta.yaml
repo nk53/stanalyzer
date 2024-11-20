@@ -8,8 +8,6 @@ source:
 
 build:
   number: 1
-  noarch: python
-  script: python -m pip install --no-deps --ignore-installed .
   entry_points:
     - stanalyzer = stanalyzer.cli.stanalyzer:main
     - sta-server = stanalyzer.cli.stanalyzer:run_server
@@ -33,9 +31,9 @@ test:
 
 requirements:
   build:
-    - python
-    - setuptools
-    - setuptools_scm
+    - python=3.10
+    - setuptools>64
+    - setuptools_scm>=8
   run:
     - python=3.10
     - hole2=2.3
