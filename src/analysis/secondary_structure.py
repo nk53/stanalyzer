@@ -143,32 +143,11 @@ def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 
 
 def get_parser() -> argparse.ArgumentParser:
-    mkdssp_default = exec_name('mkdssp', error=False)
-
-    def mkdssp_or_raise(value: str):
-        if value:
-            return exec_name(value)
-
-        if mkdssp_default:
-            return mkdssp_default
-
-        raise argparse.ArgumentTypeError("No mkdssp in PATH")
-
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
+    sta.add_exec_args(parser, 'mkdssp')
     parser.add_argument('--sel', metavar='protein', default='all',
                         help="Restrict the calculation to only those atoms")
-
-    if mkdssp_default:
-        parser.add_argument('--mkdssp-path', metavar='PATH',
-                            type=mkdssp_or_raise, default=mkdssp_default,
-                            help="Path to mkdssp executable. Default: try to find in PATH.")
-    else:
-        print("Warning: No mkdssp in PATH", file=sys.stderr)
-        parser.add_argument('--mkdssp-path', metavar='PATH',
-                            type=mkdssp_or_raise, required=True,
-                            help="Path to mkdssp executable. "
-                                 "REQUIRED because mkdssp is not in PATH.")
 
     return parser
 
