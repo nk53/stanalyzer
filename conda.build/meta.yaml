@@ -11,8 +11,8 @@ build:
   noarch: python
   script: python -m pip install --no-deps --ignore-installed .
   entry_points:
-    - stanalyzer = stanalyzer.bin.stanalyzer:main
-    - sta-server = stanalyzer.main:run_server
+    - stanalyzer = stanalyzer.cli.stanalyzer:main
+    - sta-server = stanalyzer.cli.stanalyzer:run_server
 
 about:
   home: https://github.com/nk53/stanalyzer
@@ -29,7 +29,7 @@ about:
 test:
   imports:
     - stanalyzer
-    - stanalyzer.bin.stanalyzer
+    - stanalyzer.cli.stanalyzer
 
 requirements:
   build:

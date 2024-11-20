@@ -1,6 +1,7 @@
 import argparse
 import enum
 import io
+import os
 import re
 import sys
 from collections.abc import Iterable
@@ -263,6 +264,9 @@ def resolve_ts(time_step: int | float | str) -> float:
 
 def run_server():
     """Entry point for wrapper scripts"""
+    import stanalyzer  # type: ignore[import-not-found]
+    os.chdir(stanalyzer.__path__[0])
+
     import uvicorn
     uvicorn.run('main:app', port=8000, log_level='info')
 
