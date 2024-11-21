@@ -98,9 +98,6 @@ def write_msd_outputs(msd,taus,ntype,name_type,odir):
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj','interval')
-    parser.add_argument('--center', default=False, action='store_true',
-      help='Perform membrane centering.')
-
     parser.add_argument('--sel', metavar='selection',# nargs='+',
       help='Selection for individual molecule. MSD will be calculated for COMs of individual molecules.')
     parser.add_argument('--split', action='store',# nargs='+',default='Y',
@@ -111,7 +108,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_msd_solution(sel,split,qcom, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
+def run_msd_solution(sel,split,qcom, psf:sta.FileRef, traj: sta.FileRefList, interval: int = 1) -> None:
   """
   ----------
   Calculate Mean Square Displacement of COMs of selected molecule types
