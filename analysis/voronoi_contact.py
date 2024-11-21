@@ -206,7 +206,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
     for i in range(0, ntype):
         print(f'#Split "{selection[i]}" into molecule level', qsplit[i])
     print('Write results for bilayer', qb)
-    print('Write averge APLs', qa)
+    print('Write averge contact numbers/fractions', qa)
     print('Write time sereis output', qt)
     print('Bilayer is recentered at z = 0 using {sel_sys}:', center)
     print('Analysis will be done every {interval}frames')
