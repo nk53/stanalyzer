@@ -814,10 +814,10 @@ voronoi_contact:
       label: Results for the bilayer. Use only for symmetric one.
       type: form.checkbox
     qa:
-      label: Write average APLs for individual molecule types.
+      label: Write average contact numbers/fractions for individual molecule types.
       type: form.checkbox
     qt:
-      label: Write time series of APLs for individual molecule types.
+      label: Write time series of contact numbers/fractions for individual molecule types.
       type: form.checkbox
     interval:
       label: Frame interval
