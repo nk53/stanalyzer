@@ -3,8 +3,25 @@ import pathlib
 import re
 from typing import Any, List, Optional
 
-import jinja2
 import yaml
+
+try:
+    import jinja2
+
+    @jinja2.pass_context
+    def call_macro_by_name(ctx, name, *args, **kwargs):
+        for varname in name.split('.'):
+            getter = getattr(ctx, 'get', None)
+            if getter is not None:
+                ctx = ctx.get(varname)
+            elif isinstance(ctx, jinja2.environment.TemplateModule):
+                ctx = getattr(ctx, varname)
+        return ctx(*args, **kwargs)
+except ModuleNotFoundError:
+    def call_macro_by_name(*args, **kwargs):
+        raise NotImplementedError(
+            "'client' build does not support jinja2 templating")
+
 
 # groups strings[like][this] into their individual tokens
 P_RE = re.compile(r'^([^[]*)|\[([^]]*)\]')
@@ -28,17 +45,6 @@ def write_settings(path: pathlib.Path, data: Any, mode: str = 'w'):
         path.parent.mkdir()
     with path.open(mode=mode) as file_obj:
         json.dump(data, file_obj, indent=4)
-
-
-@jinja2.pass_context
-def call_macro_by_name(ctx, name, *args, **kwargs):
-    for varname in name.split('.'):
-        getter = getattr(ctx, 'get', None)
-        if getter is not None:
-            ctx = ctx.get(varname)
-        elif isinstance(ctx, jinja2.environment.TemplateModule):
-            ctx = getattr(ctx, varname)
-    return ctx(*args, **kwargs)
 
 
 def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:

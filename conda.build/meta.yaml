@@ -1,6 +1,8 @@
+{% set hsep = '-' if suffix else '' %}
+
 package:
-  name: stanalyzer
-  version: 0.1.0
+  name: stanalyzer{{ hsep }}{{ suffix }}
+  version: "0.1.0"
 
 source:
   git_url: https://github.com/nk53/stanalyzer.git
@@ -8,47 +10,65 @@ source:
 
 build:
   number: 1
+  noarch: python
+  skip: True  # [win]
+{% if suffix %}
+  script_env:
+    - STA_SUFFIX={{ suffix }}
+{% endif %}
   entry_points:
     - stanalyzer = stanalyzer.cli.stanalyzer:main
+{% if suffix != 'client' %}
     - sta-server = stanalyzer.cli.stanalyzer:run_server
+{% endif %}
 
 about:
   home: https://github.com/nk53/stanalyzer
   license: MIT
   license_file: LICENSE
-  license_url: https://github.com/nk53/stanalyzer/blob/sta-dev/LICENSE
+  license_url: https://github.com/nk53/stanalyzer/blob/sta/LICENSE
   summary: Command-line and web interface for common simulation trajectory analysis
   description: |
     An extensible framework for analyzing molecular dynamics simulation trajectories. Several analysis programs are provided, and sophisticated users can add their own analysis types.
   dev_url: https://github.com/nk53/stanalyzer
-  doc_url: https://github.com/nk53/stanalyzer/blob/sta-dev/README.md
-  doc_source_url: https://github.com/nk53/stanalyzer/blob/sta-dev/README.md
+  doc_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
+  doc_source_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
 
+{% if suffix != 'dev' %}
 test:
   imports:
     - stanalyzer
     - stanalyzer.cli.stanalyzer
+  commands:
+    - stanalyzer -h
+    - stanalyzer system_size -h
+{% endif %}
 
 requirements:
   build:
     - python=3.10
-    - setuptools>64
+    - setuptools>=64
     - setuptools_scm>=8
   run:
     - python=3.10
-    - hole2=2.3
-    - freesasa=2.2
+    - mdanalysis=2.7
+    - paramiko=3.5
+    - fabric=3.2
+    - invoke=2.2
+    - pyyaml=6.0
+    - hole2=2.3  # [not arm64]
+    - freesasa=2.2  # [not arm64]
+    - dssp  # [not arm64]
+{% if suffix != 'client' %}
     - fastapi=0.115
     - uvicorn=0.32
     - jinja2=3.1
     - sqlmodel>=0.0.22
-    - mdanalysis=2.7
     - email-validator=2.2
     - python-multipart>=0.0.17
-    - pyyaml=6.0
-    - paramiko=3.5
-    - fabric=3.2
-    - invoke=2.2
+{% endif %}
+{% if suffix == 'dev' %}
     - pylsp-mypy=0.6
     - sphinx=8.1
     - sphinx-js=3.2
+{% endif %}
