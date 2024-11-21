@@ -166,7 +166,7 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
                 if not has_sub_opts(attrs):
                     setting = get_setting(settings, opt_long)
                     if 'checkbox' in opt_type:
-                        setting = bool(result[opt])
+                        setting = bool(setting)
                 elif 'select' in opt_type:
                     setting = get_setting(settings, opt_long)
                 else:
