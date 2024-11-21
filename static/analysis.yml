@@ -651,15 +651,12 @@ msd_solution:
       type: form.textarea
       classes: [code]
       value:
-        segid PROA and (resid 1:6 or resid 16:23) and not name H*, resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3
+        resname POT; resname CLA
     split:
       label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
       type: form.textarea
       classes: [code]
-      value: n,y,y;y
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
+      value: y,y
     qcom:
       label: Write unwrapped COM trajectories of individual molecules.
       type: form.checkbox
