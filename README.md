@@ -6,7 +6,7 @@ ST-Analyzer has been tested on macOS (x64 and arm64), Ubuntu (x64), and WSL (x64
 
 See the section below for regular installation.
 
-For development installation, skip to the sectsion __Installation via Conda (ST-Analyzer developers)__.
+For development installation, skip to the section __Installation via Conda (ST-Analyzer developers)__.
 
 ## Installation via Conda (regular users)
 

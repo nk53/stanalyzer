@@ -21,6 +21,9 @@ build:
 {% if suffix != 'client' %}
     - sta-server = stanalyzer.cli.stanalyzer:run_server
 {% endif %}
+{% if suffix == 'dev' %}
+    - sta-finish-install = stanalyzer:finish_install
+{% endif %}
 
 about:
   home: https://github.com/nk53/stanalyzer
@@ -34,12 +37,16 @@ about:
   doc_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
   doc_source_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
 
-{% if suffix != 'dev' %}
 test:
   imports:
     - stanalyzer
+{% if suffix != 'dev' %}
     - stanalyzer.cli.stanalyzer
+{% endif %}
   commands:
+{% if suffix == 'dev' %}
+#    - sta-finish-install -h
+{% else %}
     - stanalyzer -h
     - stanalyzer system_size -h
 {% endif %}
