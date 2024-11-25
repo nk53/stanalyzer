@@ -264,11 +264,11 @@ def resolve_ts(time_step: int | float | str) -> float:
 
 def run_server():
     """Entry point for wrapper scripts"""
-    import stanalyzer  # type: ignore[import-not-found]
+    import stanalyzer
     os.chdir(stanalyzer.__path__[0])
 
     import uvicorn
-    uvicorn.run('main:app', port=8000, log_level='info')
+    uvicorn.run('stanalyzer.main:app', port=8000, log_level='info')
 
 
 def main(analysis_name: str | None = None, settings: "DictLike | None" = None) -> Any:
