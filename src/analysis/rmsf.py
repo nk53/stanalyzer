@@ -29,7 +29,7 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
     return header_str
 
 def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf: str,
-                             out: sta.FileRef, align_out: io.TextIOWrapper, 
+                             out: sta.FileRef, align_out: io.TextIOWrapper,
                              ref_psf: Optional[sta.FileRef] = None,
                              interval: int = 1) -> None:
     """Writes RMSF (Root Mean Square Fluctuation) to `out` file."""
