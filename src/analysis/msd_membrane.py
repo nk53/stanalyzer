@@ -7,6 +7,7 @@ import numpy as np
 import MDAnalysis as mda  
 import MDAnalysis.transformations as transformations
 from MDAnalysis.core.groups import AtomGroup
+from . import leaflet_util as myleaflet
 from . import mol_atomgroup_util as mymol
 from . import msd_util as mymsd
 
