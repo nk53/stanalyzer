@@ -1,3 +1,7 @@
+if [ "$PKG_NAME" != "stanalyzer-dev" ]; then
+    exit 0
+fi
+
 cat << END >> $PREFIX/.messages.txt
 
 
