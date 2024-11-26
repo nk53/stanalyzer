@@ -34,7 +34,7 @@ conda env remove -n sta
 
 ## Installation via Conda (ST-Analyzer developers)
 
-Development installation entails obtaining the ST-Analyzer source code and and linking it to your python environment. Fortunately, this is easy to do within conda's framework:
+Development installation entails obtaining the ST-Analyzer source code and linking it to your python environment. Fortunately, this is easy to do within conda's framework:
 
 ```bash
 # install ST-Analyzer's dependencies and post-install helper
@@ -43,13 +43,13 @@ conda create -n sta-dev -c conda-forge nk53::stanalyzer-dev
 # enter environment
 conda activate sta-dev
 
-# downloads source code and links it in the environment's site-packages
+# download source code and link it in the environment's site-packages
 stanalyzer-finish-install
 ```
 
 Without any options, `stanalyzer-finish-install` asks where to save the source code before downloading and linking anything.
 
-The helper script is just an interactable version of these two commands:
+The helper script is just an interactive version of these two commands:
 
 ```bash
 git clone "git@github:nk53/stanalyzer.git" dir_to_save_to
