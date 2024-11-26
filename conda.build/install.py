@@ -6,6 +6,13 @@ pip_e_URL = "https://pip.pypa.io/en/stable/topics/local-project-installs" +\
 repo = "git@github.com:nk53/stanalyzer.git"
 
 
+def _run_or_die(cmd):
+    if result := os.system(cmd):
+        print(cmd[:10], '... failed with status', result, file=sys.stderr)
+        print("Exiting...", file=sys.stderr)
+        sys.exit(result)
+
+
 def finish_install():
     saveas = 'stanalyzer'
 
@@ -39,10 +46,11 @@ def finish_install():
 
     for cmd in cmds:
         print("Running:", cmd)
-        result = os.system(cmd)
-        if result:
-            print(cmd[:10], '... failed with status', result, file=sys.stderr)
-            print("Exiting...", file=sys.stderr)
-            sys.exit(result)
+        _run_or_die(cmd)
+
+    print("Removing temporary stanalyzer dir from site-packages")
+    import stanalyzer
+    sta_dir = stanalyzer.__path__[0]
+    _run_or_die(f"rm -rv {sta_dir}")
 
     print("Done")
