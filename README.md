@@ -96,5 +96,22 @@ args: stanalyzer system_size --time_step 1 --out system_size.out
 In all cases, the web GUI uses the verbose version of a command's options. To see all available options for a command and their aliases, use `stanalyzer [analysis_program] -h`. E.g.:
 
 ```bash
-stanalyzer system_size -h
+$ stanalyzer system_size -h
+usage: stanalyzer system_size [-h] [-p FILE] [-t FILE [FILE ...]] [-o OUT]
+                              [-ts TIME_STEP] [-i INTERVAL] [-a]
+
+options:
+  -h, --help            show this help message and exit
+  -p FILE, --psf FILE   File containing system topology (default: use project
+                        settings)
+  -t FILE [FILE ...], --traj FILE [FILE ...]
+                        One or more coordinate containing files (default: use
+                        project settings)
+  -o OUT, --out OUT     File to write results (default: stdout)
+  -ts TIME_STEP, --time_step TIME_STEP
+                        Amount of time between frames in trajectory files
+  -i INTERVAL, --interval INTERVAL
+                        step size when reading frames (default: 1 = read every
+                        frame)
+  -a, --include-angles
 ```
