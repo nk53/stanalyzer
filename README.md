@@ -2,129 +2,99 @@
 
 Currently, ST-Analyzer should be installed through Conda/Anaconda. Conda's installation instructions begin [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-ST-Analyzer has only been tested on macOS 14.5. It is unlikely to work on Windows in its current state, but may work on Linux.
+ST-Analyzer has been tested on macOS (x64 and arm64), Ubuntu (x64), and WSL (x64, running Ubuntu).
 
-## Conda installation
+See the section below for regular installation.
 
-You should install all ST-Analyzer dependencies in a separate environment so that they do not conflict with any other versions of packages you have. All relevant dependencies are included in `envs/sta-dev.yml`. To install them in a new `sta-dev` environment, run this command:
+For development installation, skip to the section __Installation via Conda (ST-Analyzer developers)__.
+
+## Installation via Conda (regular users)
+
+ST-Analyzer works best when it is installed in a fresh conda environment using the `conda-forge` channel. The example below installs into a new environment named `sta`:
 
 ```bash
-conda env create -f envs/sta-dev.yml
+conda create -n sta -c conda-forge nk53::stanalyzer
 ```
 
-### Temporary ModuleNotFoundError workaround
-
-Since the current installation method does not use official channels, your ST-Analyzer will probably not be located in your `PYTHONPATH`. As a result, when you attempt to use ST-Analyzer, you will probably see a message like this in your terminal:
+To use ST-Analyzer, first activate its environment:
 
 ```bash
-Traceback (most recent call last):
-...
-    from stanalyzer import utils
-ModuleNotFoundError: No module named 'stanalyzer'
+conda activate sta  # required once per shell session
 ```
 
-There are a few ways to fix this, but the one I recommend is shown below. Assuming you extracted the stanalyzer code into `~/path/to/stanalyzer`, then run the following commands:
+Then, you should have two new commands available: `stanalyzer` and `sta-server`. Their usage is explained in the __Usage__ section.
+
+### Troubleshooting: Installation
+If you get a message like "environment already exists", you should either use a different name or remove the old one. This command removes the sta environment:
 
 ```bash
-# create a dir named site-packages within ~/local, and create ~/local if necessary
-$ mkdir -p ~/local/site-packages
-# add stanalyzer to site-packages
-$ cd ~/local/site-packages
-$ ln -s ~/path/to/stanalyzer .
+# WARNING: Removes ST-Analyzer's environment (or other w/ name sta)
+conda env remove -n sta
 ```
 
-We created a place to store custom Python packages in `~/local/site-packages` and made a shortcut to `stanalyzer` in it, however to let Python know about this directory, we have to use this command:
+## Installation via Conda (ST-Analyzer developers)
+
+Development installation entails obtaining the ST-Analyzer source code and and linking it to your python environment. Fortunately, this is easy to do within conda's framework:
 
 ```bash
-$ export PYTHONPATH="$PYTHONPATH:$HOME/local/site-packages"
-```
+# install ST-Analyzer's dependencies and post-install helper
+conda create -n sta-dev -c conda-forge nk53::stanalyzer-dev
 
-If it worked, you should get no output when using this command:
-
-```bash
-$ python -c "import stanalyzer"
-```
-
-If you still see `ModuleNotFoundError`, check that your paths are correct.
-
-This command has to be run every time you start your shell. Rather than typing the command manually, you should add it to your shell profile. First, figure out which shell you're using:
-
-```bash
-$ echo $0
-```
-
-You'll probably see either zsh or bash (possibly prefixed by `-`). To find out where your profile is located, check the following paths in order.
-
-(For bash)
- * `~/.profile`
- * `~/.bash_profile`
- * `~/.bashrc`
-
-(For zsh)
- * `~/.zprofile`
- * `~/.zshrc`
-
-Create the file if it doesn't exist. Then add the command `export PYTHONPATH="$PYTHONPATH:$HOME/local/site-packages"` to the file.
-
-You can tell if it worked by using this command in a new terminal:
-
-```bash
-$ echo $PYTHONPATH
-```
-
-If your result ends with something like `:/home/username/local/site-packages` or `:/Users/username/local/site-packages`, then it worked. Otherwise, try the next file in the list above.
-
-# Usage
-
-ST-Analyzer is in alpha development stage; it is intended to be run and accessed on your personal computer, but can be made accessible over the internet (see below).
-
-## The long way
-
-This approach should work without any hiccups. If it does not, please refer back to the installation instructions and ensure that you installed ST-Analyzer correctly.
-
-First, navigate your terminal to the ST-Analyzer directory. Then, run these commands:
-
-```bash
+# enter environment
 conda activate sta-dev
-uvicorn main:app --port 8000 --reload
+
+# downloads source code and links it in the environment's site-packages
+stanalyzer-finish-install
 ```
 
-This will run a web server in your shell's foreground and show you several debugging messages. The server will listen for connections on port 8000 and also automatically restart if any Python or Jinja2 files change while it is running. Note that it does not detect changes in other files (YAML, JS, CSS, etc.); to reflect changes in those files, you will need to manually restart the server.
+Without any options, `stanalyzer-finish-install` asks where to save the source code before downloading and linking anything.
 
-The server can be terminated by sending a keyboard interrupt signal (Ctrl-C on Mac/Linux) to its controlling terminal. To start it again, simply rerun the `uvicorn` command.
-
-Access the server by opening [127.0.0.1:8000](http://127.0.0.1:8000) in your web browser.
-
-## The short way (read long way first)
-
-If you're like me, you don't want to type more than five keys to do a common task like starting the server (especially if you need to restart it frequently) if you don't have to. The script `./run_server.sh` checks if the sta-dev environment is already loaded, loads it if necessary, starts the server, and (if using macOS) copies the web address+port to your clipboard.
-
-It has not been tested extensively, so YMMV. Check if it works like so (from ST-Analyzer root directory):
+The helper script is just an interactable version of these two commands:
 
 ```bash
-./run_server.sh
+git clone "git@github:nk53/stanalyzer.git" dir_to_save_to
+pip install --no-deps --ignore-installed --editable dir_to_save_to
 ```
 
-Since no other file in this directory should start with an `r`, this can be accomplished with five key presses: `.`, `/`, `r`, `<Tab>`, `<Enter>`. If everything worked correctly, you should be able to paste the address into your browser's address bar.
+This is known as an "editable" installation; updates to the source code reflect immediately without the need to repackage/reinstall `stanalyzer-dev`. The only reason to mess with conda is if something in the upstream environment changes, in which case `conda update stanalyzer-dev` should be enough.
 
-## Allowing remote connections
-
-To access the GUI via IPv4:
-
-1. Edit `run_server.sh` and add the option `--host 0.0.0.0` to `uvicorn`.
-2. Run `./run_server.sh`.
-3. Enter your assigned IP in your browser's address bar, including the port, e.g. `my.local.ip.addr:8000`.
-
-You will not be able to access the site via hostname unless your network supports hostname broadcasting or your hostname is registered by DNS.
-
-For IPv6 support, use `--host '::'`.
-
-To access without typing `:8000`, change the value of `--port` to `80`.
-
-# Caching Issues
+### Caching Issues
 
 If you are testing recent development changes to static files such as `forms.js` or `style.css`, you browser may be serving you the old version of a file. Some ways you can get around this:
 1. Clear your browser's cache of this site
 2. Disable caching for this site
 3. Open the site in a new private browsing window
 4. If using Firefox with developer tools enabled, open the network tab and toggle the "Disable caching" option.
+
+# Usage
+
+ST-Analyzer is in alpha development stage; it is intended to be run and accessed on your personal computer.
+
+## Web GUI: sta-server
+
+If ST-Analyzer was installed successfully, you should be able to start the Web GUI with 1-2 commands, run from anywhere:
+
+```bash
+conda activate sta  # if not already active
+sta-server
+```
+
+This runs the server process in the foreground of your current shell.
+
+If you did not receive any error messages, then the server should be listening for localhost connections, and will show the corresponding URL. At the time of this writing, it should be `http://127.0.0.1:8000`. You can copy and paste that into your browser's address bar to reach the ST-Analyzer front page.
+
+## Command-line tool: stanalyzer
+
+Advanced users often want to automate analysis themselves without dealing with the web UI. ST-Analyzer was designed with this goal in mind. All analysis processes can be run from the command line directly. In fact, this is what the web GUI is doing behind the scenes.
+
+The easiest way to get started with the command-line interface (CLI) is to first use the web interface to create a project and run a small sample analysis, e.g., the "System size" analysis with default settings. When an analysis job is successfully submitted through the web GUI, it writes the exact command needed to run the analysis from the command-line. E.g.:
+
+```bash
+args: stanalyzer system_size --time_step 1 --out system_size.out
+```
+
+In all cases, the web GUI uses the verbose version of a command's options. To see all available options for a command and their aliases, use `stanalyzer [analysis_program] -h`. E.g.:
+
+```bash
+stanalyzer system_size -h
+```
