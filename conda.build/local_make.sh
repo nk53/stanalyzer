@@ -4,7 +4,7 @@ output_folder=$HOME/Downloads/stanalyzer-builds
 output_archive=$output_folder.tgz
 
 if [ ! -e "$output_folder" ]; then
-    mkdir "$output_folder"
+    mkdir -p "$output_folder"
 fi
 
 CHANNEL="-c conda-forge"
