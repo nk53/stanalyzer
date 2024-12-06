@@ -1,15 +1,25 @@
 {% set hsep = '-' if suffix else '' %}
 
+{% set version = "0.1.0" %}
+{% set bld_stage = "beta" %}
+{% set bld_str = "v"~version %}
+{% set version_str = (bld_stage and version~"-"~bld_stage) or version %}
+
+{% set repo = "https://github.com/nk53/stanalyzer" %}
+{% set branch = "sta-unstable" %}
+
 package:
   name: stanalyzer{{ hsep }}{{ suffix }}
-  version: "0.1.0"
+  version: {{ version }}
 
 source:
-  git_url: https://github.com/nk53/stanalyzer.git
-  git_rev: sta
+  # url: {{ repo }}/archive/refs/tags/{{ bld_str }}.tar.gz
+  git_url: {{ repo }}.git
+  git_rev: {{ branch }}
 
 build:
   number: 1
+  string: {{ target_platform|replace("-", "_") }}
   noarch: python
   skip: True  # [win]
 {% if suffix %}
@@ -26,18 +36,20 @@ build:
 {% endif %}
 
 about:
-  home: https://github.com/nk53/stanalyzer
+  home: {{ repo }}
   license: MIT
   license_file: LICENSE
-  license_url: https://github.com/nk53/stanalyzer/blob/sta/LICENSE
+  license_url: {{ repo }}/blob/{{ branch }}/LICENSE
   summary: Command-line and web interface for common simulation trajectory analysis
   description: |
     An extensible framework for analyzing molecular dynamics simulation trajectories. Several analysis programs are provided, and sophisticated users can add their own analysis types.
-  dev_url: https://github.com/nk53/stanalyzer
-  doc_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
-  doc_source_url: https://github.com/nk53/stanalyzer/blob/sta/README.md
+  dev_url: {{ repo }}
+  doc_url: {{ repo }}/blob/{{ branch }}/README.md
+  doc_source_url: {{ repo }}/blob/{{ branch }}/README.md
 
 test:
+  requires:
+    - python {{ python_min }}
   imports:
     - stanalyzer
 {% if suffix != 'dev' %}
@@ -53,11 +65,11 @@ test:
 
 requirements:
   build:
-    - python=3.10
+    - python>={{ python_min }}
     - setuptools>=64
     - setuptools_scm>=8
   run:
-    - python=3.10
+    - python>={{ python_min }}
     - mdanalysis=2.7
     - paramiko=3.5
     - fabric=3.2
