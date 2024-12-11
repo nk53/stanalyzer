@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stanalyzer"
-version = "0.1.0"
+dynamic = ["version"]
 
 [tool.setuptools.package-dir]
 stanalyzer = "src"

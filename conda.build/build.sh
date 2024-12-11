@@ -5,7 +5,7 @@ if [ "$STA_SUFFIX" == "dev" ]; then
     cp $SRC_DIR/conda.build/__init__.py $SP_DIR/stanalyzer
 
 else
-    python -m pip install --no-deps --ignore-installed .
+    ${PYTHON} -m pip install --no-deps --ignore-installed .
 fi
 
 pth="$HOME/local/site-packages/stanalyzer"
