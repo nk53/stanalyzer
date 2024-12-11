@@ -1,0 +1,6 @@
+suffix:
+  - ""
+  # - client  # TODO: after the other builds work
+  - dev
+python_min:
+  - "3.10"
