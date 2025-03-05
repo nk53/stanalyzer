@@ -8,3 +8,5 @@ dynamic = ["version"]
 
 [tool.setuptools.package-dir]
 stanalyzer = "src"
+
+[tool.setuptools_scm]
