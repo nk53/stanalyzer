@@ -1,8 +1,2 @@
-suffix:
-  - ""
-  # - client  # TODO: after the other builds work
-  - dev
-numpy:
-  - 1.26
 python_min:
   - "3.10"
