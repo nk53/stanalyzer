@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "stanalyzer"
 dynamic = ["version"]
 
+[project.scripts]
+stanalyzer = "stanalyzer.cli.stanalyzer:main"
+sta-server = "stanalyzer.cli.stanalyzer:run_server"
+
 [tool.setuptools.package-dir]
 stanalyzer = "src"
 

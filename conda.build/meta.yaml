@@ -1,4 +1,4 @@
-{%- set tag = "1.0.0dev1" -%}
+{%- set tag = "1.0.0dev2" -%}
 {%- set version = tag|replace('-', '_') -%}
 
 
@@ -8,7 +8,6 @@ package:
 
 source:
   url: https://github.com/nk53/stanalyzer/archive/refs/tags/v{{ tag }}.tar.gz
-  sha256: cff3a28af7defe0c335cf7ddee68fee7244dc918a63dd32985330fe655d09f25
 
 build:
   number: 0
@@ -29,8 +28,6 @@ requirements:
   run:
     - python >={{ python_min }}
     - mdanalysis >=2.7
-    - paramiko >=3.5
-    - fabric >=3.2
     - invoke >=2.2
     - pyyaml >=6.0
     - fastapi >=0.115
