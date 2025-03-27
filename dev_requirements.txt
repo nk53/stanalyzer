@@ -1,0 +1,12 @@
+#
+# These packages are only needed for certain development activities.
+# Their purpose is described below. You can decide whether you want any of
+# them.
+#
+
+# language server integration with mypy; use if you want type checking
+pylsp-mypy>=0.6
+
+# for compiling online documentation
+sphinx>=8.1
+sphinx-js>=3.2

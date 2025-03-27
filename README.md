@@ -24,6 +24,26 @@ conda activate sta  # required once per shell session
 
 Then, you should have two new commands available: `stanalyzer` and `sta-server`. Their usage is explained in the __Usage__ section.
 
+### Optional features
+
+Some analysis programs require packages that do not work on all platforms:
+
+| Analysis              | Requires |
+|-----------------------|----------|
+| Secondary Structure   |   dssp   |
+| Pore Radius Histogram |   hole2  |
+| SASA                  | freesasa |
+
+If you don't need these programs, then you don't need to do anything.
+
+Otherwise, you can try to install them:
+
+```bash
+conda install -c conda-forge dssp hole2 freesasa
+```
+
+If installation fails, you may want to contact those packages' developers.
+
 ### Troubleshooting: Installation
 If you get a message like "environment already exists", you should either use a different name or remove the old one. This command removes the sta environment:
 
@@ -34,29 +54,34 @@ conda env remove -n sta
 
 ## Installation via Conda (ST-Analyzer developers)
 
-Development installation entails obtaining the ST-Analyzer source code and linking it to your python environment. Fortunately, this is easy to do within conda's framework:
+Development installation entails obtaining the ST-Analyzer source code and linking it to your python environment. The helper script `dev_install.sh` can run most of the steps for you:
 
 ```bash
-# install ST-Analyzer's dependencies and post-install helper
-conda create -n sta-dev -c conda-forge nk53::stanalyzer-dev
+# install ST-Analyzer's dependencies in a new environment
+conda create -n sta-dev --only-deps -c conda-forge nk53::stanalyzer
 
 # enter environment
 conda activate sta-dev
 
-# download source code and link it in the environment's site-packages
-stanalyzer-finish-install
+# download source code if you haven't already; otherwise skip this step
+git clone "git@github:nk53/stanalyzer.git"
+
+# go to project directory
+cd stanalyzer
+
+# install package in editable mode
+pip install -e .
 ```
 
-Without any options, `stanalyzer-finish-install` asks where to save the source code before downloading and linking anything.
+Editable installations let you update the source code without needing to repackage/reinstall anything; your changes will be reflected immediately. The only reason to mess with conda is if something in the upstream environment changes, in which case `conda update --only-deps stanalyzer` should be enough.
 
-The helper script is just an interactive version of these two commands:
+### Extra development dependencies
+
+You'll only need these if you want static type checking or to compile the online documentation. Check `dev_requirements.txt` if either of those interest you. You can pick and choose, or if you want all of the listed packages, do this:
 
 ```bash
-git clone "git@github:nk53/stanalyzer.git" dir_to_save_to
-pip install --no-deps --ignore-installed --editable dir_to_save_to
+conda install -c conda-forge --file dev_requirements.txt
 ```
-
-This is known as an "editable" installation; updates to the source code reflect immediately without the need to repackage/reinstall `stanalyzer-dev`. The only reason to mess with conda is if something in the upstream environment changes, in which case `conda update stanalyzer-dev` should be enough.
 
 ### Caching Issues
 
