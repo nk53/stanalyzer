@@ -1,9 +1,9 @@
 import argparse
 
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 import matplotlib.pyplot as plt
 import numpy as np
-from MDAnalysis.analysis import hole2  # type: ignore
+from MDAnalysis.analysis import hole2
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_int

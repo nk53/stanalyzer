@@ -1,15 +1,14 @@
 import argparse
-import sys
-import io
-from typing import Optional, cast
+from typing import Optional
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda    # type: ignore
+import MDAnalysis as mda
 import numpy as np
 
 ANALYSIS_NAME = 'helix_distance_crossing_angle'
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+
+def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""
@@ -24,17 +23,19 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
 
 def write_helix_distance_crossing_angle(psf: sta.FileRef, traj: sta.FileRefList,
-                                  helix1_start: int, helix1_end: int, 
-                                  helix2_start: int, helix2_end: int, 
-                                  out: sta.FileRef, interval: int = 1) -> None:
+                                        helix1_start: int, helix1_end: int,
+                                        helix2_start: int, helix2_end: int,
+                                        out: sta.FileRef, interval: int = 1) -> None:
     """Writes distance and crossing angle between two helices to `out` file"""
 
     # Load the universe with the trajectory and topology
     mobile = mda.Universe(psf, traj)
-    
+
     # Select atoms for helix1 and helix2 based on residue ranges
-    helix1 = mobile.select_atoms(f"resid {helix1_start}:{helix1_end} and name CA")
-    helix2 = mobile.select_atoms(f"resid {helix2_start}:{helix2_end} and name CA")
+    helix1 = mobile.select_atoms(
+        f"resid {helix1_start}:{helix1_end} and name CA")
+    helix2 = mobile.select_atoms(
+        f"resid {helix2_start}:{helix2_end} and name CA")
 
     # Function to calculate the principal axis
     def calculate_principal_axis(atoms):
@@ -51,23 +52,27 @@ def write_helix_distance_crossing_angle(psf: sta.FileRef, traj: sta.FileRefList,
         cog2 = helix2.center_of_geometry()
         axis1 = calculate_principal_axis(helix1)
         axis2 = calculate_principal_axis(helix2)
-        
+
         # Calculate helix-helix distance
-        distance = np.linalg.norm(np.cross(cog2 - cog1, axis1)) / np.linalg.norm(axis1)
-        
+        distance = np.linalg.norm(
+            np.cross(cog2 - cog1, axis1)) / np.linalg.norm(axis1)
+
         # Calculate crossing angle Ω
         h = (cog2 - cog1) / np.linalg.norm(cog2 - cog1)
-        cross_angle = np.degrees(np.arccos(np.dot(np.cross(axis1, h), np.cross(h, axis2)) / 
-                                           (np.linalg.norm(np.cross(axis1, h)) * np.linalg.norm(np.cross(h, axis2)))))
-        
+        cross_angle = np.degrees(
+            np.arccos(np.dot(np.cross(axis1, h), np.cross(h, axis2)) /
+                      (np.linalg.norm(np.cross(axis1, h))
+                       * np.linalg.norm(np.cross(h, axis2)))))
+
         # Collect the results
         results.append((mobile.trajectory.time, distance, cross_angle))
 
     # Convert results to a numpy array
     results = np.array(results)
-    
+
     with sta.resolve_file(out, 'w') as outfile:
-        np.savetxt(outfile, results, fmt='%10.5f %10.5f %10.5f', header=header(np_formatted=True))
+        np.savetxt(outfile, results, fmt='%10.5f %10.5f %10.5f',
+                   header=header(np_formatted=True))
 
 
 def get_parser() -> argparse.ArgumentParser:

@@ -1,7 +1,7 @@
 import argparse
 from typing import Optional, TypeAlias, cast
 
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 import numpy as np
 
 import stanalyzer.cli.stanalyzer as sta
@@ -13,7 +13,7 @@ FRAME_COUNTS: TypeAlias = list[int]             # number of frames for a single 
 FRAME_DIST: TypeAlias = tuple[float, float]     # mean +/- standard deviation
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""

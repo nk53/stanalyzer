@@ -1,11 +1,11 @@
 import argparse
 import typing as t
 
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 import numpy as np
 import matplotlib.pyplot as plt
-from MDAnalysis.analysis import align  # type: ignore
-from sklearn.decomposition import PCA  # type: ignore
+from MDAnalysis.analysis import align
+from sklearn.decomposition import PCA
 
 import stanalyzer.cli.stanalyzer as sta
 

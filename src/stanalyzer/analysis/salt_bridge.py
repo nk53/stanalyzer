@@ -2,8 +2,8 @@ import argparse
 import numpy as np
 from operator import itemgetter
 
-import MDAnalysis as mda  # type: ignore
-from MDAnalysis.analysis import contacts  # type: ignore
+import MDAnalysis as mda
+from MDAnalysis.analysis import contacts
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_float

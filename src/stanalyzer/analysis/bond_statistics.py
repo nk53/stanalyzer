@@ -2,26 +2,55 @@ import argparse
 import re
 import typing as t
 from collections import defaultdict, namedtuple
+from collections.abc import Iterable
 
 import numpy as np
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 import stanalyzer.cli.stanalyzer as sta
 
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+
 ANALYSIS_NAME = 'bond_statistics'
-
-OptFileLike: t.TypeAlias = sta.FileRef | None
-
 
 # defining bond, angles and dihedral tuples
 Bond = namedtuple('Bond', ['group1', 'group2'])
 Angle = namedtuple('Angle', ['group1', 'group2', 'group3'])
 Dihedral = namedtuple('Dihedral', ['group1', 'group2', 'group3', 'group4'])
 
+T = t.TypeVar('T')  # for generic type definitions
+G = t.TypeVar('G', Bond, Angle, Dihedral)  # G = group
 
-def calculate_atomgroup_positions(u, groups, method="cog"):
+OptFileLike: t.TypeAlias = sta.FileRef | None
+Params: t.TypeAlias = list[Bond] | list[Angle] | list[Dihedral]
+IndexDict: t.TypeAlias = dict[str, list[int]]
+Coors: t.TypeAlias = 'npt.NDArray[np.float_]'
+CoorMap: t.TypeAlias = dict[str, list[Coors]]
+CentroidType: t.TypeAlias = t.Literal['com', 'cog']
+Stats: t.TypeAlias = dict[G, list[np.float_]]
+
+
+class BondParams(t.TypedDict, total=False):
+    index: IndexDict
+    bonds: list[Bond]
+    angles: list[Angle]
+    dihedrals: list[Dihedral]
+
+
+class BondStats(t.TypedDict, total=False):
+    atomgroup_positions: CoorMap
+    bond_lengths: Stats[Bond]
+    bond_angles: Stats[Angle]
+    bond_dihedrals: Stats[Dihedral]
+
+
+def calculate_atomgroup_positions(
+        u: mda.Universe, groups: IndexDict,
+        method: CentroidType = "cog") -> CoorMap:
     """Calculates the position of each group of atoms using center of geometry
     or center of mass based on user input."""
-    atomgroup_positions = defaultdict(list)
+    atomgroup_positions: dict[str, list[Coors]] = defaultdict(list)
+    centroid: Coors
     for ts in u.trajectory:
         for group, indices in groups.items():
             selected_atoms = u.atoms[np.array(indices) - 1]
@@ -34,9 +63,10 @@ def calculate_atomgroup_positions(u, groups, method="cog"):
     return atomgroup_positions
 
 
-def calculate_bond_lengths(atomgroup_positions, bonds):
+def calculate_bond_lengths(atomgroup_positions: CoorMap,
+                           bonds: Iterable[Bond]) -> Stats[Bond]:
     """Calculates bond lengths for each bond and frame."""
-    bond_lengths = defaultdict(list)
+    bond_lengths: Stats[Bond] = defaultdict(list)
     for bond in bonds:
         for pos1, pos2 in zip(atomgroup_positions[bond.group1], atomgroup_positions[bond.group2]):
             length = np.linalg.norm(pos1 - pos2)
@@ -44,9 +74,10 @@ def calculate_bond_lengths(atomgroup_positions, bonds):
     return bond_lengths
 
 
-def calculate_bond_angles(atomgroup_positions, angles):
+def calculate_bond_angles(atomgroup_positions: CoorMap,
+                          angles: Iterable[Angle]) -> Stats[Angle]:
     """Calculates bond angles for each angle and frame."""
-    bond_angles = defaultdict(list)
+    bond_angles: Stats[Angle] = defaultdict(list)
     for angle in angles:
         for pos1, pos2, pos3 in zip(atomgroup_positions[angle.group1],
                                     atomgroup_positions[angle.group2],
@@ -61,7 +92,8 @@ def calculate_bond_angles(atomgroup_positions, angles):
     return bond_angles
 
 
-def calculate_bond_dihedrals(atomgroup_positions, dihedrals):
+def calculate_bond_dihedrals(atomgroup_positions: CoorMap,
+                             dihedrals: Iterable[Dihedral]) -> Stats[Dihedral]:
     """Calculates dihedral angles for each dihedral and frame."""
     dihedral_angles = defaultdict(list)
     for dihedral in dihedrals:
@@ -92,7 +124,7 @@ def calculate_bond_dihedrals(atomgroup_positions, dihedrals):
     return dihedral_angles
 
 
-def read_index_file(index_file: sta.FileRef):
+def read_index_file(index_file: sta.FileRef) -> BondParams:
     """Reads the index file and returns a dictionary of bead groups, bonds,
     angles, and dihedrals."""
 
@@ -107,10 +139,10 @@ def read_index_file(index_file: sta.FileRef):
 
         return groups
 
-    groups_indices: dict[str, list] = defaultdict(list)
-    bonds = []
-    angles = []
-    dihedrals = []
+    groups_indices: IndexDict = defaultdict(list)
+    bonds: list[Bond] = []
+    angles: list[Angle] = []
+    dihedrals: list[Dihedral] = []
 
     sections = '[INDEX]', '[BONDS]', '[ANGLES]', '[DIHEDRALS]'
     in_section = False
@@ -144,7 +176,7 @@ def read_index_file(index_file: sta.FileRef):
                     dihedrals.append(Dihedral(*groups))
 
     # Return results, excluding empty lists
-    bond_parameters: dict[str, t.Any] = {'index': groups_indices}
+    bond_parameters: BondParams = {'index': groups_indices}
     if bonds:
         bond_parameters['bonds'] = bonds
     if angles:
@@ -155,10 +187,10 @@ def read_index_file(index_file: sta.FileRef):
     return bond_parameters
 
 
-def convert_atom_groups(input_str: str):
+def convert_atom_groups(input_str: str) -> BondParams:
     """Extracts information from text input"""
     # Initialize the defaultdict for groups and dictionary for results
-    groups_indices = defaultdict(list)
+    groups_indices: IndexDict = defaultdict(list)
 
     # Use regex to extract the groups from the string
     groups: list[str] = re.findall(r'\((.*?)\)', input_str)
@@ -169,7 +201,7 @@ def convert_atom_groups(input_str: str):
         group_list = list(map(int, group.split(',')))
         groups_indices[group_name] = group_list
 
-    bond_parameters: dict[str, t.Any] = {'index': groups_indices}
+    bond_parameters: BondParams = {'index': groups_indices}
 
     # Prepare the bond parameters based on the method
     match len(groups):
@@ -191,7 +223,8 @@ def convert_atom_groups(input_str: str):
     return bond_parameters
 
 
-def process_bond_parameters(filename_or_str: sta.FileRef, index: bool = False):
+def process_bond_parameters(filename_or_str: sta.FileRef,
+                            index: bool = False) -> BondParams:
     """Determines whether to run read_index_file or convert_atom_groups based
     on the index parameter.
 
@@ -208,8 +241,9 @@ def process_bond_parameters(filename_or_str: sta.FileRef, index: bool = False):
     raise ValueError("Need either an index file or an atom group str")
 
 
-def analyze_bond_parameters_from_process(universe: mda.Universe, index_file: OptFileLike = None,
-                                         atom_groups: str = '', centroid: str = 'cog'):
+def analyze_bond_parameters_from_process(
+        universe: mda.Universe, index_file: OptFileLike = None,
+        atom_groups: str = '', centroid: CentroidType = 'cog') -> BondStats:
 
     """Determines whether to run read_index_file or convert_atom_groups based
     on the index parameter, then calculates atom group positions, bond lengths,
@@ -244,12 +278,7 @@ def analyze_bond_parameters_from_process(universe: mda.Universe, index_file: Opt
         universe, groups, method=centroid)
 
     # Initialize results dictionary
-    results = {
-        'atomgroup_positions': atomgroup_positions,
-        'bond_lengths': None,
-        'bond_angles': None,
-        'bond_dihedrals': None
-    }
+    results: BondStats = {'atomgroup_positions': atomgroup_positions}
 
     if atomgroup_positions:
         # Calculate bond lengths if bonds are provided
@@ -271,7 +300,8 @@ def analyze_bond_parameters_from_process(universe: mda.Universe, index_file: Opt
     return results
 
 
-def write_bond_lengths_to_dat(outfile: sta.FileRef, bond_lengths) -> None:
+def write_bond_lengths_to_dat(outfile: sta.FileRef,
+                              bond_lengths: Stats[Bond]) -> None:
     """Writes bond lengths to a .dat file if they exist."""
     if bond_lengths:  # Check if there are bond lengths to write
         with sta.resolve_file(outfile, 'w') as f:
@@ -282,7 +312,8 @@ def write_bond_lengths_to_dat(outfile: sta.FileRef, bond_lengths) -> None:
                     f.write(f"{length:.4f}\n")
 
 
-def write_bond_angles_to_dat(outfile: sta.FileRef, bond_angles) -> None:
+def write_bond_angles_to_dat(outfile: sta.FileRef,
+                             bond_angles: Stats[Angle]) -> None:
     """Writes bond angles to a .dat file if they exist."""
     if bond_angles:  # Check if there are bond angles to write
         with sta.resolve_file(outfile, 'w') as f:
@@ -295,7 +326,8 @@ def write_bond_angles_to_dat(outfile: sta.FileRef, bond_angles) -> None:
                     f.write(f"{value:.4f}\n")
 
 
-def write_bond_dihedrals_to_dat(outfile: sta.FileRef, bond_dihedrals) -> None:
+def write_bond_dihedrals_to_dat(outfile: sta.FileRef,
+                                bond_dihedrals: Stats[Dihedral]) -> None:
     """Writes bond dihedrals to a .dat file if they exist."""
     if bond_dihedrals:  # Check if there are bond dihedrals to write
         with sta.resolve_file(outfile, 'w') as f:
@@ -309,7 +341,7 @@ def write_bond_dihedrals_to_dat(outfile: sta.FileRef, bond_dihedrals) -> None:
                     f.write(f"{value:.4f}\n")
 
 
-def write_files(results: dict[str, t.Any],
+def write_files(results: BondStats,
                 bond_out: sta.FileRef = 'bond_lengths.dat',
                 angle_out: sta.FileRef = 'bond_angles.dat',
                 dihedral_out: sta.FileRef = 'bond_dihedrals.dat') -> None:

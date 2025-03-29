@@ -1,21 +1,19 @@
 import argparse
-from typing import Optional, cast
+from typing import Optional
 import io
 
-import stanalyzer.bin.stanalyzer as sta
-import MDAnalysis as mda    # type: ignore
+import stanalyzer.cli.stanalyzer as sta
+import MDAnalysis as mda
 import numpy as np
 
-from MDAnalysis.analysis.align import AlignTraj  # type: ignore
-from MDAnalysis.analysis.rms import RMSF  # type: ignore
-
-import stanalyzer.cli.stanalyzer as sta
+from MDAnalysis.analysis.align import AlignTraj
+from MDAnalysis.analysis.rms import RMSF
 
 
 ANALYSIS_NAME = 'rmsf'
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""
@@ -28,10 +26,11 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
     return header_str
 
+
 def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf: str,
-                             out: sta.FileRef, align_out: io.TextIOWrapper,
-                             ref_psf: Optional[sta.FileRef] = None,
-                             interval: int = 1) -> None:
+               out: sta.FileRef, align_out: io.TextIOWrapper,
+               ref_psf: Optional[sta.FileRef] = None,
+               interval: int = 1) -> None:
     """Writes RMSF (Root Mean Square Fluctuation) to `out` file."""
 
     if ref_psf is None:
@@ -42,11 +41,10 @@ def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf
     ref = mda.Universe(ref_psf, traj[0])
 
     # Align the mobile trajectory to the reference based on the selection for alignment
-    alignment = AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
 
     # Load the aligned trajectory from the saved file
     aligned_mobile = mda.Universe(psf, align_out.name)
-
 
     # Calculate RMSF using the aligned trajectory and the selection for RMSF calculation
     # rmsf_analysis = RMSF(mobile.select_atoms(sel_rmsf)).run()
@@ -78,7 +76,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Write aligned trajectory to this path")
 
     return parser
-
 
 
 def main(settings: Optional[dict] = None) -> None:

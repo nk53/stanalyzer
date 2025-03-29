@@ -12,17 +12,18 @@ from .validators import exec_name, p_int, p_float
 from ..utils import read_json
 
 
-class ExistingFile:
-    def __new__(cls, path: str):
-        p = Path(path)
-        if not p.exists():
-            raise FileNotFoundError(f"No such file: '{path}'")
-        if not p.is_file():
-            raise ValueError(f"'{path}' is not a regular file")
-        return path
+def ExistingFile(path: str) -> str:
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"No such file: '{path}'")
+    if not p.is_file():
+        raise ValueError(f"'{path}' is not a regular file")
+    return path
 
 
 class LazyFile:
+    _lazyfile_obj: 'FileLike' | None
+
     def __init__(self, *args, **kwargs):
         """Doesn't open a file until access is attempted. Args eventually
         passed to builtin open()
@@ -31,39 +32,37 @@ class LazyFile:
         self._lazyfile_kwargs = kwargs
         self._lazyfile_obj = None
 
-    def __enter__(self):
-        self._lazyfile_resolve()
-        return self._lazyfile_obj.__enter__()
+    def __enter__(self) -> io.TextIOBase:
+        return self._lazyfile_resolve().__enter__()
 
     def __exit__(self, *args, **kwargs):
-        self._lazyfile_resolve()
-        return self._lazyfile_obj.__exit__(*args, **kwargs)
+        return self._lazyfile_resolve().__exit__(*args, **kwargs)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         self._lazyfile_resolve()
         return getattr(self._lazyfile_obj, name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if name.startswith('_lazyfile_'):
-            return object.__setattr__(self, name, value)
+            object.__setattr__(self, name, value)
 
         self._lazyfile_resolve()
-        return setattr(self._lazyfile_obj, name, value)
+        setattr(self._lazyfile_obj, name, value)
 
     def __iter__(self):
-        self._lazyfile_resolve()
-        return iter(self._lazyfile_obj)
+        return iter(self._lazyfile_resolve())
 
-    def _lazyfile_resolve(self):
+    def _lazyfile_resolve(self) -> io.TextIOBase:
         """Opens the file if not already opened"""
         if self._lazyfile_obj is None:
             # if file cannot be accessed, this may raise an OSError
             self._lazyfile_obj = open(*self._lazyfile_args, **self._lazyfile_kwargs)
 
-    def resolve(self) -> io.TextIOWrapper:
+        return cast(io.TextIOBase, self._lazyfile_obj)
+
+    def resolve(self) -> io.TextIOBase:
         """Returns the file handle, opening it, if necessary"""
-        self._lazyfile_resolve()
-        return self._lazyfile_obj
+        return self._lazyfile_resolve()
 
 
 class LazyJSONReader:
@@ -93,7 +92,6 @@ class LazyJSONReader:
     def _lazyjsonreader_resolve(self):
         if self._lazyjsonreader_data is None:
             self._lazyjsonreader_data = read_json(self._lazyjsonreader_file)
-
 
 def add_exec_args(subparser, *args: str) -> None:
     def add_exec_arg(arg):
@@ -301,7 +299,8 @@ analysis = None
 # lazy-loaded settings file containing defaults to use for absent arguments
 defaults: DictLike = {}
 # signals that a value should be obtained from the default dict
-from_settings = enum.Enum('default_action', 'from_settings')
+default_action = enum.Enum('default_action', 'from_settings')
+from_settings = default_action.from_settings
 
 if __name__ == '__main__':
     main()

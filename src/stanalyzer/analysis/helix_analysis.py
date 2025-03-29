@@ -7,16 +7,16 @@ import io
 from typing import Optional, cast
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda    # type: ignore
-from MDAnalysis.analysis.align import AlignTraj, AverageStructure  # type: ignore
-from MDAnalysis.analysis import helix_analysis as hel  # type: ignore
-import numpy as np
+import MDAnalysis as mda
+from MDAnalysis.analysis.align import AlignTraj, AverageStructure
+from MDAnalysis.analysis import helix_analysis as hel
 import matplotlib.pyplot as plt
 
 ANALYSIS_NAME = 'helix_analysis'
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: Optional[sta.FileLike] = None,
+           np_formatted: bool = False) -> str:
     """Returns a header string and optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""
@@ -30,12 +30,11 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
     return header_str
 
 
-def analyze_helix(traj: str, tpr: str, selection: str, output_file_handle: io.TextIOWrapper) -> None:
-
-    u = mda.Universe(tpr, traj)
+def analyze_helix(aligned: mda.Universe, selection: str,
+                  output_file_handle: io.TextIOBase) -> None:
 
     # Run helix analysis
-    h = hel.HELANAL(u, select=selection, ref_axis=[0, 0, 1]).run()
+    h = hel.HELANAL(aligned, select=selection, ref_axis=[0, 0, 1]).run()
 
     # Extract results
     global_axes = h.results.summary['global_axis']
@@ -46,11 +45,11 @@ def analyze_helix(traj: str, tpr: str, selection: str, output_file_handle: io.Te
     output_file_handle.write("Global Axes:\n")
     for key, val in global_axes.items():
         output_file_handle.write(f"{key}: {val}\n")
-    
+
     output_file_handle.write("\nGlobal Tilts:\n")
     for key, val in global_tilts.items():
         output_file_handle.write(f"{key}: {val:.3f}\n")
-    
+
     output_file_handle.write("\nAll Bends (shape: {}):\n".format(all_bends.shape))
     for i, frame in enumerate(all_bends[:, :, 0]):
         output_file_handle.write(f"Frame {i}: {frame}\n")
@@ -62,11 +61,13 @@ def analyze_helix(traj: str, tpr: str, selection: str, output_file_handle: io.Te
     plt.show()
 
 
-def write_helix_analysis(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_helix: str,
-                         out: sta.FileRef, align_out: io.TextIOWrapper, 
-                         ref_psf: Optional[sta.FileRef] = None, ref_coor: Optional[sta.FileRef] = None,
-                         ref_frame_type: str = 'specific', ref_frame_num: int = 1,
-                         interval: int = 1) -> None:
+def write_helix_analysis(
+        psf: sta.FileRef, traj: sta.FileRefList, sel_align: str,
+        sel_helix: str, out: sta.FileRef, align_out: io.TextIOWrapper,
+        ref_psf: Optional[sta.FileRef] = None,
+        ref_coor: Optional[sta.FileRef] = None,
+        ref_frame_type: str = 'specific', ref_frame_num: int = 1,
+        interval: int = 1) -> None:
     """Writes the helix analysis results to `out` file"""
 
     if ref_psf is None:
@@ -77,7 +78,7 @@ def write_helix_analysis(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str
     # Load mobile and reference universes
     mobile = mda.Universe(psf, traj)
     ref = mda.Universe(ref_psf, ref_coor)
-    
+
     # Select reference frame
     if ref_frame_type == 'specific':
         ref.transfer_to_memory(start=ref_frame_num-1, stop=ref_frame_num)
@@ -89,16 +90,15 @@ def write_helix_analysis(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str
         sys.exit(1)
 
     # Align the mobile trajectory to the reference and save the aligned trajectory
-    alignment = AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
 
     # Load the aligned trajectory from the saved file
-    aligned_mobile = mda.Universe(psf, align_out.name)
+    aligned_mobile = mda.Universe(psf, align_out.name)  # noqa: F841
 
     # Perform helix analysis and write results
     with sta.resolve_file(out, 'w') as outfile:
         analyze_helix(
-            traj=align_out.name,
-            tpr=psf,
+            aligned=aligned_mobile,
             selection=sel_helix,
             output_file_handle=outfile  # Pass file handle directly
         )

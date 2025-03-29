@@ -4,7 +4,7 @@ import random
 import string
 import sys
 
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import exec_name

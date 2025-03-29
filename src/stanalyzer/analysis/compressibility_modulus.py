@@ -1,14 +1,20 @@
 import argparse
-from typing import Optional
+import typing as t
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda  # type: ignore
+import MDAnalysis as mda
 import math
 
 ANALYSIS_NAME = 'compressibility_modulus'
 
+T = t.TypeVar('T')
+Array1D: t.TypeAlias = list[T]
+Array2D: t.TypeAlias = list[Array1D[T]]
+FL: t.TypeAlias = list[float]
+Tup5: t.TypeAlias = tuple[FL, FL, FL, FL, float]
 
-def header(outfile: Optional[sta.FileLike] = None) -> str:
+
+def header(outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
     header_str = "compressibility_modulus"
 
@@ -62,10 +68,11 @@ def write_compressibility_modulus(psf: sta.FileRef, traj: sta.FileRefList, out: 
         fact_dfdr = fact_gamma*ang2cm*dyn2new*ang2met*navog*joule2cal*1.e-3  # kcal/mol/A
         print('fact_dfdr:', fact_dfdr)
 
-    def read_data(u, j):
-
-        boxx, boxy, boxz = ([], [], [])
-        sa = []
+    def read_data(u: mda.Universe, j: int) -> Tup5:
+        boxx: FL = []
+        boxy: FL = []
+        boxz: FL = []
+        sa: FL = []
         norm = 0.0
         for i, ts in enumerate(u.trajectory[j*bs:j*bs+bs]):
             tboxx = ts.dimensions[0]  # boxx = boxy
@@ -76,27 +83,27 @@ def write_compressibility_modulus(psf: sta.FileRef, traj: sta.FileRefList, out: 
             boxz.append(tboxz)
             sa.append(tboxx*tboxy)
             norm += 1.0
-        return (boxx, boxy, boxz, sa, norm)
+        return boxx, boxy, boxz, sa, norm
 
     # setup 2d array
-    def init_array2(n1, n2):
-        array = []
+    def init_array2(n1: int, n2: int) -> Array2D[float]:
+        array: Array2D[float] = []
         for i in range(0, n1):
             array.append([])
             for j in range(0, n2):
                 array[i].append(0.0)  # initialize
         return array
 
-    def init_array1(n1):
-        array = []
+    def init_array1(n1: int) -> Array1D[float]:
+        array: Array1D[float] = []
         for i in range(0, n1):
             array.append(0.0)
         return array
 
     # calculate average & std of data in an array
-    def get_ave_var(array):
+    def get_ave_var(array: Array1D[float]) -> tuple[float, float]:
         ndata = len(array)
-        ave, var = (0.0, 0.0)
+        ave, var = 0.0, 0.0
         for i in range(0, ndata):
             tmp = array[i]
             ave += tmp
@@ -105,7 +112,7 @@ def write_compressibility_modulus(psf: sta.FileRef, traj: sta.FileRefList, out: 
         norm = float(ndata)
         ave /= norm
         var = var/norm-ave**2
-        return (ave, var)
+        return ave, var
 
     # -----------------
     #
@@ -130,11 +137,11 @@ def write_compressibility_modulus(psf: sta.FileRef, traj: sta.FileRefList, out: 
 
     # ave. sa,ka for the system
     # Ave. SA and its std from simple average over blocks
-    asa0, vsa0 = (0.0, 0.0)
+    asa0, vsa0 = 0.0, 0.0
     # Ave. KA and its std from simple average over blocks
-    aka0, vka0 = (0.0, 0.0)
-    asa, vsa = (0.0, 0.0)  # Ave. SA and its standard error
-    aka, vka = (0.0, 0.0)
+    aka0, vka0 = 0.0, 0.0
+    asa, vsa = 0.0, 0.0  # Ave. SA and its standard error
+    aka, vka = 0.0, 0.0
     sout = ""
     # loop over systems
     ntot = 0.0  # total sample size
@@ -224,7 +231,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

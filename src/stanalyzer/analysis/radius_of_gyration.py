@@ -3,16 +3,17 @@ import sys
 import io
 from typing import Optional, cast
 
-import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda    # type: ignore
 import numpy as np
+import MDAnalysis as mda
+from MDAnalysis.analysis.align import AlignTraj, AverageStructure
 
-from MDAnalysis.analysis.align import AlignTraj, AverageStructure  # type: ignore
+import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'radius_of_gyration'
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -> str:
     """Returns a header string and optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""

@@ -1,8 +1,8 @@
 import argparse
 import warnings
 
-import MDAnalysis as mda  # type: ignore
-from MDAnalysis.analysis.rdf import InterRDF  # type: ignore
+import MDAnalysis as mda
+from MDAnalysis.analysis.rdf import InterRDF
 import numpy as np
 
 import stanalyzer.cli.stanalyzer as sta
@@ -23,7 +23,7 @@ def header(outfile: sta.FileLike | None = None) -> str:
 
 
 def write_rdf(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel1: str,
-              sel2: str, bin_size: float):
+              sel2: str, bin_size: float) -> None:
     """Writes radial distribution fuction to 'out' file"""
 
     u = mda.Universe(psf, traj)

@@ -1,8 +1,8 @@
 import argparse
 import os
 
-import MDAnalysis as mda  # type: ignore
-import freesasa  # type: ignore
+import MDAnalysis as mda
+import freesasa
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_float

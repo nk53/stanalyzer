@@ -1,9 +1,9 @@
 import argparse
 import sys
 
-import MDAnalysis as mda  # type: ignore
-from MDAnalysis.transformations import center_in_box  # type: ignore
-from MDAnalysis.core.groups import AtomGroup  # type: ignore
+import MDAnalysis as mda
+from MDAnalysis.transformations import center_in_box
+from MDAnalysis.core.groups import AtomGroup
 
 import stanalyzer.cli.stanalyzer as sta
 

@@ -3,8 +3,8 @@ import sys
 import io
 from typing import Optional, TypeAlias, cast
 
-import MDAnalysis as mda    # type: ignore
-from MDAnalysis.analysis.align import AlignTraj, AverageStructure  # type: ignore
+import MDAnalysis as mda
+from MDAnalysis.analysis.align import AlignTraj, AverageStructure
 import numpy as np
 
 import stanalyzer.cli.stanalyzer as sta
@@ -15,7 +15,7 @@ ANALYSIS_NAME = 'rmsd'
 OptFileRef: TypeAlias = sta.LazyFile | io.TextIOWrapper | str | None
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""

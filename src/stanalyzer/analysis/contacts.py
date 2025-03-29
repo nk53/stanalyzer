@@ -1,9 +1,9 @@
 import argparse
 import typing as t
 
-import MDAnalysis as mda    # type: ignore
+import MDAnalysis as mda
 import numpy as np
-from MDAnalysis.analysis import distances  # type: ignore
+from MDAnalysis.analysis import distances
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_int, p_float

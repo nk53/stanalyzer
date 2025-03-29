@@ -1,15 +1,16 @@
 import argparse
-import sys
-from typing import Optional
-import io
+import typing as t
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda    # type: ignore
+import MDAnalysis as mda
 import numpy as np
 
 ANALYSIS_NAME = 'position_time'
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
+Axis: t.TypeAlias = t.Literal['x', 'y', 'z']
+
+
+def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file."""
     if np_formatted:
         header_str = "time input_axis"
@@ -21,8 +22,8 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted=False) -> str:
 
 def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
                         out: sta.FileRef, sel: str,
-                        method: Optional[str] = None,
-                        axis: Optional[str] = None) -> None:
+                        method: str | None = None,
+                        axis: Axis = 'z') -> None:
 
     u = mda.Universe(psf, traj)
     selected_atoms = u.select_atoms(sel)
@@ -38,10 +39,10 @@ def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
             centroid = selected_atoms.center_of_geometry()
 
         time_series.append([u.trajectory.time, centroid[axis_index]])
-        
+
     print("printing", axis_index, "position")
     print(time_series)
-    
+
     # Save to output file
     with sta.resolve_file(out, 'w') as outfile:
         np.savetxt(outfile, time_series, fmt='%10.5f %10.5f', header=header(np_formatted=True))
@@ -60,7 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

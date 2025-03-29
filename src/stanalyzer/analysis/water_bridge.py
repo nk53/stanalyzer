@@ -1,8 +1,8 @@
 import argparse
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda  # type: ignore
-from MDAnalysis.analysis.hydrogenbonds import WaterBridgeAnalysis as WBA  # type: ignore
+import MDAnalysis as mda
+from MDAnalysis.analysis.hydrogenbonds import WaterBridgeAnalysis as WBA
 
 ANALYSIS_NAME = 'water_bridge'
 

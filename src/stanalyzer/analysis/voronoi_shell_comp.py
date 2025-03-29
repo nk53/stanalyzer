@@ -2,11 +2,11 @@ import argparse
 import os
 import re
 
-import MDAnalysis as mda  # type: ignore
-import MDAnalysis.transformations as transformations  # type: ignore
+import MDAnalysis as mda
+import MDAnalysis.transformations as transformations
 import numpy as np
-from MDAnalysis.core.groups import AtomGroup  # type: ignore
-from scipy.spatial import Voronoi  # type: ignore
+from MDAnalysis.core.groups import AtomGroup
+from scipy.spatial import Voronoi
 
 import stanalyzer.cli.stanalyzer as sta
 from . import mol_atomgroup_util as mymol
