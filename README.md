@@ -140,3 +140,25 @@ options:
                         frame)
   -a, --include-angles
 ```
+
+# Uninstallation
+
+## Regular conda installations
+
+```bash
+conda remove stanalyzer
+```
+
+## Developer installations
+
+Note that pip's editable installation produces `stanalyzer.egg-info/`. This directory can interfere with complete package removal. To ensure that `__editable__.stanalyzer-*.pth` and `stanalyzer-*.dist-info/` can be removed from your distribution's `site-packages`, you should either ensure you are *not* in the same directory as `stanalyzer.egg-info/` *or* remove it.
+
+Then simply use `pip uninstall`.
+
+```bash
+# either this
+cd && pip uninstall stanalyzer
+
+# or this
+rm -r stanalyzer.egg-info && pip uninstall stanalyzer
+```

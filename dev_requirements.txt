@@ -5,6 +5,7 @@
 #
 
 # language server integration with mypy; use if you want type checking
+mypy>=1.15
 pylsp-mypy>=0.6
 
 # for compiling online documentation
