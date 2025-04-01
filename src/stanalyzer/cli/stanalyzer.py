@@ -22,7 +22,7 @@ def ExistingFile(path: str) -> str:
 
 
 class LazyFile:
-    _lazyfile_obj: 'FileLike' | None
+    _lazyfile_obj: 'FileLike | None'
 
     def __init__(self, *args, **kwargs):
         """Doesn't open a file until access is attempted. Args eventually
@@ -262,11 +262,29 @@ def resolve_ts(time_step: int | float | str) -> float:
 
 def run_server():
     """Entry point for wrapper scripts"""
+    def ip_addr(v: str) -> str:
+        parts = v.split('.')
+        if len(parts) != 4:
+            raise ValueError(f"Invalid IP address: '{v}'")
+        for part in parts:
+            if (intval := int(part)) < 0 or intval > 255:
+                raise ValueError(f"Address component out of range: '{part}'")
+        return v
+
     import stanalyzer
     os.chdir(stanalyzer.__path__[0])
 
+    parser = argparse.ArgumentParser(
+        description="Start the ST-Analyzer web server")
+    parser.add_argument('-p', '--port', type=int, default=8000,
+                        help="(default: 8000)")
+    parser.add_argument('--host', type=ip_addr, default='127.0.0.1',
+                        help="(default: 127.0.0.1)")
+    args = parser.parse_args()
+
     import uvicorn
-    uvicorn.run('stanalyzer.main:app', port=8000, log_level='info')
+    uvicorn.run('stanalyzer.main:app', host=args.host, port=args.port,
+                log_level='info')
 
 
 def main(analysis_name: str | None = None, settings: "DictLike | None" = None) -> Any:
