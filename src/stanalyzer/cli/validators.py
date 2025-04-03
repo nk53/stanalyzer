@@ -58,7 +58,7 @@ def nn_float(value: t.Any) -> float:
 # Misc
 #
 
-def exec_name(value: t.Any, error=True) -> str | None:
+def exec_name(value: t.Any, error: bool = True) -> str | None:
     """Searches PATH for exec. The path is returned if found; else None.
 
     If error is True and the path was not found, raises a ValueError.

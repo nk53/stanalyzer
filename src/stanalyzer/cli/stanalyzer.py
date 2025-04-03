@@ -82,22 +82,22 @@ class LazyJSONReader:
         return setattr(self._lazyjsonreader_data, name, value)
 
     def __getitem__(self, key):
-        self._lazyjsonreader_resolve()
-        return self._lazyjsonreader_data[key]
+        return self._lazyjsonreader_resolve()[key]
 
     def __setitem__(self, key, value):
-        self._lazyjsonreader_resolve()
-        self._lazyjsonreader_data[key] = value
+        self._lazyjsonreader_resolve()[key] = value
 
-    def _lazyjsonreader_resolve(self):
+    def _lazyjsonreader_resolve(self) -> dict:
         if self._lazyjsonreader_data is None:
             self._lazyjsonreader_data = read_json(self._lazyjsonreader_file)
+        return cast(dict, self._lazyjsonreader_data)
 
-def add_exec_args(subparser, *args: str) -> None:
+
+def add_exec_args(subparser: Any, *args: str) -> None:
     def add_exec_arg(arg):
         default = exec_name(arg, error=False)
 
-        def path_or_raise(value: str):
+        def path_or_raise(value: str) -> str | None:
             if value:
                 return exec_name(value)
 
@@ -153,9 +153,16 @@ def add_project_args(subparser, *args):
 def get_settings(analysis_name: str | None = None) -> dict:
     global analysis, defaults
 
-    parser = argparse.ArgumentParser(description='TODO', prog='stanalyzer')
+    parser = argparse.ArgumentParser(
+        description='Run or list available analysis modules.', prog='stanalyzer',
+        usage="%(prog)s [-hlc] [-s FILE] [analysis_name [-h] [ARGS ...]]")
     if analysis_name is None:
-        parser.add_argument('analysis_name')
+        parser.add_argument('analysis_name', nargs='?', help='Name of analysis to run. '
+                            'See `stanalyzer analysis_name -h` for analysis specific options')
+    parser.add_argument('-l', '--list', action='store_true',
+                        help='List available analysis modules')
+    parser.add_argument('-c', '--compact', action='store_true',
+                        help='Show available modules on one line. Implies --list.')
     parser.add_argument('-s', '--settings', metavar='file', default='project.json',
                         help='specify name of file containing settings (default: project.json)')
 
@@ -168,6 +175,7 @@ def get_settings(analysis_name: str | None = None) -> dict:
     if analysis_name is None:
         main_args = []
         prev_arg = None
+        idx = 0
         for idx, arg in enumerate(full_args):
             if arg.startswith('-'):
                 main_args.append(arg)
@@ -180,11 +188,28 @@ def get_settings(analysis_name: str | None = None) -> dict:
             prev_arg = arg
 
         args = parser.parse_args(main_args)
-        remaining_args = full_args[idx+1:]
+        remaining_args = full_args[idx+1:] if len(full_args) > idx else []
+
+    if args.list or args.compact:
+        print("List of available analysis modules:")
+        analyses = sorted(list_analyses())
+
+        if args.compact:
+            print(f"    {', '.join(analyses)}")
+            sys.exit(0)
+
+        for analysis in analyses:
+            print(f"    {analysis}")
+
+        sys.exit(0)
 
     # TODO: allow only registered imports
     if analysis_name is None:
         analysis_name = args.analysis_name
+    if analysis_name is None:
+        print("error: missing analysis name")
+        parser.print_help()
+        sys.exit(15)
 
     if analysis_name == 'config':
         # run config tool and exit
@@ -201,7 +226,6 @@ def get_settings(analysis_name: str | None = None) -> dict:
         _import_name = f"stanalyzer.analysis.{analysis_name}"
         analysis = import_module(_import_name)
     except ModuleNotFoundError as exc:
-        # TODO: show registered analysis modules in a convenient list
         if exc.name == _import_name:
             print(f"Error: Not a known analysis type: {analysis_name}", file=sys.stderr)
             parser.print_usage(file=sys.stderr)
@@ -209,7 +233,7 @@ def get_settings(analysis_name: str | None = None) -> dict:
 
         raise  # analysis_name found, but causes ModuleNotFoundError
 
-    analysis_parser = analysis.get_parser()
+    analysis_parser: argparse.ArgumentParser = analysis.get_parser()
     analysis_settings = analysis_parser.parse_args(remaining_args)
 
     settings = analysis_settings.__dict__
@@ -287,6 +311,35 @@ def run_server():
                 log_level='info')
 
 
+def list_analyses() -> list[str]:
+    """Show module name in ST-Analyzer's analysis directory.
+
+    Modules are listed if they define `main` and `get_parser` functions.
+    """
+    import stanalyzer
+    sta_root = stanalyzer.__path__[0]
+    analysis_dir = Path(sta_root) / "analysis"
+
+    analyses: list[str] = []
+    for path in analysis_dir.iterdir():
+        # skip non-python files
+        if not path.name.endswith('.py'):
+            continue
+        # import may have side effects; just check for 'def main(...'
+        has_main = has_parser = False
+        with path.open() as file_obj:
+            for line in file_obj:
+                if line.startswith('def main'):
+                    has_main = True
+                elif line.startswith('def get_parser'):
+                    has_parser = True
+
+        if has_main and has_parser:
+            analyses.append(path.stem)
+
+    return analyses
+
+
 def main(analysis_name: str | None = None, settings: "DictLike | None" = None) -> Any:
     # MDAnalysis and its imports like to throw dev warnings that are hard to disable
     if not sys.warnoptions:
@@ -313,7 +366,7 @@ FileRef: TypeAlias = FileLike | str
 FileRefList: TypeAlias = list[FileRef]
 
 # module containing analysis to run
-analysis = None
+analysis: Any | None = None
 # lazy-loaded settings file containing defaults to use for absent arguments
 defaults: DictLike = {}
 # signals that a value should be obtained from the default dict
