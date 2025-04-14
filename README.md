@@ -13,7 +13,7 @@ For development installation, skip to the section __Installation via Conda (ST-A
 ST-Analyzer works best when it is installed in a fresh conda environment using the `conda-forge` channel. The example below installs into a new environment named `sta`:
 
 ```bash
-conda create -n sta -c conda-forge nk53::stanalyzer
+conda create -n sta -c conda-forge stanalyzer
 ```
 
 To use ST-Analyzer, first activate its environment:
