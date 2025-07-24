@@ -70,7 +70,10 @@ git clone "git@github:nk53/stanalyzer.git"
 cd stanalyzer
 
 # install package in editable mode
+export SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0dev0
 pip install -e .
+
+# above step (including export) is also handled by ./dev_install.sh
 ```
 
 Editable installations let you update the source code without needing to repackage/reinstall anything; your changes will be reflected immediately. The only reason to mess with conda is if something in the upstream environment changes, in which case `conda update --only-deps stanalyzer` should be enough.

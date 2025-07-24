@@ -18,6 +18,7 @@ import invoke
 from stanalyzer import utils
 from stanalyzer.db import db
 from stanalyzer import validation
+from stanalyzer._typing import Any, StrDict, StrDictList
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -34,22 +35,24 @@ db.setup_db()
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request) -> HTMLResponse:
     return await page(request, "home")
 
 
 @app.get("/{page}", response_class=HTMLResponse)
-async def page(request: Request, page: str):
-    if page not in PAGES:
-        page = "404"
-
+async def page(request: Request, page: str) -> HTMLResponse:
     context = {
         "request": request, "page_id": page, "menu": MENU,
-        "page": PAGES[page], "auto_tooltip": utils.auto_tooltip,
+        "page": PAGES.get(page, None), "auto_tooltip": utils.auto_tooltip,
         "call_macro_by_name": utils.call_macro_by_name,
     }
+    kwargs: dict[str, Any] = {}
 
-    if page == 'analysis':
+    if page not in PAGES:
+        context['page'] = PAGES["404"]
+        context['page_id'] = "404"
+        kwargs['status_code'] = 404
+    elif page == 'analysis':
         context['analysis_form'] = ANALYSIS
         context['projects_menu'] = [
             (p['id'], p['title']) for p in db.get_user_projects(uid=1).values()
@@ -67,11 +70,11 @@ async def page(request: Request, page: str):
         context['application_path'] = os.getcwd()
         context['python_path'] = sys.executable
 
-    return templates.TemplateResponse("layouts/single_page.html", context)
+    return templates.TemplateResponse("layouts/single_page.html", context, **kwargs)
 
 
 @app.post("/analysis")
-async def insert_analysis(settings: dict):
+async def insert_analysis(settings: dict) -> StrDict | StrDictList:
     job_settings = utils.get_active_settings(settings, ANALYSIS)
     project_id = int(settings['project'])
     project_settings = db.get_user_projects(uid=1).get(project_id)
@@ -98,9 +101,9 @@ async def insert_analysis(settings: dict):
 
             # setup invocation args
             program = f'python -m stanalyzer {analysis}'
-            bool_args = tuple(f'--{k} "{v}"' for k,v in analysis_settings.items()
+            bool_args = tuple(f'--{k} "{v}"' for k, v in analysis_settings.items()
                               if not isinstance(v, bool))
-            other_args = tuple(f'--{k}' for k,v in analysis_settings.items() if v is True)
+            other_args = tuple(f'--{k}' for k, v in analysis_settings.items() if v is True)
             args = ' '.join(bool_args + other_args)
 
             args = f"{program} {args}"
@@ -130,7 +133,7 @@ async def insert_analysis(settings: dict):
 
 
 @app.put("/project")
-async def update_project(settings: validation.Project):
+async def update_project(settings: validation.Project) -> StrDict:
     time_step = settings.time_step
 
     model_dict = settings.model_dump()
@@ -152,7 +155,8 @@ async def update_project(settings: validation.Project):
 
 
 @app.post("/project")
-async def insert_project(request: Request, settings: validation.Project):
+async def insert_project(request: Request,
+                         settings: validation.Project) -> StrDict:
     time_step = settings.time_step
 
     model_dict = settings.model_dump()
@@ -175,7 +179,7 @@ async def insert_project(request: Request, settings: validation.Project):
 
 
 @app.delete("/project")
-async def delete_project(settings: validation.Project):
+async def delete_project(settings: validation.Project) -> StrDict:
     model_dict = settings.model_dump()
     model_dict['uid'] = 1   # TODO: get user id
 
