@@ -203,7 +203,7 @@ def get_settings(analysis_name: str | None = None) -> dict:
 
         sys.exit(0)
 
-    # TODO: allow only registered imports
+    # TODO: allow only registered imports?
     if analysis_name is None:
         analysis_name = args.analysis_name
     if analysis_name is None:
@@ -304,11 +304,14 @@ def run_server():
                         help="(default: 8000)")
     parser.add_argument('--host', type=ip_addr, default='127.0.0.1',
                         help="(default: 127.0.0.1)")
+    parser.add_argument('-r', '--reload', action='store_true',
+                        help="start uvicorn in reload mode (useful for "
+                             "development only)")
     args = parser.parse_args()
 
     import uvicorn
     uvicorn.run('stanalyzer.main:app', host=args.host, port=args.port,
-                log_level='info')
+                log_level='info', reload=args.reload)
 
 
 def list_analyses() -> list[str]:
