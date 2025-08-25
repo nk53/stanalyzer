@@ -15,10 +15,10 @@ def p_int(value: t.Any) -> int:
 
     Returns valid int or raises TypeError.
     """
-    value = int(value)
-    if value <= 0:
+    intval = int(value)
+    if intval <= 0:
         raise TypeError(f"Not a positive integer: '{value}'")
-    return value
+    return intval
 
 
 def nn_int(value: t.Any) -> int:
@@ -26,10 +26,10 @@ def nn_int(value: t.Any) -> int:
 
     Returns valid int or raises TypeError.
     """
-    value = int(value)
-    if value < 0:
+    intval = int(value)
+    if intval < 0:
         raise TypeError(f"Not a non-negative integer: '{value}'")
-    return value
+    return intval
 
 
 def p_float(value: t.Any) -> float:
@@ -37,10 +37,10 @@ def p_float(value: t.Any) -> float:
 
     Returns valid float or raises TypeError.
     """
-    value = float(value)
-    if value <= 0:
+    floatval = float(value)
+    if floatval <= 0:
         raise TypeError(f"Not a positive float: '{value}'")
-    return value
+    return floatval
 
 
 def nn_float(value: t.Any) -> float:
@@ -48,10 +48,10 @@ def nn_float(value: t.Any) -> float:
 
     Returns valid float or raises TypeError.
     """
-    value = float(value)
-    if value < 0:
+    floatval = float(value)
+    if floatval < 0:
         raise TypeError(f"Not a non-negative float: '{value}'")
-    return value
+    return floatval
 
 
 #
