@@ -91,7 +91,7 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
         err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
         if analysis_id is None:
-            return {'error': 'failed to insert'}
+            return {'error': 'failed to add analysis to database'}
 
         # TODO: this should ONLY be used when localhost is allowed
         with ctx.cd(in_dir):
@@ -100,7 +100,7 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
                                  for k, v in analysis_settings.items()}
 
             # setup invocation args
-            program = f'python -m stanalyzer {analysis}'
+            program = f'stanalyzer {analysis}'
             bool_args = tuple(f'--{k} "{v}"' for k, v in analysis_settings.items()
                               if not isinstance(v, bool))
             other_args = tuple(f'--{k}' for k, v in analysis_settings.items() if v is True)
@@ -126,7 +126,7 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
                 db.set_analysis_pid(analysis_id=analysis_id, process_id=pid)
                 processes.append({'args': args, 'pid': pid})
             else:
-                print('something has gone wrong with ', analysis)
+                print('Something unexpected went wrong with', analysis)
 
     print(processes)
     return processes

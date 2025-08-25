@@ -1,6 +1,6 @@
 /**
  * Given a string that looks like ``some[text][with][brackets]``, return the
- * part inside the first set of square brackets `[]`
+ * part inside the nth set of square brackets `[]`
  *
  * @param {String} str - string to check
  * @param {Number} n - index of key to return
@@ -64,6 +64,24 @@ function jq_attr(attr, sel, rel='=') {
  */
 function sel_attr(attr, sel, rel='=') {
     return `#${active_page} [${attr}${rel}"${sel}"]`;
+}
+
+/**
+ * Select elements that include a given class
+ *
+ * @returns {jQuery} elements
+ */
+function jq_class(cls, rel="~=") {
+    return $(sel_class(cls, rel));
+}
+
+/**
+ * Return an class selector string
+ *
+ * @returns {String} CSS selector
+ */
+function sel_class(sel, rel='~=') {
+    return sel_attr("class", sel, rel);
 }
 
 /**
@@ -287,19 +305,113 @@ function confirm_project_then(elem, callback) {
     return false;
 }
 
+function result_span(message, result_type) {
+    var error_template;
+    var success_template;
+    if (error_template === undefined)
+        error_template = $('<span class="errmsg"></span>');
+    if (success_template === undefined)
+        success_template = $('<span class="success"></span>');
+
+    let template = (result_type) ? success_template : error_template;
+    const new_elem = template.clone();
+    new_elem.text(message);
+    return new_elem;
+}
+
+function error_span(message) {
+    return result_span(message, false);
+}
+
+function success_span(message) {
+    return result_span(message, true);
+}
+
+function clear_messages() {
+    function rm_elem(idx, elem) {
+        $(elem).remove();
+    }
+    jq_class('errmsg').each(rm_elem);
+    jq_class('success').each(rm_elem);
+    jq_class("sta-invalid").each((idx, elem) => $(elem).removeClass("sta-invalid"));
+}
+
+function button_outer(elem) {
+    // returns a button's outermost element
+    const parents = $(elem).parents(".ui-btn");
+    if (!parents.length)
+        return null;  // elem probably isn't a button
+
+    return parents.last();
+}
+
+function popup_placeholder(elem) {
+    const popup = $(elem).closest("[data-role=popup]");
+    if (!popup.length)
+        return null;  // elem probably isn't a popup
+
+    const id = popup.attr('id');
+    const placeholder = $(`#${id}-placeholder`);
+    if (!placeholder.length)
+        return null;
+
+    return placeholder.prevAll("[data-rel=popup]");
+}
+
+function insert_before_original(elem, to_insert) {
+    // Inserts something before whatever button started the interaction
+    const insert_loc = popup_placeholder(elem) || button_outer(elem);
+    if (insert_loc == null) {
+        console.log("Can't find insert location");
+        console.log(elem);
+        return false;
+    }
+    return insert_loc.before(to_insert);
+}
+
 function submit_async(elem=null) {
     const form = $(`form#${active_page}_form`);
 
+    // clear previous invalid results
+    // jq_class("sta-invalid").each(elem => elem.removeClass("sta-invalid"));
+    jq_class("sta-invalid").each((idx, elem) => $(elem).removeClass("sta-invalid"));
+
+    clear_messages();
     const settings = {
         url: form.attr('action'),
         method: form.attr('method'),
         data: JSON.stringify(form.serializeJSON()),
         contentType: 'application/json',
-        success: console.log,
-        failure: console.log,
+        success: function(response) {  // default action; overridden via eval_settings
+            update_global_message('Success', true);
+        },
+        statusCode: {
+            422: function(response) {
+                const data = response.responseJSON;
+                const detail = data['detail'];
+                var messages = [];
+                $.each(detail, function(idx, item) {
+                    // last field is the one where the error occurred
+                    // other fields are
+                    const name = item['loc'].slice(-1);
+                    if (!name)
+                        return;
+
+                    const label = jq_label(name);
+                    if (label !== undefined)
+                        label.addClass("sta-invalid");
+
+                    label.append(error_span(item['msg']));
+                });
+                update_global_message('Request could not be completed due to above errors.', false);
+            },
+            500: function(response) {
+                update_global_message('An internal server error has occurred.', false);
+            }
+        }
     }
 
-    const eval_settings = ["data", "success", "failure"];
+    const eval_settings = ["data", "success", "error"];
 
     if (elem !== null) {
         elem = $(elem);
@@ -318,7 +430,17 @@ function submit_async(elem=null) {
     $.ajax(settings);
 }
 
+function show_cmds(response_json) {
+    // response_json should be an Array
+    const msg = "<p>Analysis started with command(s):</p><pre>" +
+        response_json.map(x => `${x['args']}`).join('\n') +
+        "</pre><p style=\"font-size: .8em;\">(You'll still have to check your job's <code>.out/.err</code> files to see if the job succeeded)</p>";
+    update_global_message(msg, true);
+}
+
 function update_projects_menu(response_json) {
+    clear_messages();
+
     const request_type = response_json.request_type;
     const new_menu = response_json.data;
     const settings_elem = jq_id('json');
@@ -327,18 +449,27 @@ function update_projects_menu(response_json) {
     // update in-form JSON representation
     settings_elem.val(JSON.stringify(new_menu));
 
-    // TODO: on delete or post, set active menu item
-    // what to do if only remaining item is add_new?
-    //if (request_type == 'post') {
-
-    //}
-
-    // remove previous options
+    // remove old menu
     menu_elem.children(':not(option[value=add_new])').remove();
+
+    // build new menu
     $.each(new_menu, function(id, obj) {
         const text = obj.title;
         menu_elem.prepend(`<option value="${id}">${text}</option>`);
     });
+
+    switch (request_type) {
+        case 'post':
+            const new_title = jq_id('title').val();
+            const new_item = menu_elem.children().filter(
+                (idx, child) => child.innerHTML == new_title);
+            menu_elem.val(new_item.val());
+        case 'delete':
+            menu_elem.trigger("change");
+            break;
+    }
+
+    update_global_message('Success', true);
 }
 
 function load_project_json(elem) {
@@ -370,10 +501,6 @@ function load_project_json(elem) {
         $(`#${active_page} form :is(input[type=text], input[type=number], textarea)`).each(
             function (index, elem) {
                 elem = $(elem);
-                const name = elem.attr('name');
-                console.log(name);
-                if (name && name.includes('time_step'))
-                    console.log('hi');
                 elem.val(elem.data('default') || '');
                 elem.filter('textarea').trigger('keyup');
             });
@@ -423,3 +550,44 @@ $(document).on('pageload', function(event, ui) {
         loaded_pages.splice(index, 1); // remove it to allow re-loading
 });
 $(document).on('pagecontainerchange', setup_form);
+
+// popups w/o an activation link need to be explicitly initialized
+$(document).on("DOMContentLoaded", function() {
+    const msg = $('#global_message');
+    const msg_content = $('#global_message-content');
+    const msg_control = $('#message_control');
+    const msg_close = msg.find('button');
+
+    msg.popup();
+
+    // setup other popup behavior
+    $('#global_message-screen').on('click', function() {
+        msg.popup("close");
+        msg_control.show();
+    });
+    msg_control.on('click', function() {
+        msg_control.hide();
+        msg.popup("open");
+    });
+    msg_close.on('click', function() {
+        msg.popup("close");
+    })
+});
+
+function update_global_message(text, is_success=true, open=true) {
+    var msg_container, msg_elem;
+    if (msg_elem === undefined) {
+        msg_container = $('#global_message');
+        msg_elem = $('#global_message-content');
+    }
+
+    msg_elem.html(text);
+
+    msg_elem.removeClass('errmsg', 'success');
+
+    const cls = (is_success) ? 'success' : 'errmsg';
+    msg_elem.addClass(cls);
+
+    if (open)
+        msg_container.popup("open");
+}

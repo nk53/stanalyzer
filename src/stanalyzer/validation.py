@@ -1,13 +1,18 @@
 import os
 import sys
 from pathlib import Path
-from typing import (
+from ._typing import (
     Any,
     Annotated,
+    Callable,
+    CustomError,
+    Generic,
     Literal,
     Optional,
-    TypeAlias,
+    Sized,
     TypeVar,
+    TYPE_CHECKING,
+    error_templates,
 )
 from typing_extensions import Self
 
@@ -23,48 +28,67 @@ from pydantic.functional_validators import (
     AfterValidator as AV,
     BeforeValidator as BV,
 )
+from pydantic_core import PydanticCustomError
 import stanalyzer
 
 T = TypeVar('T', bound=type)
 BM = TypeVar('BM', bound=BaseModel)
 
 
+def maybe_raise(condition: object, error_type: CustomError,
+                *template_vars: Any, context: dict[str, Any] | None = None) -> None:
+    if condition:
+        return
+    if TYPE_CHECKING:
+        assert callable(PydanticCustomError)
+
+    ctx = context if context is not None else {}
+    tpl = error_templates[error_type]
+    raise PydanticCustomError(error_type, tpl.format(*template_vars, **ctx))
+
+
 def exists(p: Path) -> Path:
-    assert p.exists(), f"No such file or directory: {p}"
+    maybe_raise(p.exists(), 'file_not_found', p)
     return p
 
 
 def is_file(p: Path) -> Path:
-    assert p.is_file(), f"{p} is not a regular file"
+    maybe_raise(p.is_file(), 'not_a_regular_file', p)
     return p
 
 
 def is_dir(p: Path) -> Path:
-    assert p.is_dir(), f"{p} is not a directory"
+    maybe_raise(p.is_dir(), 'not_a_directory', p)
     return p
 
 
 def path_is_absolute(p: Path) -> Path:
-    assert p.is_absolute(), f"Not an absolute path: {p}"
+    maybe_raise(p.is_absolute(), 'not_abspath', p)
     return p
+
+
+def not_empty(v: T, info: ValidationInfo) -> T:
+    maybe_raise(v, 'field_missing')
+    return v
 
 
 def dir_is_writable(p: Path) -> Path:
     """Check that we can write to OR create a dir"""
     if p.is_dir():
-        assert os.access(p, os.W_OK), f"No permission to write to {p}"
+        # , f"No permission to write to {p}"
+        maybe_raise(os.access(p, os.W_OK), 'dir_not_writable', p)
     else:
         # this approach doesn't require abspath args
         parent = (p / '..').resolve()
-        assert os.access(parent, os.W_OK), f"No permission to create {p}"
+        maybe_raise(os.access(parent, os.W_OK), 'dir_not_creatable', p)
     return p
 
 
-def str_to_args(cls: type[BM]):
+def str_to_args(cls: type[BM]) -> Any:
     fields = cls.model_fields
     keys = tuple(fields.keys())
 
-    def _str_to_args(value: Any, info: ValidationInfo) -> Any:
+    def _str_to_args(value: Any) -> Any:
         if isinstance(value, str) and len(keys) > 1:
             model_dict = dict(zip(keys, value.split()))
             return cls(**model_dict)
@@ -74,24 +98,16 @@ def str_to_args(cls: type[BM]):
     return _str_to_args
 
 
-ExistingFile = Annotated[Path, AV(exists), AV(is_file)]
-ExistingDir = Annotated[Path, AV(exists), AV(is_dir)]
-WritableDir = Annotated[Path, AV(dir_is_writable)]
-ExistingFileAbs = Annotated[Path, AV(path_is_absolute), AV(exists), AV(is_file)]
-ExistingDirAbs = Annotated[Path, AV(path_is_absolute), AV(exists), AV(is_dir)]
-WritableDirAbs = Annotated[Path, AV(path_is_absolute), AV(dir_is_writable)]
+ExistingFile = Annotated[Path, AV(not_empty), AV(exists), AV(is_file)]
+ExistingDir = Annotated[Path, AV(not_empty), AV(exists), AV(is_dir)]
+WritableDir = Annotated[Path, AV(not_empty), AV(dir_is_writable)]
+ExistingFileAbs = Annotated[Path, AV(not_empty), AV(path_is_absolute), AV(exists), AV(is_file)]
+ExistingDirAbs = Annotated[Path, AV(not_empty), AV(path_is_absolute), AV(exists), AV(is_dir)]
+WritableDirAbs = Annotated[Path, AV(not_empty), AV(path_is_absolute), AV(dir_is_writable)]
 
-
-class Depends:
-    """Annotation metadata indicating that a field depends on another field"""
-    fields: tuple[str, ...]
-
-    def __init__(self, *fields: str):
-        self.fields = fields
-
-    def __class_getitem__(cls, *key: str):
-        """Not a real type parameterization; just convenience"""
-        return cls(*key)
+# Field(min_length=1) error message confuses end-user; this just changes the error message
+StrNotEmpty = Annotated[str, AV(not_empty)]
+PathNotEmpty = Annotated[Path, AV(not_empty)]
 
 
 class Timestep(BaseModel):
@@ -101,51 +117,57 @@ class Timestep(BaseModel):
 
 class Project(BaseModel):
     id: int | str | None = Field(default=None)
-    title: str = Field(min_length=1)
+    title: StrNotEmpty
     input_path: ExistingDirAbs
     output_path: WritableDirAbs
     python_path: ExistingFileAbs = Path(sys.executable)
     application_path: ExistingDirAbs = Path(stanalyzer.__path__[0])
     shell_path: ExistingFileAbs = Path('/bin/bash')
-    traj: Annotated[str, Depends['input_path']] = Field(min_length=1)
+    traj: StrNotEmpty
     time_step: Annotated[Timestep, BV(str_to_args(Timestep))] = \
         Field(examples=['1 ns', '4.5 us', '.01 ms'])
-    psf: Annotated[Path, Depends['input_path']]
+    psf: PathNotEmpty
     scheduler: Literal['interactive', 'SLURM', 'PBS'] = 'interactive'
     SLURM: str = Field(default='')
     PBS: str = Field(default='')
 
-    @model_validator(mode='after')
-    def traj_is_valid_glob(self) -> Self:
+    @field_validator('traj', mode='after')
+    @classmethod
+    def traj_is_valid_glob(cls, traj: str, info: ValidationInfo) -> str:
+        if 'input_path' not in info.data:
+            return ''  # input path raises its own error
+
         # check traj pattern matches at least one file
-        traj = Path(self.traj)
-        if traj.is_absolute():
-            traj_relpathstr = '/'.join(traj.parts[1:])
+        traj_path = Path(traj)
+        if traj_path.is_absolute():
+            traj_relpathstr = '/'.join(traj_path.parts[1:])
             traj_glob = sorted(Path('/').glob(traj_relpathstr))
             as_relpath = Path(traj)
         else:
-            as_relpath = traj
-            traj_glob = sorted(self.input_path.glob(self.traj))
-        assert traj_glob, "No files matched by pattern: {self.traj}"
+            as_relpath = traj_path
+            traj_glob = sorted(info.data['input_path'].glob(traj))
+        maybe_raise(traj_glob, 'glob_failed', traj)
 
         # enforce schema: traj is relative to input_path
-        self.traj = str(as_relpath)
-        return self
+        return str(as_relpath)
 
-    @model_validator(mode='after')
-    def psf_is_valid_path(self) -> Self:
-        psf = Path(self.psf)
+    @field_validator('psf', mode='after')
+    @classmethod
+    def psf_is_valid_path(cls, psf: Path, info: ValidationInfo) -> Path:
+        if 'input_path' not in info.data:
+            return Path()  # input path raises its own error
+
+        psf_abspath: Path
         if psf.is_absolute():
             psf_abspath = psf
-            as_relpath = psf.relative_to(self.input_path)
+            as_relpath = psf.relative_to(info.data['input_path'])
         else:
             as_relpath = psf
-            psf_abspath = self.input_path / psf
-        assert psf_abspath.is_file(), "No such file or directory: {psf_abspath}"
+            psf_abspath = info.data['input_path'] / psf
+        maybe_raise(psf_abspath.is_file(), 'file_not_found', psf_abspath)
 
         # enforce schema: psf is relative to input_path
-        self.psf = as_relpath
-        return self
+        return as_relpath
 
     @model_validator(mode='after')
     def valid_paths_to_str(self) -> Self:

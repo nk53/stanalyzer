@@ -22,5 +22,13 @@
         </div><!-- .ui-content[role=main] -->
         {{ include_indented("parts/footer.html", width=8) }}
     </div><!-- page -->
+    <div id="global_message" data-role="popup"
+        data-position-to="window" data-theme="a">
+        <div id="global_message-content" class="ui-content"></div>
+        <div id="global_message-close-btn">
+            <button type="button">X</button>
+        </div>
+    </div>
+    <div id="message_control">&and;</div>
 </body>
 </html>

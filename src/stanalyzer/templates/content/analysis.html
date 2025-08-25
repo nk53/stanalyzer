@@ -10,5 +10,6 @@
 {{ analysis.analysis(name, settings['options'], label=settings['label']) }}
 {%- endfor %}
 {%- endfor %}
-{{ form.button('submit', value='Submit Analysis', onclick='submit_async(this)') }}
+{{ form.button('submit', value='Submit Analysis', onclick='submit_async(this)',
+               **{'data-method': 'post', 'data-success': 'show_cmds'}) }}
 {%- endfilter %}

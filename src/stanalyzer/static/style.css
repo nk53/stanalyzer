@@ -25,6 +25,63 @@ body {
     font-family: Helvetica, sans-serif;
 }
 
+label.sta-invalid {
+    font-weight: bold;
+}
+
+span.errmsg, span.errmsg {
+    display: block;
+    font-weight: normal;
+    font-size: .8em;
+}
+
+div.errmsg, span.errmsg {
+    color: #f94444;
+}
+
+div.success, span.success {
+    color: #38c;
+}
+
+div#global_message, div#global_message-popup {
+    display: grid;
+    grid-template-columns: 1fr max-content;
+    position: fixed;
+}
+
+div#global_message-content {
+    overflow: auto;
+}
+div#global_message-close-btn button {
+    height: 100%;
+    border-width: 0px;
+    border-left-width: 1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding: 1em;
+}
+div#message_control {
+    /* positioning */
+    position: fixed;
+    bottom: 0;
+    right: 1em;
+    z-index: 1000;
+    /* other */
+    background-color: white;
+    border-radius: .3125em .3125em 0 0;
+    border: solid 1px #ddd;
+    display: none;
+    font-weight: bolder;
+    padding: 1em;
+}
+div#message_control:hover {
+    border-color: #eee;
+    background-color: #ddd;
+}
+div#message_control:active {
+    background-color: #ccc;
+}
+
 a.ui-btn-icon-notext.ui-corner-all {
     -webkit-border-radius: .3125em;
     border-radius: .3125em;
@@ -41,6 +98,11 @@ div.expanded-nav-left {
     div.ui-field-contain > label {
         width: unset;
     }
+    div#global_message, div#global_message-popup {
+        right: 5vw;
+        bottom: 5vh;
+        left: 5vw;
+    }
 }
 
 /* 576+ px width assuming 16px font */
@@ -49,11 +111,22 @@ div.expanded-nav-left {
         float: left;
         width: 60%;
     }*/
-    div.ui-field-contain {
+    div.ui-field-contain:not(:has(> .ui-btn):has(> .errmsg, > .success)) {
         display: flex;
+    }
+    div.ui-field-contain:has(> .errmsg, > .success) {
+        display: inline-block;
+    }
+    :is(span.errmsg, span.success) + div.ui-btn {
+        display: inherit;
     }
     div.ui-field-contain > label {
         width: 30%;
+    }
+    div#global_message, div#global_message-popup {
+        max-width: calc(100% - 60px - 2em);
+        right: min(30px, 10%);
+        bottom: min(50px, 10%);
     }
 }
 
@@ -143,6 +216,10 @@ div.ui-field-contain div.ui-controlgroup-controls {
 .ui-btn.sta-tooltip-btn:not(#fake_button_id) {
     background: none;
     border: 0;
+}
+
+label.sta-invalid .sta-tooltip-btn:not(#fake_button_id) {
+    margin: 0 auto;
 }
 
 /* matching ST-Analyzer webpage colors somewhat */

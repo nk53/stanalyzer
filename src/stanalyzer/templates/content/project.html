@@ -1,5 +1,4 @@
 {%- import 'parts/form.html' as form with context -%}
-{%- import 'parts/pbs.html' as pbs with context -%}
 <form id="{{ page_id }}_form" action="/{{ page_id }}" data-method="put">
 {%- filter indent(_indent_level+4) %}
 <input type="hidden" id="{{ page_id }}_json" value="{{ projects }}">
