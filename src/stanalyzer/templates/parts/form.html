@@ -11,7 +11,7 @@
 {%- endmacro -%}
 
 {%- macro tooltip_anchor(href_id) -%}
-<a href="#{{ href_id }}" data-rel="popup" data-transition="none" class="sta-tooltip-btn ui-btn ui-alt-icon ui-nodisc-icon ui-btn-inline ui-icon-info ui-btn-icon-notext" title="Learn more">Learn more</a>
+<a href="#{{ href_id }}" data-rel="popup" data-transition="none" class="sta-tooltip-btn ui-btn ui-alt-icon ui-nodisc-icon ui-btn-inline ui-icon-info ui-btn-icon-notext" tabindex="-1" title="Learn more">Learn more</a>
 {%- endmacro -%}
 
 {%- macro tooltip_div(id, text) -%}
