@@ -4,5 +4,7 @@ project:
   title: Add and Edit Projects
 analysis:
   title: Analysis Options
+results:
+  title: Analysis Results
 "404":
   title: Page Not Found

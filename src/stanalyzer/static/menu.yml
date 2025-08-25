@@ -12,6 +12,8 @@ host_settings:
   path: /404
 analysis:
   text: Analysis
+results:
+  text: Results
 plugin_settings:
   text: Plugins
   path: /404

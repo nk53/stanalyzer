@@ -1,0 +1,28 @@
+{#{%- import 'parts/form.html' as form with context -%}#}
+{%- macro show_result(result) -%}
+<div data-role="collapsible">
+{%- if result.done -%}
+    <h3>Job header goes here?</h3>
+    {%- if result.error -%}
+    <div data-role="collapsible" class="result-error">
+        <h3>Error file</h3>
+        <p>{{ result.error }}</p>
+    </div>
+    {%- endif -%}
+    {%- if result.output -%}
+    {%- else -%}
+    <p>No job output.</p>
+    {%- endif -%}
+{%- else -%}
+    <p>Job is still running.</p>
+{%- endif -%}
+{# better to use form.button here? #}
+<button type="button" onclick="delete_me(this)">X</button>
+</div>
+{%- endmacro -%}
+{%- for result in results -%}
+    {{- show_result(result) -}}
+{%- endfor -%}
+{%- if not results -%}
+Nothing to see here. Try submitting some analysis first.
+{%- endif -%}
