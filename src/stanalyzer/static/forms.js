@@ -336,6 +336,30 @@ function clear_messages() {
     jq_class("sta-invalid").each((idx, elem) => $(elem).removeClass("sta-invalid"));
 }
 
+function delete_analysis(elem) {
+    const form = $(`form#${active_page}_form`);
+    const analysis_id = $(elem).data('id');
+    form.attr('action', `/analysis/${analysis_id}`);
+    form.data('id', analysis_id);
+    submit_async(elem);
+}
+
+function rm_result(n_removed) {
+    const form = $(`form#${active_page}_form`);
+    const analysis_id = form.data('id');
+    const to_remove = jq_id(`analysis_${analysis_id}`);
+    n_removed = Number.parseInt(n_removed);
+
+    // invalid int --> NaN, which fails all comparisons
+    // thus, if n_removed > 0 is true, n_removed is a valid integer
+    if (n_removed > 0) {
+        to_remove.remove();
+        update_global_message('<p>Job removed from database.</p><p style=\"font-size: .8em;\">You can still access your files on disk.</p>', true);
+        return;
+    }
+    update_global_message("Failed to remove. An unexpected error has occurred.", false);
+}
+
 function button_outer(elem) {
     // returns a button's outermost element
     const parents = $(elem).parents(".ui-btn");
@@ -385,10 +409,15 @@ function submit_async(elem=null) {
         success: function(response) {  // default action; overridden via eval_settings
             update_global_message('Success', true);
         },
+        error: undefined,
         statusCode: {
             422: function(response) {
                 const data = response.responseJSON;
                 const detail = data['detail'];
+
+                if (detail === undefined)
+                    return;
+
                 var messages = [];
                 $.each(detail, function(idx, item) {
                     // last field is the one where the error occurred
@@ -428,6 +457,44 @@ function submit_async(elem=null) {
 
     console.log(settings);
     $.ajax(settings);
+}
+
+function analysis_failed(response_obj) {
+    const response_json = response_obj.responseJSON;
+    const is_success = false;
+
+    if (response_json.length == 0) {
+        update_global_message("No analysis selected", is_success);
+        return;
+    }
+
+    const successes = [];
+    const fails = [];
+    for (const job of response_json) {
+        if (job.pid === -1)
+            fails.push(job.args);
+        else
+            successes.push(job.args);
+    }
+
+    if (fails.length == 0) {
+        update_global_message("An unknown error has occurred", is_success);
+        return;
+    }
+
+    const lines = [];
+    if (successes.length) {
+        lines.push("<div class=\"success\">");
+        lines.push("<p>Analysis started with command(s):</p><pre>");
+        lines.push(...successes);
+        lines.push("</pre></div>");
+    }
+
+    lines.push("<p>Failed to start:</p><pre>");
+    lines.push(...fails);
+    lines.push("</pre>");
+
+    update_global_message(lines.join("\n"), is_success);
 }
 
 function show_cmds(response_json) {
@@ -560,6 +627,10 @@ $(document).on("DOMContentLoaded", function() {
 
     msg.popup();
 
+    // jqm's dynamic positioning (via top/left properties) interferes with
+    // style.css's positioning (via bottom/right)
+    msg.data('mobile-popup')._reposition = $.noop;
+
     // setup other popup behavior
     $('#global_message-screen').on('click', function() {
         msg.popup("close");
@@ -575,19 +646,22 @@ $(document).on("DOMContentLoaded", function() {
 });
 
 function update_global_message(text, is_success=true, open=true) {
-    var msg_container, msg_elem;
+    var msg_container, msg_elem, msg_control;
     if (msg_elem === undefined) {
         msg_container = $('#global_message');
         msg_elem = $('#global_message-content');
+        msg_control = $('#message_control');
     }
 
     msg_elem.html(text);
 
-    msg_elem.removeClass('errmsg', 'success');
+    msg_elem.removeClass(['errmsg', 'success']);
 
     const cls = (is_success) ? 'success' : 'errmsg';
     msg_elem.addClass(cls);
 
-    if (open)
+    if (open) {
         msg_container.popup("open");
+        msg_control.hide();
+    }
 }

@@ -16,10 +16,69 @@ blockquote.code {
     margin: .5em 1em;
 }
 
-.main, .sidebar {
-    display: block;
-    width: 100%;
+/* #results page form is very hard to read w/o some adjustments */
+div#results blockquote.code {
+    margin: 0;
+    padding-left: 2em;
+    overflow: auto;
 }
+div#results blockquote.code pre {
+    margin: 0;
+}
+
+div#results .ui-field-contain:has(input[type=button]) {
+    margin: 0;
+}
+
+div#results .ui-field-contain > div:has(input[type=button]) {
+    margin-bottom: 0;
+    margin-inline: auto;
+}
+
+.no-inline-border :not(.no-inline-border > *, .no-inline-border > h3 *, div:has(input)) {
+    border-right-width: 0;
+    border-left-width: 0;
+    border-inline: none;
+}
+
+.no-inline-border > div div h3 a {
+    border-top: none;
+}
+
+.no-inline-border > div {
+    padding-top: 0;
+}
+
+.no-inline-border > div p {
+    margin: 0;
+    padding: 1em 0;
+}
+
+.no-inline-border > h3 {
+    font-weight: bold;
+    background-color: white;
+}
+
+/* hides the 'no jobs' notice if there are jobs */
+.no-inline-border ~ p {
+    display: none;
+}
+
+.no-inline-border:not(.ui-collapsible-collapsed) > h3 a,
+.no-inline-border:not(.ui-collapsible-collapsed) > h3 a:hover {
+    background-color: #606060;
+    color: white;
+    text-shadow: none;
+    font-weight: bold;
+}
+
+.result-error h3:not(#fake_button_id) a {
+    color: white;
+    font-weight: bold;
+    background-color: #C66;
+    text-shadow: none;
+}
+/* end of #results settings */
 
 body {
     font-family: Helvetica, sans-serif;
@@ -111,6 +170,10 @@ div.expanded-nav-left {
         float: left;
         width: 60%;
     }*/
+
+    div[role=main] {
+        min-height: 25em;
+    }
     div.ui-field-contain:not(:has(> .ui-btn):has(> .errmsg, > .success)) {
         display: flex;
     }
@@ -135,6 +198,7 @@ div.expanded-nav-left {
     /*.main {
         width: 80%;
     }*/
+
     div.expanded-nav-left {
         margin: 1em 1em 1em 0;
         display: block;
@@ -143,7 +207,7 @@ div.expanded-nav-left {
         float: left;
         left: 0;
         clip: initial;
-        width: 20%;
+        width: 20vw;
         /* autoexpand submenus */
         min-width: max-content;
     }

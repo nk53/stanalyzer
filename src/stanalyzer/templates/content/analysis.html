@@ -5,11 +5,12 @@
 {{ form.select('project', projects_menu, label='Select project') }}
 {%- for category in categories.values() -%}
 <h3>{{ category['label'] }}</h3>
-{%- for name in category['options'] -%}
+{%- for name in category['options'] if name in analysis_form -%}
 {%- set settings = analysis_form[name] %}
 {{ analysis.analysis(name, settings['options'], label=settings['label']) }}
 {%- endfor %}
 {%- endfor %}
 {{ form.button('submit', value='Submit Analysis', onclick='submit_async(this)',
-               **{'data-method': 'post', 'data-success': 'show_cmds'}) }}
+               **{'data-method': 'post', 'data-success': 'show_cmds',
+                  'data-error': 'analysis_failed'}) }}
 {%- endfilter %}

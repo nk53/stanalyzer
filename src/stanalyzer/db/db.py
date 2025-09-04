@@ -1,5 +1,5 @@
 import os
-from typing import Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, TypeAlias, cast
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlmodel import Session, SQLModel, create_engine, select
 from .schemas import (
@@ -8,8 +8,16 @@ from .schemas import (
     User,
 )
 
+ModelDict: TypeAlias = dict[Any, dict[str, Any]]
+ModelDictInt: TypeAlias = dict[int, dict[str, Any]]
+
 DB_PATH = 'database.db'
-engine = create_engine(f"sqlite:///{DB_PATH}")
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.base import Engine
+    engine: Engine
+else:
+    engine = create_engine(f"sqlite:///{DB_PATH}")
 
 
 def setup_db() -> None:
@@ -38,6 +46,39 @@ def get_project_analysis(project_id: int) -> Sequence[Analysis]:
         return analysis
 
 
+def get_user_analysis(uid: int) -> Sequence[Analysis]:
+    with Session(engine) as session:
+        statement = select(Analysis).where(Analysis.uid == uid)
+        analysis = session.exec(statement).all()
+
+        return analysis
+
+
+def get_analysis_results(project_id: int) -> ModelDictInt:
+    with Session(engine) as session:
+        results = session.exec(
+            select(Analysis).where(Analysis.project_id == project_id)
+        ).all()
+
+        path = session.exec(
+            select(Project).where(Project.id == project_id)
+        ).one().output_path
+
+        # update PIDs; all() w/o [] would stop at first non-existent PID.
+        if any([result.done(session) for result in results]):
+            session.commit()
+
+        results_dict = {result.id: result.model_dump() for result in results}
+
+        for result in results:
+            rdict = results_dict[result.id]
+            result.set_basepath(path=path)
+            rdict['out'], rdict['err'] = result.read()
+            rdict['done'] = result.done()
+
+        return cast(ModelDictInt, results_dict)
+
+
 def delete_analysis(*analysis_id: int) -> int:
     """Returns the number of deleted rows"""
     with Session(engine) as session:
@@ -56,10 +97,8 @@ def delete_analysis(*analysis_id: int) -> int:
         # return the number of matched objects
         return len(analysis)
 
-    return 0
 
-
-def set_analysis_pid(analysis_id: int, process_id: int):
+def set_analysis_pid(analysis_id: int, process_id: int) -> None:
     with Session(engine) as session:
         # get matching analysis
         statement = select(Analysis).where(Analysis.id == analysis_id)
@@ -73,12 +112,12 @@ def set_analysis_pid(analysis_id: int, process_id: int):
         session.commit()
 
 
-def get_user_projects(uid: int):
+def get_user_projects(uid: int) -> ModelDict:
     with Session(engine) as session:
         statement = select(Project).where(Project.uid == uid)
         projects = [p.model_dump() for p in session.exec(statement).all()]
 
-        project_dict = {p['id']: p for p in projects}
+        project_dict: dict[int, dict[str, Any]] = {p['id']: p for p in projects}
         for pid, model in project_dict.items():
             # user does not need to know their id
             del project_dict[pid]['uid']
@@ -86,7 +125,7 @@ def get_user_projects(uid: int):
         return project_dict
 
 
-def update_project(settings: Project):
+def update_project(settings: Project) -> None:
     with Session(engine) as session:
         # get matching project
         statement = select(Project).where(Project.uid == settings.uid,
@@ -103,15 +142,15 @@ def update_project(settings: Project):
         session.commit()
 
 
-def insert_project(settings: Project):
+def insert_project(settings: Project) -> int:
     with Session(engine) as session:
         session.add(settings)
         session.commit()
 
-        return settings.id
+        return cast(int, settings.id)
 
 
-def delete_project(pid: int, uid: int):
+def delete_project(pid: int, uid: int) -> None:
     with Session(engine) as session:
         statement = select(Project).where(Project.uid == uid, Project.id == pid)
         project = session.exec(statement).one()

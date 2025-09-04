@@ -1,28 +1,46 @@
-{#{%- import 'parts/form.html' as form with context -%}#}
-{%- macro show_result(result) -%}
-<div data-role="collapsible">
-{%- if result.done -%}
-    <h3>Job header goes here?</h3>
-    {%- if result.error -%}
-    <div data-role="collapsible" class="result-error">
+{%- import 'parts/form.html' as form with context -%}
+{%- set noicon = 'data-expanded-icon="false" data-collapsed-icon="false"'|safe %}
+{%- set carats = 'data-expanded-icon="carat-d" data-collapsed-icon="carat-r"'|safe %}
+{%- set opened = 'data-role="collapsible" data-collapsed="false"'|safe %}
+{%- set closed = 'data-role="collapsible"'|safe %}
+{%- set noinset = 'data-inset="false"'|safe %}
+{%- macro show_result(result, open=False) %}
+<div id="{{page_id}}_analysis_{{ result['id'] }}" {{ carats }} class="ui-nodisc-icon ui-alt-icon no-inline-border" {{ closed }} {% if open %}data-collapsed="false" {% endif %}data-mini="true">
+    <h3>{{ analysis[result['args'].split()[1]]['label'] }} ({{ result['id'] }})</h3>
+{% if result.done -%}
+    {%- if result.err.strip() %}
+    <div {{ noinset }} {{ carats }} {{ opened }} data-mini="true" class="result-error ui-disc-icon ui-alt-icon">
         <h3>Error file</h3>
-        <p>{{ result.error }}</p>
+        <blockquote class="code"><pre>{{ result.err }}</pre></blockquote>
     </div>
-    {%- endif -%}
-    {%- if result.output -%}
-    {%- else -%}
-    <p>No job output.</p>
-    {%- endif -%}
-{%- else -%}
-    <p>Job is still running.</p>
-{%- endif -%}
-{# better to use form.button here? #}
-<button type="button" onclick="delete_me(this)">X</button>
+    {%- endif %}
+
+    <div {{ noinset }} {{ carats }} {{ opened }} data-mini="True">
+    {%- if result.out.strip() %}
+        <h3>Output file</h3>
+        <blockquote class="code"><pre>{{ result.out }}</pre></blockquote>
+        {%- else %}
+        <p>No job output.</p>
+        {%- endif %}
+    </div>
+{{ form.button("dismiss", value="Dismiss Result", wrapper_attrs={'data-inset': False}, onclick="delete_analysis(this)",
+    **{'data-id': result['id'], 'data-success': 'rm_result'}) }}
+{% else -%}
+    <p>Job still running (pid: {{ result.process_id }}).</p>
+{% endif -%}
 </div>
 {%- endmacro -%}
-{%- for result in results -%}
-    {{- show_result(result) -}}
+<form id="{{ page_id }}_form" action="/analysis/" method="delete" style="display: none;">
+</form>
+{%- for project_id, project_results in results.items() %}
+<div {{ closed }} {{ carats }}>
+<h3>{{ projects[project_id].title }}</h3>
+    {%- for result in project_results.values() -%}
+        {{- show_result(result) -}}
+    {%- endfor -%}
+    <p>No new jobs submitted.</p>
 {%- endfor -%}
+</div>
 {%- if not results -%}
 Nothing to see here. Try submitting some analysis first.
 {%- endif -%}

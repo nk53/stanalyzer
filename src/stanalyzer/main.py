@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # webserver modules
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
@@ -72,15 +72,35 @@ async def page(request: Request, page: str) -> HTMLResponse:
         ]
         context['application_path'] = os.getcwd()
         context['python_path'] = sys.executable
+    elif page == 'results':
+        projects = db.get_user_projects(uid=1)
+        results = {project_id: db.get_analysis_results(project_id)
+                   for project_id in projects}
+        context['analysis'] = ANALYSIS
+        context['projects'] = projects
+        context['results'] = results
 
     return templates.TemplateResponse("layouts/single_page.html", context, **kwargs)
 
 
+@app.delete("/analysis/{analysis_id}")
+async def delete_analysis(analysis_id: int) -> int:
+    # TODO: auth
+    return db.delete_analysis(analysis_id)
+
+
 @app.post("/analysis")
-async def insert_analysis(settings: dict) -> StrDict | StrDictList:
+async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDictList:
     job_settings = utils.get_active_settings(settings, ANALYSIS)
+
+    if not job_settings:
+        response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        return []
+
     project_id = int(settings['project'])
     project_settings = db.get_user_projects(uid=1).get(project_id)
+
+    assert project_settings
 
     in_dir = Path(project_settings['input_path'])
     out_dir = Path(project_settings['output_path'])
@@ -88,8 +108,18 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
     ctx = invoke.Context()
     processes = []
     for analysis, analysis_settings in job_settings.items():
+        # setup invocation args
+        program = f'stanalyzer {analysis}'
+        bool_args = tuple(f'--{k} "{v}"' for k, v in analysis_settings.items()
+                          if not isinstance(v, bool))
+        other_args = tuple(f'--{k}' for k, v in analysis_settings.items() if v is True)
+        args = ' '.join(bool_args + other_args)
+
+        args = f"{program} {args}"
+
+        analysis_id = db.insert_analysis(db.Analysis(uid=1, project_id=project_id, args=args))
+
         # setup streams
-        analysis_id = db.insert_analysis(db.Analysis(uid=1, project_id=project_id))
         out_file = Path(out_dir / f"analysis_{analysis_id}.out")
         err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
@@ -101,15 +131,6 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
             # CLI opts expect '-' word sep, not '_'
             analysis_settings = {k.replace('_', '-'): v
                                  for k, v in analysis_settings.items()}
-
-            # setup invocation args
-            program = f'stanalyzer {analysis}'
-            bool_args = tuple(f'--{k} "{v}"' for k, v in analysis_settings.items()
-                              if not isinstance(v, bool))
-            other_args = tuple(f'--{k}' for k, v in analysis_settings.items() if v is True)
-            args = ' '.join(bool_args + other_args)
-
-            args = f"{program} {args}"
 
             # log invocation for user
             out_stream = out_file.open('w')
@@ -129,6 +150,7 @@ async def insert_analysis(settings: dict) -> StrDict | StrDictList:
                 db.set_analysis_pid(analysis_id=analysis_id, process_id=pid)
                 processes.append({'args': args, 'pid': pid})
             else:
+                processes.append({'args': args, 'pid': -1})
                 print('Something unexpected went wrong with', analysis)
 
     print(processes)
@@ -147,6 +169,8 @@ async def update_project(settings: validation.Project) -> StrDict:
 
     project_id = int(model_dict['id'])
     project_settings = db.get_user_projects(uid=1).get(project_id)
+    assert project_settings
+
     in_dir = Path(project_settings['input_path'])
     settings_path = Path(in_dir / "project.json")
     utils.write_settings(settings_path, project_settings)
@@ -169,8 +193,10 @@ async def insert_project(request: Request,
 
     project_id = db.insert_project(db.Project(**model_dict))
 
-    # create settings file
     project_settings = db.get_user_projects(uid=1).get(project_id)
+    assert project_settings
+
+    # create settings file
     in_dir = Path(project_settings['input_path'])
     settings_path = Path(in_dir / "project.json")
     utils.write_settings(settings_path, project_settings)
