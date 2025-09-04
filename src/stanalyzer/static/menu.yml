@@ -5,11 +5,13 @@ home:
 docs:
   text: Documentation
   path: /404
+  release: false
 project:
   text: Projects
 host_settings:
   text: Hosts
   path: /404
+  release: false
 analysis:
   text: Analysis
 results:
@@ -17,7 +19,9 @@ results:
 plugin_settings:
   text: Plugins
   path: /404
+  release: false
 settings:
   text: Settings
   icon: gear
   path: /404
+  release: false

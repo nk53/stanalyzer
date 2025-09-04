@@ -15,7 +15,7 @@ from starlette.templating import Jinja2Templates
 import invoke
 
 # intra-package
-from stanalyzer import utils
+from stanalyzer import utils, _release
 from stanalyzer.db import db
 from stanalyzer import validation
 from stanalyzer._typing import Any, StrDict, StrDictList
@@ -30,6 +30,9 @@ PAGES = utils.read_yaml('static/pages.yml')
 ANALYSIS = utils.read_yaml('static/analysis.yml')
 ANALYSIS_CATEGORIES = utils.read_yaml('static/analysis.category.yml')
 
+if _release:
+    MENU = utils.filter_unreleased(MENU)
+    ANALYSIS = utils.filter_unreleased(ANALYSIS)
 
 db.setup_db()
 

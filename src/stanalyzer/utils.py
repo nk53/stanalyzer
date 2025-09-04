@@ -1,9 +1,11 @@
 import json
 import pathlib
 import re
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TypeVar
 
 import yaml
+
+T = TypeVar('T')
 
 try:
     import jinja2
@@ -186,3 +188,8 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
                 results[analysis_type] = result
 
     return results
+
+
+def filter_unreleased(d: dict[str, dict[str, T]]) -> dict[str, dict[str, T]]:
+    """Hide unfinished items for release and release-candidate builds"""
+    return {k: v for k, v in d.items() if v.get('release', True)}
