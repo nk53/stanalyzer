@@ -6,7 +6,7 @@ ST-Analyzer has been tested on macOS (x64 and arm64), Ubuntu (x64), and WSL (x64
 
 See the section below for regular installation.
 
-For development installation, skip to the section __Installation via Conda (ST-Analyzer developers)__.
+For development installation, skip to the section [Installation via Conda (ST-Analyzer developers)](#installation-via-conda-st-analyzer-developers).
 
 ## Installation via Conda (regular users)
 
@@ -58,7 +58,7 @@ Development installation entails obtaining the ST-Analyzer source code and linki
 
 ```bash
 # install ST-Analyzer's dependencies in a new environment
-conda create -n sta-dev --only-deps -c conda-forge nk53::stanalyzer
+conda create -n sta-dev --only-deps -c conda-forge stanalyzer
 
 # enter environment
 conda activate sta-dev
@@ -96,7 +96,7 @@ If you are testing recent development changes to static files such as `forms.js`
 
 # Usage
 
-ST-Analyzer is in alpha development stage; it is intended to be run and accessed on your personal computer.
+Although there are plans for user accounts, remote connections, and job submission through schedulers. Those features are unfinished. The roadmap can be seen [here](https://charmm-gui.org/?doc=stanalyzer).
 
 ## Web GUI: sta-server
 
