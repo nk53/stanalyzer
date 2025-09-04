@@ -23,7 +23,7 @@
 {%- do attrs['classes'].extend(kwargs.pop('classes', [])) -%}
 {%- do attrs.update(kwargs) -%}
 <div data-role="popup" id="{{ id }}"{{ utils.cat_attrs(**attrs) }}>
-    {% autoescape false %}{{ text }}{% endautoescape %}
+    {{ text|safe }}
 </div>
 {%- endmacro -%}
 

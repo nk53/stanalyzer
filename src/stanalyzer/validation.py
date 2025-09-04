@@ -4,12 +4,9 @@ from pathlib import Path
 from ._typing import (
     Any,
     Annotated,
-    Callable,
     CustomError,
-    Generic,
     Literal,
     Optional,
-    Sized,
     TypeVar,
     TYPE_CHECKING,
     error_templates,
