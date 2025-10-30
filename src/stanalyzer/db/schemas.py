@@ -48,6 +48,8 @@ class Analysis(SQLModel, table=True):
             -> str | tuple[str, str]:
         def _read(p: Path) -> str:
             # don't read all of a large file (>2 pages)
+            if not p.exists():
+                return ''
             if os.stat(p).st_size > 0x2000:
                 # first page, '[...]', & last page
                 result: list[str] = []
