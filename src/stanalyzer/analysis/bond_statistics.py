@@ -24,10 +24,10 @@ G = t.TypeVar('G', Bond, Angle, Dihedral)  # G = group
 OptFileLike: t.TypeAlias = sta.FileRef | None
 Params: t.TypeAlias = list[Bond] | list[Angle] | list[Dihedral]
 IndexDict: t.TypeAlias = dict[str, list[int]]
-Coors: t.TypeAlias = 'npt.NDArray[np.float_]'
+Coors: t.TypeAlias = 'npt.NDArray[np.float64]'
 CoorMap: t.TypeAlias = dict[str, list[Coors]]
 CentroidType: t.TypeAlias = t.Literal['com', 'cog']
-Stats: t.TypeAlias = dict[G, list[np.float_]]
+Stats: t.TypeAlias = dict[G, list[np.float64]]
 
 
 class BondParams(t.TypedDict, total=False):
