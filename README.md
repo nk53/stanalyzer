@@ -54,7 +54,7 @@ conda env remove -n sta
 
 ## Installation via Conda (ST-Analyzer developers)
 
-Development installation entails obtaining the ST-Analyzer source code and linking it to your python environment. The helper script `dev_install.sh` can run most of the steps for you:
+Development installation entails obtaining the ST-Analyzer source code and linking it to your python environment. The helper script `dev_install.sh` can run the final step for you:
 
 ```bash
 # install ST-Analyzer's dependencies in a new environment
