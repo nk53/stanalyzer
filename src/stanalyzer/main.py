@@ -110,8 +110,12 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
     for analysis, analysis_settings in job_settings.items():
         # setup invocation args
         program = f'stanalyzer {analysis}'
+
+        # CLI opts expect '-' word sep, not '_'
+        analysis_settings = {k.replace('_', '-'): v for k, v in analysis_settings.items()}
+
         bool_args = tuple(f'--{k} "{v}"' for k, v in analysis_settings.items()
-                          if not isinstance(v, bool))
+                          if not isinstance(v, bool) and v != '')
         other_args = tuple(f'--{k}' for k, v in analysis_settings.items() if v is True)
         args = ' '.join(bool_args + other_args)
 
@@ -128,10 +132,6 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
 
         # TODO: this should ONLY be used when localhost is allowed
         with ctx.cd(in_dir):
-            # CLI opts expect '-' word sep, not '_'
-            analysis_settings = {k.replace('_', '-'): v
-                                 for k, v in analysis_settings.items()}
-
             # log invocation for user
             out_stream = out_file.open('w')
             print('args:', args, file=out_stream)

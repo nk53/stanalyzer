@@ -57,7 +57,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Reference selection")
     parser.add_argument('-sel2', metavar='select', default=None,
                         help="Target selection")
-    parser.add_argument('-bin_size', metavar='float',
+    parser.add_argument('-bin-size', metavar='float',
                         default=None, type=p_float, help="Bin size")
 
     return parser

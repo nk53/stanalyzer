@@ -67,11 +67,11 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
 
     # Add two separate selection arguments, one for alignment and one for RMSF calculation
-    parser.add_argument('--sel_align', metavar='selection_align',
+    parser.add_argument('--sel-align', metavar='selection_align',
                         help="Atom selection for trajectory alignment")
-    parser.add_argument('--sel_rmsf', metavar='selection_rmsf',
+    parser.add_argument('--sel-rmsf', metavar='selection_rmsf',
                         help="Atom selection for RMSF calculation")
-    parser.add_argument('--align_out', type=argparse.FileType('w'),
+    parser.add_argument('--align-out', type=argparse.FileType('w'),
                         metavar='FILE', default=None,
                         help="Write aligned trajectory to this path")
 

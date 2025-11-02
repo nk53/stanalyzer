@@ -103,6 +103,14 @@ cov_analysis:
       label: Projected trajectory output
       type: form.path
       value: projected_traj.dcd
+    eigenvalues_out:
+      label: Eigenvalues output
+      type: form.path
+      value: eigenvalues.dat
+    eigenvectors_out:
+      label: Eigenvectors output
+      type: form.path
+      value: eigenvectors.dat
 rmsd:
   label: RMSD
   options:
