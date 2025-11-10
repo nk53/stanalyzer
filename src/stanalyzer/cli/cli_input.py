@@ -5,7 +5,7 @@ from pydantic import ValidationError
 __all__ = ['get_choice', 'get_input', 'validate_type']
 
 
-def get_bool(prompt: str, default: bool = False, retry_prompt: t.Optional[str] = None):
+def get_bool(prompt: str, default: bool = False, retry_prompt: t.Optional[str] = None) -> bool:
     if default:
         prompt = f"{prompt} [Y/n] "
         default_str = 'y'
@@ -24,7 +24,8 @@ def get_bool(prompt: str, default: bool = False, retry_prompt: t.Optional[str] =
 
 
 def get_choice(prompt: str, choices: t.Sequence, descriptions: t.Optional[t.Sequence[str]] = None,
-               dtype: type = str, default: t.Any = None, retry_prompt: t.Optional[str] = None):
+               dtype: type = str, default: t.Any = None,
+               retry_prompt: t.Optional[str] = None) -> t.Any:
     choices = [str(choice) for choice in choices]
     tpl = "[{}]{}"
     if descriptions is None:
@@ -40,7 +41,7 @@ def get_choice(prompt: str, choices: t.Sequence, descriptions: t.Optional[t.Sequ
 
 def get_input(prompt: str, dtype: type = str, default: t.Any = None,
               allowed: t.Optional[t.Sequence] = None, ntries: t.Optional[int] = None,
-              case_sensitive: bool = True, retry_prompt: t.Optional[str] = None):
+              case_sensitive: bool = True, retry_prompt: t.Optional[str] = None) -> t.Any:
     if retry_prompt is None:
         retry_prompt = "Invalid response, please try again, or interrupt to quit: "
 
@@ -58,14 +59,14 @@ def get_input(prompt: str, dtype: type = str, default: t.Any = None,
                 if default is not None:
                     return default
 
-            return dtype(response)
+            converted = dtype(response)
 
             if allowed is None:
-                return response
+                return converted
             elif response in allowed:
-                return response
+                return converted
             elif not case_sensitive and response.lower() in allowed:
-                return response
+                return converted
         except (EOFError, KeyboardInterrupt):
             print()
             sys.exit(1)
@@ -108,7 +109,7 @@ def get_input(prompt: str, dtype: type = str, default: t.Any = None,
     sys.exit(2)
 
 
-def validate_type(obj: t.Any, cls: type, var_name: str):
+def validate_type(obj: t.Any, cls: type, var_name: str) -> None:
     tpl = "Invalid type for {}; expected {}, got '{}'"
     if not isinstance(obj, cls):
         expected = type(cls).__name__

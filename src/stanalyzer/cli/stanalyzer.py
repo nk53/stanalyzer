@@ -4,12 +4,14 @@ import io
 import os
 import re
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from importlib import import_module
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import Any, TypeAlias, TypeVar, cast, overload
 from .validators import exec_name, p_int, p_float
 from ..utils import read_json
+
+T = TypeVar('T')
 
 
 def ExistingFile(path: str) -> str:
@@ -124,7 +126,56 @@ def add_exec_args(subparser: Any, *args: str) -> None:
         add_exec_arg(arg)
 
 
-def add_project_args(subparser, *args):
+def get_abspath(pathstr: str | Path, relative_to: str | Path) -> str:
+    """Returns absolute paths unmodified, but relative paths are resolved wrt
+    `relative_to`."""
+    path = Path(pathstr)
+    if path.is_absolute():
+        return str(path)
+
+    return str(path.relative_to(relative_to))
+
+
+@overload
+def writeable_outfile(v: str) -> LazyFile: ...
+
+
+@overload
+def writeable_outfile(v: T) -> T: ...
+
+
+def writeable_outfile(v: str | T) -> LazyFile | T:
+    """Returns abspath to file in user's out dir if `v` is a relpath str."""
+    global defaults
+
+    def get_outpath() -> str:
+        path = Path(cast(os.PathLike, v))
+        if not path.is_absolute():
+            path = path.relative_to(defaults['output_path'])
+
+        # TODO: merge with ..validation.dir_is_writeable()?
+        parent = path.parent
+        if not parent.is_dir():
+            try:
+                parent.mkdir(parents=True)
+            except Exception:
+                raise ValueError(f"Could not create parent dir: {parent}")
+
+        # check writability, but do not open outfile
+        # possible race condition if dir is ever deleted
+        if not os.access(parent, os.W_OK):
+            raise ValueError(f"Cannot write to {path}")
+
+        return str(path)
+
+    if not isinstance(v, str):
+        # do not override manual setting
+        return v
+
+    return LazyFile(get_outpath(), 'w')
+
+
+def add_project_args(subparser: argparse.ArgumentParser, *args: str) -> None:
     global from_settings
 
     defstr = '(default: use project settings)'
@@ -138,7 +189,7 @@ def add_project_args(subparser, *args):
             help=f"One or more coordinate containing files {defstr}")
     if 'out' in args:
         subparser.add_argument(
-            '-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
+            '-o', '--out', type=writeable_outfile, default=sys.stdout,
             help="File to write results (default: stdout)")
     if 'time_step' in args:
         subparser.add_argument(
@@ -191,6 +242,16 @@ def get_settings(analysis_name: str | None = None) -> dict:
         remaining_args = full_args[idx+1:] if len(full_args) > idx else []
 
     if args.list or args.compact:
+        misc_utils = [('config', 'Interactively create project.json files')]
+
+        print("Built-in tools:")
+        if args.compact:
+            print(f"    {', '.join([])}")
+        else:
+            width = max(map(lambda x: len(x[0]), misc_utils))
+            print(f"{', '.join([f"    {name:<{width}s}  {desc}" for name, desc in misc_utils])}")
+            print()
+
         print("List of available analysis modules:")
         analyses = sorted(list_analyses())
 

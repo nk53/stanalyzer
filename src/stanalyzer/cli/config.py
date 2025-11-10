@@ -1,10 +1,12 @@
+import argparse
 import collections.abc as abc
+import sys
 import typing as t
 from functools import wraps
 from pathlib import Path
 
 import pydantic
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 from pydantic_core._pydantic_core import PydanticUndefined, PydanticUndefinedType
 
@@ -22,11 +24,13 @@ OptFieldList: t.TypeAlias = FieldList | None
 
 # Pydantic field definition types: mappings
 FieldDict: t.TypeAlias = abc.MutableMapping[str, t.Any]
-FieldInfoDict: t.TypeAlias = abc.MutableMapping[str, tuple[type, object]]
+FieldInfoDict: t.TypeAlias = abc.MutableMapping[str, t.Any]
 
 # InteractiveModel internal types
-Factory: t.TypeAlias = abc.Callable[[], object]
-OptFactory: t.TypeAlias = Factory | None
+FactoryNoArgs: t.TypeAlias = abc.Callable[[], t.Any]
+FactoryArgs: t.TypeAlias = abc.Callable[[dict[str, t.Any]], t.Any]
+Factory: t.TypeAlias = FactoryNoArgs | FactoryArgs
+OptFactory: t.TypeAlias = FactoryNoArgs | None
 
 # InteractiveModel arguments
 ModelInject: t.TypeAlias = type[BaseModel] | abc.Sequence[type[BaseModel]] | None
@@ -61,16 +65,36 @@ class InteractiveModel(BaseModel):
         # ('id', 2) ('name', 'Some Interaction') ('created_date', date(2000, 1, 1))
     """
     # must remain unset, else __init_subclass__ overrides subclass attrs
-    _sta_field_models: t.ClassVar[list[BaseModel]]
+    _sta_field_models: t.ClassVar[list[type[BaseModel]]]
     _sta_no_write_fields: t.ClassVar[list[str]]
     _sta_no_interact_fields: t.ClassVar[list[str]]
     _sta_default_overrides: t.ClassVar[dict[str, object]]
 
     @classmethod
-    def as_model(cls: type[IM], other: type[BM], *args, **kwargs) -> BM:
+    def as_model(cls: type[IM], other: type[BM], *args: t.Any, **kwargs: t.Any) -> BM:
         """Shortcut to initialize interactively and return non-interactive obj"""
-        obj = cls(*args, **kwargs)
-        return other(**obj.model_dump())
+        while True:
+            try:
+                obj = cls(*args, **kwargs)
+                model_dict = obj.model_dump()
+                return other(**model_dict)
+            except ValidationError as exc:
+                errors = exc.errors()
+                print("Got errors:")
+                for error in errors:
+                    locs = ', '.join(map(str, error['loc']))
+                    print(f"    {locs}: {error['msg']}")
+
+                    # remove failed inputs
+                    for loc in error['loc']:
+                        if not isinstance(loc, str):
+                            raise NotImplementedError(repr(loc))
+                        model_dict.pop(loc, None)
+
+                # retry asking only for failed inputs
+                kwargs = model_dict
+            except (KeyboardInterrupt, EOFError):
+                sys.exit(1)
 
     def __init__(self, *args: t.Any, **kwargs: t.Any):
         super().__init__(*args, **kwargs)
@@ -111,6 +135,7 @@ class InteractiveModel(BaseModel):
         elif issubclass(_sta_inject, BaseModel):
             _sta_inject = (_sta_inject,)
 
+        value: PydanticUndefinedType | FieldInfo | t.Any
         for _inject in _sta_inject:
             for field, ann in getattr(_inject, '__annotations__', {}).items():
                 if field in cls._sta_no_write_fields:
@@ -175,7 +200,7 @@ class InteractiveModel(BaseModel):
                 if callable(info.default_factory):
                     default_str = 'auto'
                     params['default'] = ''
-                    default_func = info.default_factory
+                    default_func = t.cast(FactoryNoArgs, info.default_factory)
                 elif info.default is not PydanticUndefined:
                     default_str = info.default  # allows default=None
                     params['default'] = info.default
@@ -190,6 +215,7 @@ class InteractiveModel(BaseModel):
                 params['prompt'] = f"{field} ({default_str}): "
 
             params['dtype'] = cls._sta_wrap__({field: info})
+
             new_field = pydantic.Field(
                 default_factory=default_factory(params, default_func))
 
@@ -199,7 +225,7 @@ class InteractiveModel(BaseModel):
         super().__init_subclass__(**kwargs)
 
     @classmethod
-    def __pydantic_init_subclass__(cls, **kwargs: t.Any):
+    def __pydantic_init_subclass__(cls, **kwargs: t.Any) -> None:
         # TODO: cls.__pydantic_decorators__.field_validators
         #       cls.__pydantic_decorators__.model_validators
         super().__pydantic_init_subclass__(**kwargs)
@@ -210,7 +236,8 @@ class InteractiveModel(BaseModel):
             name: (info.annotation, info)
             for name, info in fields.items()
         }
-        field_model = pydantic.create_model(  # type: ignore[call-overload]
+        # field_model = pydantic.create_model(  # type: ignore[call-overload]
+        field_model = pydantic.create_model(
             f'{"_".join(fields.keys())}_model', **field_defs)
 
         @wraps(cls)
@@ -235,7 +262,8 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
 
     @classmethod
     def write_settings(cls: type['InteractiveProject'], output_path: str = 'project.json',
-                       other: type[Project] = Project, *args, **kwargs) -> None:
+                       other: type[Project] = Project, *args: t.Any, **kwargs: t.Any) -> None:
+        # NB: see TODO in InteractiveModel.__pydantic_init_subclass__
         model = cls.as_model(other)
         exclude = set(cls._sta_no_write_fields)
         write_settings(
@@ -244,4 +272,9 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
 
 
 def main(output_path: str = 'project.json') -> None:
+    parser = argparse.ArgumentParser(
+        prog="stanalyzer config",
+        description="Interactively create project.json")
+    parser.parse_args(sys.argv[2:])
+
     InteractiveProject.write_settings(output_path)
