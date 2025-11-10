@@ -246,10 +246,10 @@ def get_settings(analysis_name: str | None = None) -> dict:
 
         print("Built-in tools:")
         if args.compact:
-            print(f"    {', '.join([])}")
+            print(f"    {', '.join(map(lambda x: x[0], misc_utils))}")
         else:
             width = max(map(lambda x: len(x[0]), misc_utils))
-            print(f"{', '.join([f"    {name:<{width}s}  {desc}" for name, desc in misc_utils])}")
+            print(', '.join([f"    {name:<{width}s}  {desc}" for name, desc in misc_utils]))
             print()
 
         print("List of available analysis modules:")
