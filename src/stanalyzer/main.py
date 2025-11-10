@@ -127,6 +127,10 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
         out_file = Path(out_dir / f"analysis_{analysis_id}.out")
         err_file = Path(out_dir / f"analysis_{analysis_id}.err")
 
+        # ensure out_dir exists (default mode=0o777)
+        if not out_dir.exists():
+            out_dir.mkdir(parents=True)
+
         if analysis_id is None:
             return {'error': 'failed to add analysis to database'}
 

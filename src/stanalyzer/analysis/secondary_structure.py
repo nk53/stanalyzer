@@ -27,9 +27,9 @@ def header(outfile: sta.FileLike | None = None) -> str:
     return header_str
 
 
-def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
-                      sel: str = 'protein', interval: int = 1,
-                      mkdssp_path: str | None = None) -> None:
+def write_secondary_structure(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
+                              sel: str = 'protein', interval: int = 1,
+                              mkdssp_path: str | None = None) -> None:
     """Writes secondary structure to `out` file"""
 
     if mkdssp_path is None:
@@ -87,7 +87,7 @@ def write_salt_bridge(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
                 continue
             all_atoms.write('{}_{}.pdb'.format(random_tmp_filename, step_num))
             os.system('{} --output-format=dssp {}_{}.pdb {}_{}.dssp'.format(
-                DSSP_path, random_tmp_filename, step_num, random_tmp_filename, step_num))
+                mkdssp_path, random_tmp_filename, step_num, random_tmp_filename, step_num))
 
             processing_line = False
             ss_this_frame = []
@@ -153,12 +153,12 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 def main(settings: dict | None = None) -> None:
-    global DSSP_path
+    global mkdssp_path
 
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 
-    write_salt_bridge(**settings)
+    write_secondary_structure(**settings)
 
 
 if __name__ == '__main__':

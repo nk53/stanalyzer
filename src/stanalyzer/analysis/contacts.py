@@ -30,7 +30,7 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
 
 def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    out: sta.FileRef, contact_threshold: float = 5.0,
-                   debug: bool = False) -> None:
+                   interval: int = 1, debug: bool = False) -> None:
     """Writes contacts to `out` file"""
 
     if contact_threshold <= 0:
@@ -44,7 +44,10 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
     residues = universe.select_atoms(sel).residues
 
     # Iterate over frames in the trajectory
-    for ts in universe.trajectory:
+    for step_num, ts in enumerate(universe.trajectory):
+        if step_num % interval:
+            continue
+
         # Select all atoms
         atoms = universe.select_atoms(sel)
 

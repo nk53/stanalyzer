@@ -87,22 +87,22 @@ cov_analysis:
       classes: [code]
       value:
         name CA
-    sel_atoms_pdb_out:
-      label: Selected atoms output
-      type: form.path
-      value: selection.pdb
-    align_traj_out:
-      label: Aligned trajectory output
-      type: form.path
-      value: align_traj.dcd
+   #sel_atoms_pdb_out:
+   #  label: Selected atoms output
+   #  type: form.path
+   #  value: selection.pdb
+   #align_traj_out:
+   #  label: Aligned trajectory output
+   #  type: form.path
+   #  value: align_traj.dcd
     corr_matrix_out:
       label: Correlation matrix output
       type: form.path
       value: correlation_matrix.dat
-    projected_traj_out:
-      label: Projected trajectory output
-      type: form.path
-      value: projected_traj.dcd
+   #projected_traj_out:
+   #  label: Projected trajectory output
+   #  type: form.path
+   #  value: projected_traj.dcd
     eigenvalues_out:
       label: Eigenvalues output
       type: form.path
@@ -214,13 +214,13 @@ salt_bridge:
       type: form.textarea
       classes: [code]
       value:
-        resname ARG LYS and name NE NH* NZ* 
+        resname ARG LYS and name NE NH* NZ*
     negative_def:
       label: Definition of negatively charged atoms
       type: form.textarea
       classes: [code]
       value:
-        resname ASP GLU and name OE* OD* 
+        resname ASP GLU and name OE* OD*
     dist_cutoff:
       label: Distance cutoff between oppositely charged atoms
       type: form.input
@@ -278,13 +278,13 @@ water_bridge:
       value:
         protein
     sel2:
-      label: Optional. The second group of atoms when searching water bridges between two different groups 
+      label: Optional. The second group of atoms when searching water bridges between two different groups
       type: form.textarea
       classes: [code]
       value:
         None
     water_sel:
-      label: Atom selection for bridging water. If None, then all water molecules will be selected 
+      label: Atom selection for bridging water. If None, then all water molecules will be selected
       type: form.textarea
       classes: [code]
       value:
@@ -434,7 +434,7 @@ position_time:
       label: Atom selection to print position for (eg. segid HETA or resname <LIG>)
       type: form.textarea
       classes: [code]
-      value: segid HETA 
+      value: segid HETA
     method:
       label: Centroid Calculation Method
       type: form.select
@@ -447,12 +447,12 @@ position_time:
       options:
         z: Z-axis
         x: X-axis
-        y: Y-axis  
+        y: Y-axis
     head_group:
       label: Head group selection for membrane centering
       type: form.textarea
       classes: [code]
-      value: segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9]) ## segid MEMB and not name H* 
+      value: segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9]) ## segid MEMB and not name H*
     out:
       label: Output file
       type: form.path
@@ -524,7 +524,7 @@ contacts:
       label: Frame interval
       type: form.positive_integer
     out:
-      label: Output file 
+      label: Output file
       type: form.path
       value: residue_contacts.dat
 contact_res_time:
@@ -904,7 +904,8 @@ voronoi_shell_comp:
       type: form.positive_integer
       value: 1
 sasa:
-  label: SASA
+  label: SASA (TODO)
+  release: false
   options:
     sel:
       label: Atom selection for SASA calculation

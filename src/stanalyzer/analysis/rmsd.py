@@ -37,6 +37,8 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                time_step: float | str = .1, interval: int = 1) -> None:
     """Writes RMSD to `out` file"""
 
+    align_filename: str | None
+
     if ref_psf is None:
         ref_psf = cast(sta.FileRef, psf)
     if ref_coor is None:

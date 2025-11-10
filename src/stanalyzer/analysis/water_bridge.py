@@ -46,7 +46,7 @@ def print_network(universe, frame, network, out_lines, water_indices):
                         out_line += 'None'
                     else:
                         atom = universe.atoms[node[i]]
-                        out_line += '_'.join(atom.segid, atom.resname, str(atom.resid), atom.name)
+                        out_line += '_'.join([atom.segid, atom.resname, str(atom.resid), atom.name])
                 for i in range(4):
                     if i == 0 or i == 2:
                         out_line += '] ['
@@ -56,7 +56,7 @@ def print_network(universe, frame, network, out_lines, water_indices):
                         out_line += 'None'
                     else:
                         atom = universe.atoms[subnode[i]]
-                        out_line += '_'.join(atom.segid, atom.resname, str(atom.resid), atom.name)
+                        out_line += '_'.join([atom.segid, atom.resname, str(atom.resid), atom.name])
                 out_line += ']'
                 out_lines.append(out_line)
             print_network(universe, frame, network[node], out_lines, water_indices)
