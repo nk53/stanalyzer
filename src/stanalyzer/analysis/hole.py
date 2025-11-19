@@ -6,6 +6,7 @@ import numpy as np
 from MDAnalysis.analysis import hole2
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'Pore Profile'
@@ -41,8 +42,11 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     midpoints = midpoints[::interval]
     means = midpoints[::interval]
 
-    np.savetxt(midpoints_out, midpoints)
-    np.savetxt(means_out, means)
+    with sta.resolve_file(midpoints_out, 'w') as outfile:
+        np.savetxt(outfile, midpoints)
+    with sta.resolve_file(means_out, 'w') as outfile:
+        np.savetxt(outfile, means)
+
     plt.plot(midpoints, means)
     plt.ylabel(r"Mean HOLE radius $R$ ($\AA$)")
     plt.xlabel(r"Pore coordinate $\zeta$ ($\AA$)")
@@ -57,12 +61,12 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection containing pore. Default: protein.")
     parser.add_argument('-b', '--bins', default=100, type=p_int,
                         help="Number of histogram bins in output. Default: 100.")
-    parser.add_argument('-ho', '--hist-out', type=argparse.FileType('w'), default="hist.png",
+    parser.add_argument('-ho', '--hist-out', type=writable_outfile, default="hist.png",
                         help="File to write histogram image. Default: hist.png")
-    parser.add_argument('-bo', '--midpoints-out', '--bins-out', type=argparse.FileType('w'),
+    parser.add_argument('-bo', '--midpoints-out', '--bins-out', type=writable_outfile,
                         default="midpoints.dat",
                         help="File to write bin midpoints. Default: midpoints.dat")
-    parser.add_argument('-mo', '--means-out', type=argparse.FileType('w'), default="means.dat",
+    parser.add_argument('-mo', '--means-out', type=writable_outfile, default="means.dat",
                         help="File to write means image. Default: means.dat")
 
     return parser

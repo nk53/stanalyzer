@@ -1,0 +1,3 @@
+[flake8]
+per-file-ignores =
+    src/stanalyzer/analysis/msd_membrane.py: E221

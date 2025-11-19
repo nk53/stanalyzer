@@ -9,6 +9,7 @@ from MDAnalysis.analysis import align
 from sklearn.decomposition import PCA
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 
 ANALYSIS_NAME = 'cov_analysis'
 
@@ -29,11 +30,13 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
                              interval: int = 1) -> None:
     """Writes correlation matrix to `out` file"""
 
-    align_filename: str | None
-    if align_out is None or not align_out:
-        align_filename = None
-    else:
-        align_filename = t.cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
+    #align_filename: str | None
+    #if align_out is None or not align_out:
+    #    align_filename = None
+    #else:
+    #    align_filename = t.cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
+
+    align_file = align_out.name if align_out else None
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -44,7 +47,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     atoms = u.select_atoms(sel)  # default 'name CA'
     ref = u.select_atoms(sel)
 
-    align.AlignTraj(u, ref, filename=align_filename, select=sel).run()
+    align.AlignTraj(u, ref, filename=align_file, select=sel).run()
 
     ts_positions: list[np.ndarray] = []
     for ts in u.trajectory:
@@ -113,10 +116,13 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
     parser.add_argument('--sel', metavar='selection', required=True)
-    parser.add_argument('--corr-matrix-out', metavar='filename', required=True)
-    parser.add_argument('--eigenvalues-out', metavar='filename', required=True)
-    parser.add_argument('--eigenvectors-out', metavar='filename', required=True)
-    parser.add_argument('--align-out', metavar='filename'),
+    parser.add_argument('--corr-matrix-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--eigenvalues-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--eigenvectors-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--align-out', type=writable_outfile, metavar='filename'),
 
     return parser
 

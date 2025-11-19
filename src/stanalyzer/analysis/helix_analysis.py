@@ -8,9 +8,10 @@ from typing import Optional, cast
 
 import stanalyzer.cli.stanalyzer as sta
 import MDAnalysis as mda
+import matplotlib.pyplot as plt
+from stanalyzer.cli.stanalyzer import writable_outfile
 from MDAnalysis.analysis.align import AlignTraj, AverageStructure
 from MDAnalysis.analysis import helix_analysis as hel
-import matplotlib.pyplot as plt
 
 ANALYSIS_NAME = 'helix_analysis'
 
@@ -63,7 +64,8 @@ def analyze_helix(aligned: mda.Universe, selection: str,
 
 def write_helix_analysis(
         psf: sta.FileRef, traj: sta.FileRefList, sel_align: str,
-        sel_helix: str, out: sta.FileRef, align_out: io.TextIOWrapper,
+        sel_helix: str, out: sta.FileRef,
+        align_out: io.TextIOWrapper | None = None,
         ref_psf: Optional[sta.FileRef] = None,
         ref_coor: Optional[sta.FileRef] = None,
         ref_frame_type: str = 'specific', ref_frame_num: int = 1,
@@ -89,11 +91,13 @@ def write_helix_analysis(
         print(f"unknown reference frame type: '{ref_frame_type}'", file=sys.stderr)
         sys.exit(1)
 
+    align_file = align_out.name if align_out else None
+
     # Align the mobile trajectory to the reference and save the aligned trajectory
-    AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_file, select=sel_align).run()
 
     # Load the aligned trajectory from the saved file
-    aligned_mobile = mda.Universe(psf, align_out.name)  # noqa: F841
+    aligned_mobile = mda.Universe(psf, align_file)  # noqa: F841
 
     # Perform helix analysis and write results
     with sta.resolve_file(out, 'w') as outfile:
@@ -124,9 +128,8 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-rn', '--ref-frame-num', type=int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                              "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('--align-out', type=argparse.FileType('w'),
-                        metavar='FILE', default=None,
-                        help="Write aligned trajectory to this path")
+    parser.add_argument('--align-out', type=writable_outfile, metavar='FILE',
+                        default=None, help="Write aligned trajectory to this path")
 
     return parser
 

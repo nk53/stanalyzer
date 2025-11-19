@@ -165,7 +165,7 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
 async def update_project(settings: validation.Project) -> StrDict:
     time_step = settings.time_step
 
-    model_dict = settings.model_dump()
+    model_dict = settings.model_dump(mode="json")
     model_dict['uid'] = 1   # TODO: get user id
     model_dict['time_step'] = f"{time_step.num} {time_step.scale}"
 
@@ -190,7 +190,7 @@ async def insert_project(request: Request,
                          settings: validation.Project) -> StrDict:
     time_step = settings.time_step
 
-    model_dict = settings.model_dump()
+    model_dict = settings.model_dump(mode="json")
     model_dict.pop('id', None)  # user does not get to choose id
     model_dict['uid'] = 1   # TODO: get user id
     model_dict['time_step'] = f"{time_step.num} {time_step.scale}"
@@ -213,7 +213,7 @@ async def insert_project(request: Request,
 
 @app.delete("/project")
 async def delete_project(settings: validation.Project) -> StrDict:
-    model_dict = settings.model_dump()
+    model_dict = settings.model_dump(mode="json")
     model_dict['uid'] = 1   # TODO: get user id
 
     db.delete_project(pid=model_dict['id'], uid=1)

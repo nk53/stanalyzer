@@ -1,6 +1,6 @@
 import argparse
-import os
 import re
+import typing as t
 
 import MDAnalysis as mda
 import MDAnalysis.transformations as transformations
@@ -15,6 +15,18 @@ from . import voronoi_analysis as myvorn
 
 ANALYSIS_NAME = 'voronoi_apl'
 
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+
+NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
+NDInt64: t.TypeAlias = 'npt.NDArray[np.int64]'
+
+
+class ProcessedArgs(t.NamedTuple):
+    selection: list[str]
+    ntype: int
+    qsplit: list[bool]
+
 
 # --- The following are hard set for membrane analysis
 dim = 2              # 2 dimension
@@ -24,7 +36,7 @@ nside = 2     # up/dn
 sside = ["up", "dn"]
 
 
-def process_args(sel, split):
+def process_args(sel: str, do_split: str) -> ProcessedArgs:
     """
     ----------
     Process arguments
@@ -37,7 +49,7 @@ def process_args(sel, split):
     for i in range(0, ntype):
         selection[i] = selection[i].strip()
 
-    split = re.split(';|,', f'{split:s}')
+    split = re.split(';|,', f'{do_split:s}')
     nsplit = len(split)
     for i in range(0, nsplit):
         split[i] = split[i].strip()
@@ -58,10 +70,12 @@ def process_args(sel, split):
             else:
                 qsplit.append(False)
 
-    return selection, ntype, qsplit
+    return ProcessedArgs(selection, ntype, qsplit)
 
 
-def write_ave_std_leaflet(nside, ntype, name_type, sside, array1, array2, array3, odir):
+def write_ave_std_leaflet(nside: int, ntype: int, name_type: list[str], sside:
+                          list[str], array1: NDFloat64, array2: NDFloat64,
+                          array3: NDFloat64, odir: str) -> None:
     # array1: average
     # array2: std
     # array3: total weight
@@ -79,14 +93,12 @@ def write_ave_std_leaflet(nside, ntype, name_type, sside, array1, array2, array3
         for j in range(0, ntype):
             sout += f' {array3[i, j]:10.5f}'
 
-        fout = f'{odir}/{side}.plo'
-        f = open(fout, 'w')
-        f.write(sout)
-        f.close()
+        sta.write_to_outfile(f'{odir}/{side}.plo', sout)
         print(sout)
 
 
-def write_ave_std_bilayer(ntype, name_type, array1, array2, array3, odir):
+def write_ave_std_bilayer(ntype: int, name_type: list[str], array1: NDFloat64, array2: NDFloat64,
+                          array3: NDFloat64, odir: str) -> None:
     # array1: average
     # array2: std
     # array3: total weight
@@ -103,14 +115,13 @@ def write_ave_std_bilayer(ntype, name_type, array1, array2, array3, odir):
     for j in range(0, ntype):
         sout += f' {array3[j]:10.5f}'
 
-    fout = f'{odir}/{side}.plo'
-    f = open(fout, 'w')
-    f.write(sout)
-    f.close()
+    sta.write_to_outfile(f'{odir}/{side}.plo', sout)
     print(sout)
 
 
-def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside, array, odir):
+def write_time_series_leaflet(framenum: int, interval: int, nside: int, ntype:
+                              int, name_type: list[str], sside: list[str],
+                              array: NDFloat64, odir: str) -> None:
     # sside: leaflet names
     # array: time series
     # odir : output path
@@ -129,14 +140,11 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside
                 sout += f' {array[i, j, k]:10.5f}'
             sout += '\n'
 
-        fout = f'{odir}/time_{side}.plo'
-        f = open(fout, 'w')
-        f.write(sout)
-        f.close()
-        # print(sout)
+        sta.write_to_outfile(f'{odir}/time_{side}.plo', sout)
 
 
-def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir):
+def write_time_series_bilayer(framenum: int, interval: int, ntype: int,
+                              name_type: list[str], array: NDFloat64, odir: str) -> None:
     # array: time series
     # odir : output path
     side = "bilayer"
@@ -153,10 +161,7 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir)
             sout += f' {array[i, j]:10.5f}'
         sout += '\n'
 
-    fout = f'{odir}/time_{side}.plo'
-    f = open(fout, 'w')
-    f.write(sout)
-    f.close()
+    sta.write_to_outfile(f'{odir}/time_{side}.plo', sout)
     # print(sout)
 
 
@@ -190,7 +195,8 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj: sta.FileRefList,
+def run_voronoi_apl(sel: str, split: str, qz: bool, qb: bool, qt: bool, qa: bool,
+                    sel_sys: str, psf: sta.FileRef, traj: sta.FileRefList,
                     interval: int = 1, center: bool = False) -> None:
     """
     ----------
@@ -215,14 +221,13 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
 
     # make output dir
     odir = "./voronoi/apl"
-    os.system(f'mkdir -p {odir}')
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
     # number of frames to be analyzed
     framenum = int(u.trajectory.n_frames/interval)
 
-    # if (center): bilayer recentering - should be done before any assignments
+    # if center: bilayer recentering - should be done before any assignments
     # - center in the box (an atom)
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules

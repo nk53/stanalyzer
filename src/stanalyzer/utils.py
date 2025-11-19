@@ -1,7 +1,7 @@
 import json
 import pathlib
 import re
-from typing import Any, List, Optional, TypeVar
+from typing import Any, List, TypeVar
 
 import yaml
 
@@ -27,7 +27,13 @@ except ModuleNotFoundError:
 
 # groups strings[like][this] into their individual tokens
 P_RE = re.compile(r'^([^[]*)|\[([^]]*)\]')
-TOOLTIPS = None
+TOOLTIPS: dict[str, Any] | None = None
+
+
+def load_tooltips() -> dict[str, Any]:
+    tooltips = read_yaml('static/tooltips.yml')
+    assert isinstance(tooltips, dict)
+    return tooltips
 
 
 def read_yaml(filename: str) -> Any:
@@ -42,14 +48,14 @@ def read_json(filename: str) -> Any:
         return json.load(file_obj)
 
 
-def write_settings(path: pathlib.Path, data: Any, mode: str = 'w'):
+def write_settings(path: pathlib.Path, data: Any, mode: str = 'w') -> None:
     if not path.parent.exists():
         path.parent.mkdir()
     with path.open(mode=mode) as file_obj:
         json.dump(data, file_obj, indent=4)
 
 
-def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:
+def auto_tooltip(name: str, debug: bool = False) -> str | None:
     """Return tooltip string if it exists, else None
 
     Tooltip names derive from the field name, which is subscripted with
@@ -72,14 +78,14 @@ def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:
     global TOOLTIPS
 
     if TOOLTIPS is None:
-        TOOLTIPS = read_yaml('static/tooltips.yml')
+        TOOLTIPS = load_tooltips()
 
-    def lookup_keys(keys):
+    def lookup_keys(keys: list[str]) -> str | None:
         if debug:
             print(f'lookup_keys({keys}) = ', end='')
 
         # descend dict tree until reaching leaf, null, or keys are exhausted
-        tooltip = TOOLTIPS
+        tooltip: dict[str, Any] | str | None = TOOLTIPS
         while isinstance(tooltip, dict) and keys:
             key, keys = keys[0], keys[1:]
             tooltip = tooltip.get(key, None)
@@ -92,7 +98,7 @@ def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:
 
         return tooltip
 
-    def get_tooltip(keys):
+    def get_tooltip(keys: list[str]) -> str | None:
         tooltip = lookup_keys(keys)
 
         if tooltip is not None:
@@ -128,15 +134,16 @@ def auto_tooltip(name: str, debug: bool = False) -> Optional[str]:
     return get_tooltip([name])
 
 
-def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]] = None) -> dict:
+def get_active_settings(settings: dict[str, Any], analysis: dict[str, Any],
+                        path: List[str] | None = None) -> dict:
     if path is None:
         path = []
 
-    def get_setting(settings, option):
+    def get_setting(settings: dict[str, Any], option: str) -> Any:
         nonlocal path
         return settings.get('_'.join(path + [option]), False)
 
-    def has_sub_opts(values):
+    def has_sub_opts(values: Any) -> bool:
         if not isinstance(values, dict):
             return False
         if 'options' not in values:
@@ -145,7 +152,7 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
             return False
         return True
 
-    def allowed(setting_name, required_value):
+    def allowed(setting_name: str, required_value: object) -> bool:
         nonlocal settings
         value = settings.get(setting_name)
         if isinstance(required_value, bool):
@@ -161,7 +168,7 @@ def get_active_settings(settings: dict, analysis: dict, path: Optional[List[str]
             else:
                 result = {}
 
-            if sub_opts := {k: v for (k,v) in analysis[analysis_type]['options'].items()
+            if sub_opts := {k: v for (k, v) in analysis[analysis_type]['options'].items()
                             if has_sub_opts(v)}:
                 result.update(
                     get_active_settings(settings, sub_opts, path + [analysis_type])

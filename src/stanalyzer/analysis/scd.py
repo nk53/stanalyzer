@@ -1,28 +1,38 @@
 #!/usr/bin/python
 import argparse
-from typing import Optional
-import os
-import sys
 import re
-import math
-import stanalyzer.cli.stanalyzer as sta
+from typing import Any, NamedTuple
+
 import numpy as np
 import MDAnalysis as mda
 import MDAnalysis.transformations as transformations
 from MDAnalysis.core.groups import AtomGroup
+
+import stanalyzer.cli.stanalyzer as sta
 from . import leaflet_util as myleaflet
 from . import mol_atomgroup_util as mymol
 from . import scd_util as myscd
+from .scd_util import StrList2D, StrList3D, IntList2D
 
 ANALYSIS_NAME = 'scd'
-
 
 # --- The following are hard set for membrane analysis
 nside = 2     # up/dn
 sside = ["up", "dn"]
 
 
-def process_args(sel, split):
+class ProcessedArgs(NamedTuple):
+    selection: list[str]
+    ntype: int
+    sel_type: list[str]
+    name_type: list[str]
+    ref_name: StrList2D
+    ic_name: StrList2D
+    nchain: list[int]
+    qsplit: list[bool]
+
+
+def process_args(sel: str, split_str: str) -> ProcessedArgs:
     """
     ----------
     Process arguments
@@ -30,17 +40,17 @@ def process_args(sel, split):
     """
 
     # selections for individual lipid types
-    selection = re.split(';|,', f'{sel:s}')
+    selection: list[str] = re.split(';|,', f'{sel:s}')
     ntype = len(selection)                  # number of unique lipid types
     for i in range(0, ntype):
         selection[i] = selection[i].strip()
 
     # Process selection strings to extract information
-    sel_type = []  # selection type
-    name_type = []  # name of lipid type
-    ic_name = []  # starting carbon names for ind. tail in ind. lipid type
-    nchain = []  # number of carbon chains in ind. lipid types
-    ref_name = []  # reference atom for leaflet assignment
+    sel_type: list[str] = []        # selection type
+    name_type: list[str] = []       # name of lipid type
+    ic_name: StrList2D = []   # starting carbon names for ind. tail in ind. lipid type
+    nchain: list[int] = []          # number of carbon chains in ind. lipid types
+    ref_name: StrList2D = []  # reference atom for leaflet assignment
     for i in range(0, ntype):
         tmps = selection[i].split()
         sel_type.append(tmps[0])   # segid/resname/moleculetype
@@ -63,7 +73,7 @@ def process_args(sel, split):
         # update nchain
         nchain.append(len(ic_name[i]))
 
-    split = re.split(';|,', f'{split:s}')
+    split = re.split(';|,', f'{split_str:s}')
     nsplit = len(split)
     for i in range(0, nsplit):
         split[i] = split[i].strip()
@@ -83,10 +93,13 @@ def process_args(sel, split):
                 qsplit.append(True)
             else:
                 qsplit.append(False)
-    return selection, ntype, sel_type, name_type, ref_name, ic_name, nchain, qsplit
+
+    return ProcessedArgs(selection, ntype, sel_type, name_type, ref_name, ic_name, nchain, qsplit)
 
 
-def write_ave_std_leaflet(nside, ntype, name_type, sside, nchain, carbons, ncarbons, array1, array2, odir):
+def write_ave_std_leaflet(nside: int, ntype: int, name_type: list[str], sside:
+                          list[str], nchain: list[int], carbons: StrList3D,
+                          ncarbons: IntList2D, array1: Any, array2: Any, odir: str) -> None:
     # sside : leafelt names
     # array1: average
     # array2: std
@@ -101,12 +114,10 @@ def write_ave_std_leaflet(nside, ntype, name_type, sside, nchain, carbons, ncarb
                 # loop over carbon
                 nc = ncarbons[j][k]
                 for m in range(0, nc):
-                    sout += f' {carbons[j][k][m]:6s} {array1[i][j][k][m]:10.5f} {aarray2[i][j][k][m]:10.5f}\n'
+                    sout += f' {carbons[j][k][m]:6s} {array1[i][j][k][m]:10.5f}' \
+                            f' {array2[i][j][k][m]:10.5f}\n'
                 print(sout)
-                fout = f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
-                f = open(fout, 'w')
-                f.write(sout)
-                f.close()
+                sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo', sout)
 
 
 def write_ave_std_bilayer(ntype, name_type, nchain, carbons, ncarbons, array1, array2, odir):
@@ -124,13 +135,11 @@ def write_ave_std_bilayer(ntype, name_type, nchain, carbons, ncarbons, array1, a
             for m in range(0, nc):
                 sout += f' {carbons[j][k][m]:6s} {array1[j][k][m]:10.5f} {array2[j][k][m]:10.5f}\n'
             print(sout)
-            fout = f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
-            f = open(fout, 'w')
-            f.write(sout)
-            f.close()
+            sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo', sout)
 
 
-def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside, nchain, carbons, ncarbons, array, odir):
+def write_time_series_leaflet(framenum, interval, nside, ntype, name_type,
+                              sside, nchain, carbons, ncarbons, array, odir):
     # sside : leafelt names
     # array : time series
     # odir  : output path
@@ -143,7 +152,7 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside
 
                 # generate output string
                 sout = f'# {side}: time series of {name_type[j]} SCD for chain {k}\n'
-                sout += '#{carbons[j][k][0]:10s}'
+                sout += f'#{carbons[j][k][0]:10s}'
                 for n in range(1, nc):
                     sout += f' {carbons[j][k][n]:10}'
                 sout += '\n'
@@ -153,14 +162,12 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside
                     for n in range(0, nc):
                         sout += f' {array[i][j][k][n, m]:10.5f}'
                     sout += '\n'
-                fout = f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
-                f = open(fout, 'w')
-                f.write(sout)
-                f.close()
+                sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo', sout)
                 # print(sout)
 
 
-def write_time_series_bilayer(framenum, interval, ntype, name_type, nchain, carbons, ncarbons, array, odir):
+def write_time_series_bilayer(framenum, interval, ntype, name_type, nchain,
+                              carbons, ncarbons, array, odir):
     side = "bilayer"
     for j in range(0, ntype):
         ntail = nchain[j]
@@ -179,10 +186,7 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, nchain, carb
                 for n in range(0, nc):
                     sout += f' {array[j][k][n, m]:10.5f}'
                 sout += '\n'
-            fout = f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo'
-            f = open(fout, 'w')
-            f.write(sout)
-            f.close()
+            sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_chain{k}.plo', sout)
             # print(sout)
 
 
@@ -192,14 +196,26 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--center', default=False, action='store_true',
                         help='Perform membrane centering.')
 
-    parser.add_argument('--sel', metavar='selection',
-                        help='Selection for individual molecule type with a format, "segid/resname/moltype MOLECULENAME and name CARBONNAMES or name REFATOMNAME". Reference atom is used for the leaflet assignment. For the CHARMM format topology, an selection for POPC can be "resname POPC and (name C22 or name C32 or name P)".')
+    parser.add_argument('--sel', metavar='selection', help='Selection for '
+                        'individual molecule type with a format, '
+                        '"segid/resname/moltype MOLECULENAME and name '
+                        'CARBONNAMES or name REFATOMNAME". Reference atom '
+                        'is used for the leaflet assignment. For the CHARMM'
+                        ' format topology, a selection for POPC can be '
+                        '"resname POPC and (name C22 or name C32 or name P)".')
     parser.add_argument('--split', action='store',  # nargs='+',default='Y',
-                        help='Y/N. If N, the atom group for the selection is considered as that for a single molecule. If Y, the atom group is further splitted to molecular level based on segid/resname/moleculename. Default is Y/y.')
+                        help='Y/N. If N, the atom group for the selection '
+                        'is considered as that for a single molecule. If Y,'
+                        ' the atom group is further splitted to molecular '
+                        'level based on segid/resname/moleculename. '
+                        'Default is Y/y.')
     parser.add_argument('--sel-sys', metavar='selection',
-                        help='Selection for system atom groups in membranes for bilayer recentering.')
+                        help='Selection for system atom groups in membranes'
+                        ' for bilayer recentering.')
     parser.add_argument('--qz', action='store_true', default=False,
-                        help='Z-position based leaflet assigment: Default is false. Maybe useful when selections are minor components of the bilayer')
+                        help='Z-position based leaflet assigment: Default '
+                        'is false. Maybe useful when selections are minor '
+                        'components of the bilayer')
     parser.add_argument('--qb', action='store_true', default=False,
                         help='Do bilayer analysis if provided: only for sym. bilayers')
     parser.add_argument('--qt', action='store_true', default=False,
@@ -210,7 +226,9 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_scd(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj: sta.FileRefList, interval: int = 1, center: bool = False) -> None:
+def run_scd(sel: str, split: str, qz: bool, qb: bool, qt: bool, qa: bool,
+            sel_sys: str, psf: sta.FileRef, traj: sta.FileRefList, interval:
+            int = 1, center: bool = False) -> None:
     """
     ----------
     Calculate SCD order parameters.
@@ -235,20 +253,18 @@ def run_scd(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj: sta.Fil
         print('Leaflets are assgined using a modified version of MDA LeafletFinder')
     print('Write average SCD,', qa)
     print('Write time series of SCD', qt)
-    print('SCD will be caulated every {interval} frames')
+    print(f'SCD will be calculated every {interval} frames')
 
     # make output dir
     odir1 = "./scd/ave"
-    os.system(f'mkdir -p {odir1}')
     odir2 = "./scd/time"
-    os.system(f'mkdir -p {odir2}')
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
     # number of frames to be analyzed
     framenum = int(u.trajectory.n_frames/interval)
 
-    # if (center): bilayer recentering - should be done before any assignments
+    # if center: bilayer recentering - should be done before any assignments
     # - center in the box (an atom)
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules
@@ -376,10 +392,11 @@ def run_scd(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj: sta.Fil
         if qt:
             print('# Write time series output')
             write_time_series_leaflet(
-                framenum, interval, nside, ntype, name_type, sside, nchain, carbons, ncarbons, scd, odir2)
+                framenum, interval, nside, ntype, name_type, sside, nchain,
+                carbons, ncarbons, scd, odir2)
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
     # non-system arguments will be handled at the beginnig of this function

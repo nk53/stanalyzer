@@ -4,7 +4,7 @@ import io
 import os
 import re
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, TypeVar, cast, overload
@@ -34,7 +34,7 @@ class LazyFile:
         self._lazyfile_kwargs = kwargs
         self._lazyfile_obj = None
 
-    def __enter__(self) -> io.TextIOBase:
+    def __enter__(self) -> io.TextIOWrapper:
         return self._lazyfile_resolve().__enter__()
 
     def __exit__(self, *args, **kwargs):
@@ -47,22 +47,22 @@ class LazyFile:
     def __setattr__(self, name: str, value: Any) -> None:
         if name.startswith('_lazyfile_'):
             object.__setattr__(self, name, value)
-
-        self._lazyfile_resolve()
-        setattr(self._lazyfile_obj, name, value)
+        else:
+            self._lazyfile_resolve()
+            setattr(self._lazyfile_obj, name, value)
 
     def __iter__(self):
         return iter(self._lazyfile_resolve())
 
-    def _lazyfile_resolve(self) -> io.TextIOBase:
+    def _lazyfile_resolve(self) -> io.TextIOWrapper:
         """Opens the file if not already opened"""
         if self._lazyfile_obj is None:
             # if file cannot be accessed, this may raise an OSError
             self._lazyfile_obj = open(*self._lazyfile_args, **self._lazyfile_kwargs)
 
-        return cast(io.TextIOBase, self._lazyfile_obj)
+        return cast(io.TextIOWrapper, self._lazyfile_obj)
 
-    def resolve(self) -> io.TextIOBase:
+    def resolve(self) -> io.TextIOWrapper:
         """Returns the file handle, opening it, if necessary"""
         return self._lazyfile_resolve()
 
@@ -80,7 +80,9 @@ class LazyJSONReader:
         if name.startswith('_lazyjsonreader_'):
             return object.__setattr__(self, name, value)
 
-        self._lazyjsonreader_resolve()
+        if hasattr(self, '_lazyjsonreader_data'):
+            self._lazyjsonreader_resolve()
+
         return setattr(self._lazyjsonreader_data, name, value)
 
     def __getitem__(self, key):
@@ -137,23 +139,23 @@ def get_abspath(pathstr: str | Path, relative_to: str | Path) -> str:
 
 
 @overload
-def writeable_outfile(v: str) -> LazyFile: ...
+def writable_outfile(v: str) -> LazyFile: ...
 
 
 @overload
-def writeable_outfile(v: T) -> T: ...
+def writable_outfile(v: T) -> T: ...
 
 
-def writeable_outfile(v: str | T) -> LazyFile | T:
+def writable_outfile(v: str | T) -> LazyFile | T:
     """Returns abspath to file in user's out dir if `v` is a relpath str."""
     global defaults
 
     def get_outpath() -> str:
         path = Path(cast(os.PathLike, v))
-        if not path.is_absolute():
-            path = path.relative_to(defaults['output_path'])
+        if not path.is_absolute() and (_opath := defaults.get('output_path', '')):
+            path = _opath / path
 
-        # TODO: merge with ..validation.dir_is_writeable()?
+        # TODO: merge with ..validation.dir_is_writable()?
         parent = path.parent
         if not parent.is_dir():
             try:
@@ -175,6 +177,35 @@ def writeable_outfile(v: str | T) -> LazyFile | T:
     return LazyFile(get_outpath(), 'w')
 
 
+def write_to_outfile(file: 'FileRef', contents: str, close: bool = True) -> io.TextIOWrapper:
+    """Write contents to `file`.
+
+    `file` may be a filename string, in which case `writable_outfile` is used
+    to obtain the path. That means the path will be interpreted as relative to
+    the value of `output_dir` in `project.json` *unless* it is provided as an
+    absolute path.
+
+    Otherwise, it is assumed to be a handle to an already open file.
+
+    Returns a TextIOWrapper to the (possibly closed) file.
+    """
+    outfile: io.TextIOWrapper
+    outref: FileLike
+    if isinstance(file, str):
+        outref = writable_outfile(file)
+    else:
+        outref = file
+
+    outfile = cast(io.TextIOWrapper, resolve_file(outref))
+    if close:
+        with outfile:
+            outfile.write(contents)
+        return outfile
+
+    outfile.write(contents)
+    return outfile
+
+
 def add_project_args(subparser: argparse.ArgumentParser, *args: str) -> None:
     global from_settings
 
@@ -189,7 +220,7 @@ def add_project_args(subparser: argparse.ArgumentParser, *args: str) -> None:
             help=f"One or more coordinate containing files {defstr}")
     if 'out' in args:
         subparser.add_argument(
-            '-o', '--out', type=writeable_outfile, default=sys.stdout,
+            '-o', '--out', type=writable_outfile, default=sys.stdout,
             help="File to write results (default: stdout)")
     if 'time_step' in args:
         subparser.add_argument(
@@ -331,12 +362,12 @@ def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
     return sorted(pattern, key=lambda p: list(int(n) for n in re_num.findall(p.name)))
 
 
-def resolve_file(file_ref: LazyFile | io.TextIOBase | str, mode: str = 'r') -> io.TextIOBase:
+def resolve_file(file_ref: LazyFile | io.TextIOBase | str, mode: str = 'r') -> io.TextIOWrapper:
     if isinstance(file_ref, str):
-        return cast(io.TextIOBase, open(file_ref, mode))
+        return cast(io.TextIOWrapper, open(file_ref, mode))
     if isinstance(file_ref, LazyFile):
         return file_ref.resolve()
-    return file_ref
+    return cast(io.TextIOWrapper, file_ref)
 
 
 def resolve_ts(time_step: int | float | str) -> float:
@@ -425,7 +456,7 @@ def main(analysis_name: str | None = None, settings: "DictLike | None" = None) -
 
 # type aliases
 DictLike: TypeAlias = LazyJSONReader | dict
-FileLike: TypeAlias = LazyFile | io.TextIOBase
+FileLike: TypeAlias = LazyFile | io.TextIOWrapper
 FileRef: TypeAlias = FileLike | str
 FileRefList: TypeAlias = list[FileRef]
 

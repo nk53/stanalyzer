@@ -1,8 +1,37 @@
 #!/usr/bin/python
+from collections.abc import Sequence
+import typing as t
+
 import numpy as np
 
+if t.TYPE_CHECKING:
+    from numpy.typing import ArrayLike, NDArray
+    from MDAnalysis import AtomGroup
 
-def set_mass_pos_displ_arrays(nmol, ag):
+T = t.TypeVar('T')
+Tup2: t.TypeAlias = tuple[T, T]
+NDFloat64: t.TypeAlias = 'NDArray[np.float64]'
+
+
+class MassPosDisplTup1(t.NamedTuple):
+    mass_mol:   list[NDFloat64]
+    tmass_mol:  list[float]
+    pos:        list[NDFloat64]
+    pos_prev:   list[NDFloat64]
+    displ:      list[NDFloat64]
+    pos_unwrap: list[NDFloat64]
+
+
+class MassPosDisplTup0(t.NamedTuple):
+    mass_sys:       NDFloat64
+    tmass_sys:      float
+    pos_sys:        NDFloat64
+    pos_sys_prev:   NDFloat64
+    displ_sys:      NDFloat64
+    displ_sys_com:  NDFloat64
+
+
+def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplTup1:
     """
     ----------
     Set mass, positions, and displacements of atoms in a atom group, ag.
@@ -20,12 +49,12 @@ def set_mass_pos_displ_arrays(nmol, ag):
           pos_unwrap: unwrapped positions
     """
 
-    mass_mol = []
-    tmass_mol = []
-    pos = []  # positions of ind. atoms in ind. molecules
-    pos_prev = []  # previous position of ind. atoms in ind. molecules
-    displ = []  # displacement array for individual atoms in individual molecules
-    pos_unwrap = []  # unwrapped positions
+    mass_mol: list[NDFloat64] = []
+    tmass_mol: list[float] = []
+    pos: list[NDFloat64] = []           # positions of each atom in each molecule
+    pos_prev: list[NDFloat64] = []      # previous position of each atom in each molecule
+    displ: list[NDFloat64] = []         # displacement array of each atoms in each molecule
+    pos_unwrap: list[NDFloat64] = []    # unwrapped positions
 
     for i in range(0, nmol):
         natom = len(ag[i])
@@ -37,10 +66,10 @@ def set_mass_pos_displ_arrays(nmol, ag):
         displ.append(np.zeros([natom, 3], dtype=float))
         pos_unwrap.append(np.zeros([natom, 3], dtype=float))
 
-    return mass_mol, tmass_mol, pos, pos_prev, displ, pos_unwrap
+    return MassPosDisplTup1(mass_mol, tmass_mol, pos, pos_prev, displ, pos_unwrap)
 
 
-def setup_sys_mass_pos_displ_arrays(ag_sys):
+def setup_sys_mass_pos_displ_arrays(ag_sys: 'AtomGroup') -> MassPosDisplTup0:
     """
     ----------
     Setup systes mass,positions, and displacements and COM displacement
@@ -65,11 +94,11 @@ def setup_sys_mass_pos_displ_arrays(ag_sys):
     displ_sys = np.zeros([natom, 3], dtype=float)
     displ_sys_com = np.zeros([3], dtype=float)
 
-    return mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com
+    return MassPosDisplTup0(mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com)
 
 
 # Read coordinates of molecules
-def read_coor(nmol, pos, ag):
+def read_coor(nmol: int, pos: list['NDArray'], ag: 'AtomGroup') -> None:
     """
     ----------
     Read positions of atom groups
@@ -85,11 +114,11 @@ def read_coor(nmol, pos, ag):
     """
 
     for i in range(0, nmol):
-        tpos = ag[i].positions
+        tpos: 'ArrayLike' = ag[i].positions
         np.copyto(pos[i], tpos)
 
 
-def setup_unwrapped_com_traj_array(framenum):
+def setup_unwrapped_com_traj_array(framenum: int) -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
     Setup arrays for unwrapped COM and trajectories
@@ -107,7 +136,8 @@ def setup_unwrapped_com_traj_array(framenum):
     return com, traj_com
 
 
-def setup_unwrapped_mol_com_traj_array(ag, framenum):
+def setup_unwrapped_mol_com_traj_array(
+        ag: list['AtomGroup'], framenum: int) -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
     Setup arrays for unwrapped positions and their trajectories
@@ -128,7 +158,7 @@ def setup_unwrapped_mol_com_traj_array(ag, framenum):
     return com_mol, traj_com_mol
 
 
-def calculate_com(pos, mass, tmass):
+def calculate_com(pos: 'NDArray', mass: 'ArrayLike', tmass: float) -> 'NDArray':
     """
     ----------
     Calculate COM of positions
@@ -143,13 +173,18 @@ def calculate_com(pos, mass, tmass):
           com : COM
     """
 
-    tcom = (pos.T * mass).T   # numerator (vectors to be summed)
-    com = np.sum(tcom, axis=0)/tmass
+    tcom: 'NDArray' = (pos.T * mass).T   # numerator (vectors to be summed)
+    com: 'NDArray' = np.sum(tcom, axis=0)/tmass
+
     return com
 
 
-def init_unwrap_mol_com(pos, mass_mol, tmass_mol, pos_prev, pos_unwrap,
-                        com_unwrap, traj_com_unwrap):
+def init_unwrap_mol_com(pos: Sequence['NDArray'] | 'NDArray', mass_mol: Sequence['ArrayLike'],
+                        tmass_mol: NDFloat64 | Sequence[float],
+                        pos_prev: Sequence['NDArray'],
+                        pos_unwrap: Sequence['NDArray'],
+                        com_unwrap: 'NDArray',
+                        traj_com_unwrap: 'NDArray') -> None:
     """
     ----------
     Initialize unwrapped COMs and associated trajectories for individual molecules
@@ -184,8 +219,10 @@ def init_unwrap_mol_com(pos, mass_mol, tmass_mol, pos_prev, pos_unwrap,
     # print(f'unwrapped frame 0: molid {nmol-1}',com_unwrap[-1])
 
 
-def init_unwrap_sys_com(pos_sys, mass_sys, tmass_sys, pos_sys_prev, com_sys_unwrap,
-                        traj_com_sys_unwrap):
+def init_unwrap_sys_com(pos_sys: 'NDArray', mass_sys: 'ArrayLike',
+                        tmass_sys: float, pos_sys_prev: 'NDArray',
+                        com_sys_unwrap: 'NDArray',
+                        traj_com_sys_unwrap: 'NDArray' | Sequence['NDArray']) -> None:
     """
     ----------
     Initialize unwrapped COM and associated trajectory for system
@@ -209,14 +246,15 @@ def init_unwrap_sys_com(pos_sys, mass_sys, tmass_sys, pos_sys_prev, com_sys_unwr
 
     # calculate sys COM
     tcom = calculate_com(pos_sys, mass_sys, tmass_sys)
-    # print(tcom); sys.exit(0);
 
     # initialize current unwrapped sys com & associated trajectory at frame = 0
     np.copyto(com_sys_unwrap, tcom)
     np.copyto(traj_com_sys_unwrap[0], com_sys_unwrap)
 
 
-def calculate_displ_sys_com(iframe, box, pos_sys, pos_sys_prev, mass_sys, tmass_sys, displ_sys_com):
+def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
+                            pos_sys_prev: 'NDArray', mass_sys: 'NDArray',
+                            tmass_sys: float, displ_sys_com: 'NDArray') -> None:
     """
     ----------
     Calculate COM displacement of the system
@@ -256,7 +294,9 @@ def calculate_displ_sys_com(iframe, box, pos_sys, pos_sys_prev, mass_sys, tmass_
     np.copyto(pos_sys_prev, pos_sys)
 
 
-def update_unwrapped_mol_pos(iframe, box, pos, pos_prev, pos_unwrap, displ_sys_com):
+def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
+                             pos_prev: list['NDArray'], pos_unwrap: list['NDArray'],
+                             displ_sys_com: 'NDArray') -> None:
     """
     ----------
     Update unwrapped positions of individual molecules
@@ -298,8 +338,12 @@ def update_unwrapped_mol_pos(iframe, box, pos, pos_prev, pos_unwrap, displ_sys_c
     # print(f'# displ:',displ)
 
 
-def update_unwrapped_mol_com_traj(iframe, pos_unwrap, mass_mol, tmass_mol, com_unwrap,
-                                  traj_com_unwrap):
+def update_unwrapped_mol_com_traj(iframe: int,
+                                  pos_unwrap: list['NDArray'],
+                                  mass_mol: list['NDArray'],
+                                  tmass_mol: list[float],
+                                  com_unwrap: 'NDArray',
+                                  traj_com_unwrap: 'NDArray') -> None:
     """
     ----------
     Update unwrapped COMs of individual molecules
@@ -327,7 +371,7 @@ def update_unwrapped_mol_com_traj(iframe, pos_unwrap, mass_mol, tmass_mol, com_u
     np.copyto(traj_com_unwrap[iframe, :, :], com_unwrap)
 
 
-def setup_msd_arrays(ntype, ntau):
+def setup_msd_arrays(ntype: int, ntau: int) -> NDFloat64:
     """
     ----------
     Setup MSD arrays for individual molecule types
@@ -346,7 +390,11 @@ def setup_msd_arrays(ntype, ntau):
     return msd
 
 
-def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
+def calculate_msd_tau(tau: int,
+                      framenum: int,
+                      ntype: int,
+                      id_type: Sequence[int],
+                      traj_com_unwrap: NDFloat64) -> NDFloat64:
     """
     ----------
     Calculate MSD at a given lag time, tau
@@ -369,7 +417,7 @@ def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
     nmol = len(id_type)
 
     # set square displacement arrays
-    sd_arr = []
+    sd_arr: list[list[list[NDFloat64]]] = []
     for i in range(0, ntype):
         sd_arr.append([])
         for j in range(0, 3):
@@ -378,12 +426,12 @@ def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
     # calculate square displacement of individual molecules
     # & update square displacement array
     for i in range(0, framenum-tau):
-        dis = traj_com_unwrap[i+tau, :, :] - traj_com_unwrap[i, :, :]
+        dis: NDFloat64 = traj_com_unwrap[i+tau, :, :] - traj_com_unwrap[i, :, :]
         dis = np.square(dis)
         # loop over lipids & get msd for individual lipid type
         for j in range(0, nmol):
             k = id_type[j]  # molecule type index
-            tsd = dis[j]
+            tsd: NDFloat64 = dis[j]
             for m in range(0, 3):
                 sd_arr[k][m].append(tsd[m])
 
@@ -395,7 +443,9 @@ def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
     return tmsd
 
 
-def calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd):
+def calculate_msd(taus: list[int], framenum: int,
+                  traj_com_unwrap: NDFloat64, id_type: Sequence[int],
+                  msd: NDFloat64) -> None:
     """
     ----------
     Calculate MSD for given set of delay times
@@ -428,7 +478,8 @@ def calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd):
         np.copyto(msd[:, i, :], tmsd)
 
 
-def calculate_msd_bilayer(msd, nside, ntype, ntaus, nmol_type):
+def calculate_msd_bilayer(msd: Sequence[NDFloat64], nside: int, ntype: int,
+                          ntaus: int, nmol_type: Sequence[Sequence[int]]) -> NDFloat64:
     """
     ----------
     Calculate bilayer msd from leaflet msd

@@ -10,7 +10,7 @@ from stanalyzer.cli.validators import p_float
 ANALYSIS_NAME = 'sasa'
 
 
-def header(outfile: sta.FileLike | None = None, np_formatted=False) -> str:
+def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     """Returns a header string and, optionally writes it to a file."""
     if np_formatted:
         header_str = "frame SASA"

@@ -1,6 +1,6 @@
 import argparse
-import os
 import re
+import typing as t
 
 import MDAnalysis as mda
 import MDAnalysis.transformations as transformations
@@ -12,8 +12,21 @@ import stanalyzer.cli.stanalyzer as sta
 from . import mol_atomgroup_util as mymol
 from . import leaflet_util as myleaflet
 from . import voronoi_analysis as myvorn
+from .voronoi_analysis import (
+    List2D,
+    List3D,
+    List4D,
+    List5D,
+    NDFloat64,
+)
 
 ANALYSIS_NAME = 'voronoi_shell_comp'
+
+
+class ProcessedArgs(t.NamedTuple):
+    selection: list[str]
+    ntype: int
+    qsplit: list[bool]
 
 
 # --- The following are hard set for membrane analysis
@@ -24,7 +37,7 @@ nside = 2     # up/dn
 sside = ["up", "dn"]
 
 
-def process_args(sel, split):
+def process_args(sel: str, do_split: str) -> ProcessedArgs:
     """
     ----------
     Process arguments
@@ -37,7 +50,7 @@ def process_args(sel, split):
     for i in range(0, ntype):
         selection[i] = selection[i].strip()
 
-    split = re.split(';|,', f'{split:s}')
+    split = re.split(';|,', f'{do_split:s}')
     nsplit = len(split)
     for i in range(0, nsplit):
         split[i] = split[i].strip()
@@ -58,10 +71,12 @@ def process_args(sel, split):
             else:
                 qsplit.append(False)
 
-    return selection, ntype, qsplit
+    return ProcessedArgs(selection, ntype, qsplit)
 
 
-def write_ave_std_leaflet(nside, ntype, nshell, sside, name_type, array1, array2, odir, otype):
+def write_ave_std_leaflet(nside: int, ntype: int, nshell: int, sside:
+                          list[str], name_type: list[str], array1: NDFloat64,
+                          array2: NDFloat64, odir: str, otype: str) -> None:
     # sside: leaflet name
     # array1: average
     # array2: std
@@ -80,14 +95,13 @@ def write_ave_std_leaflet(nside, ntype, nshell, sside, name_type, array1, array2
                 for m in range(0, ntype):
                     sout += f' {array1[i, j, k, m]:10.5f} {array2[i, j, k, m]:10.5f}'
                 sout += '\n'
-            fout = f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo'
-            f = open(fout, 'w')
-            f.write(sout)
-            f.close()
+            sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo', sout)
             print(sout)
 
 
-def write_ave_std_bilayer(ntype, nshell, name_type, array1, array2, odir, otype):
+def write_ave_std_bilayer(ntype: int, nshell: int, name_type: list[str],
+                          array1: NDFloat64, array2: NDFloat64, odir: str,
+                          otype: str) -> None:
     # array1: average
     # array2: std
     # otype: output type name
@@ -104,15 +118,13 @@ def write_ave_std_bilayer(ntype, nshell, name_type, array1, array2, odir, otype)
             for m in range(0, ntype):
                 sout += f' {array1[j, k, m]:10.5f} {array2[j, k, m]:10.5f}'
             sout += '\n'
-        fout = f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo'
-        f = open(fout, 'w')
-        f.write(sout)
-        f.close()
+        sta.write_to_outfile(f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo', sout)
         print(sout)
 
 
-def write_time_series_leaflet(framenum, interval, nside, ntype, nshell,
-                              sside, name_type, array, odir, otype):
+def write_time_series_leaflet(framenum: int, interval: int, nside: int, ntype: int, nshell: int,
+                              sside: list[str], name_type: list[str], array:
+                              NDFloat64, odir: str, otype: str) -> None:
     # sside: leaflet name
     # array: time series
     # otype: output type name
@@ -140,13 +152,13 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, nshell,
                         sout += f' {array[i, j, k, m, n]:10.5f}'
                 sout += '\n'
             fout = f'{odir}/time_{side}_{name_type[k].lower()}_{otype}_comp.plo'
-            f = open(fout, 'w')
-            f.write(sout)
-            f.close()
+            sta.write_to_outfile(fout, sout)
             # print(sout)
 
 
-def write_time_series_bilayer(framenum, interval, ntype, nshell, name_type, array, odir, otype):
+def write_time_series_bilayer(framenum: int, interval: int, ntype: int, nshell:
+                              int, name_type: list[str], array: NDFloat64,
+                              odir: str, otype: str) -> None:
     # array: time series
     # otype: output type name
     side = "bilayer"
@@ -171,10 +183,7 @@ def write_time_series_bilayer(framenum, interval, ntype, nshell, name_type, arra
                 for m in range(0, ntype):
                     sout += f' {array[i, j, k, m]:10.5f}'
             sout += '\n'
-        fout = f'{odir}/time_{side}_{name_type[j].lower()}_{otype}_comp.plo'
-        f = open(fout, 'w')
-        f.write(sout)
-        f.close()
+        sta.write_to_outfile(f'{odir}/time_{side}_{name_type[j].lower()}_{otype}_comp.plo', sout)
         # print(sout)
 
 
@@ -209,7 +218,8 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
+def run_voronoi_shell_comp(sel: str, split: str, qz: bool, qb: bool, qt: bool,
+                           qa: bool, sel_sys: str, psf: sta.FileRef, traj:
                            sta.FileRefList, interval: int = 1, center: bool = False) -> None:
     """
     ----------
@@ -234,7 +244,6 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
 
     # make output dir
     odir = "./voronoi/shell"
-    os.system(f'mkdir -p {odir}')
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
@@ -364,11 +373,17 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
                 # update time series (un-normalized)
                 # Accumulating numbers.
                 if qb:
+                    max_shell = t.cast(List2D[int], max_shell)
+                    t_numb_comp = t.cast(List4D[float], t_numb_comp)
+                    t_frac_comp = t.cast(List4D[float], t_frac_comp)
                     max_shell[i][itype], t_numb_comp[i][itype], t_frac_comp[i][itype] = \
                         myvorn.update_shell_comp(ntype, max_shell[i][itype],
                                                  t_numb_comp[i][itype], t_frac_comp[i][itype],
                                                  tmax_shell, tnumb_comp, tfrac_comp)
                 else:  # if (qb is False):
+                    max_shell = t.cast(List3D[int], max_shell)
+                    t_numb_comp = t.cast(List5D[float], t_numb_comp)
+                    t_frac_comp = t.cast(List5D[float], t_frac_comp)
                     max_shell[i][iside][itype], \
                         t_numb_comp[i][iside][itype], t_frac_comp[i][iside][itype] = \
                         myvorn.update_shell_comp(ntype, max_shell[i][iside][itype],
@@ -381,14 +396,21 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
                 nmol_typeb += nmol_type
             else:
                 # if (qb is False):
+                max_shell = t.cast(List3D[int], max_shell)
+                t_numb_comp = t.cast(List5D[float], t_numb_comp)
+                t_frac_comp = t.cast(List5D[float], t_frac_comp)
+
                 t_numb_comp[i][iside], t_frac_comp[i][iside] = \
                     myvorn.normalize_raw_comp(
-                        t_numb_comp[i][iside], t_frac_comp[i][iside], nmol_type)
+                        t_numb_comp[i][iside], t_frac_comp[i][iside],
+                        t.cast(list[float], nmol_type))
         # normalize bilayer data
         if qb:
+            max_shell = t.cast(List3D[int], max_shell)
+            t_numb_comp = t.cast(List4D[float], t_numb_comp)
+            t_frac_comp = t.cast(List4D[float], t_frac_comp)
             t_numb_comp[i], t_frac_comp[i] = \
-                myvorn.normalize_raw_comp(
-                    t_numb_comp[i], t_frac_comp[i], nmol_typeb)
+                myvorn.normalize_raw_comp(t_numb_comp[i], t_frac_comp[i], nmol_typeb)
     # END: LOOP over frames
 
     # STAT for average shell compositions
