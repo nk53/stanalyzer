@@ -34,9 +34,9 @@ def process_args(sel, split, sel_sys):
     for i in range(0, nsplit):
         split[i] = split[i].strip()
     qsplit = []
-    if (nsplit < ntype):  # add more qsplit options
+    if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
@@ -45,13 +45,13 @@ def process_args(sel, split, sel_sys):
     else:  # get split upto ntype
         qsplit = []
         for i in range(0, ntype):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
 
     sel_sys = f'{sel_sys:s}'
-    return (selection, ntype, qsplit, sel_sys)
+    return selection, ntype, qsplit, sel_sys
 
 
 # Write system COM
@@ -67,7 +67,6 @@ def write_com_sys(traj_com_sys_unwrap, nside, framenum, interval, odir, sside):
         f = open(fout, 'w')
         f.write(sout)
         f.close()
-    return
 
 
 # Write unwrapped COMs of individual molecule
@@ -81,14 +80,13 @@ def write_com_mol(traj_com_unwrap, nside, nmol, framenum, interval, odir, sside)
             sout += f' {interval*j:10d}'
             for k in range(0, nmol[i]):
                 for m in range(0, 3):
-                    sout += f' {tcom[k,m]:10.5f}'
+                    sout += f' {tcom[k, m]:10.5f}'
             sout += '\n'
         # print(sout)
         fout = f'{odir}/{sside[i]}_com_mol_unwrapped.dat'
         f = open(fout, 'w')
         f.write(sout)
         f.close()
-    return
 
 
 # Write x,y,z-components of MSD for given molecule type in a given leaflet
@@ -99,14 +97,13 @@ def write_msd(name, msd, taus, odir, side):
     for i in range(0, ntau):
         sout += f' {taus[i]:10.5f}'
         for j in range(0, 3):
-            sout += f' {msd[i,j]:10.5f}'
+            sout += f' {msd[i, j]:10.5f}'
         sout += '\n'
 
     fout = f'{odir}/{side}_{name.lower()}_msd.dat'
     f = open(fout, 'w')
     f.write(sout)
     f.close()
-    return
 
 
 # Write MSD outputs for leaflets
@@ -120,8 +117,6 @@ def write_msd_outputs_leaflet(msd, taus, nside, ntype, name_type, odir, sside):
             print(f'# Write MSDs for {name} in leafelt, {side}')
             write_msd(name, msd[i][j], taus, odir, side)
 
-    return
-
 
 # Write MSD outputs for bilayer
 def write_msd_outputs_bilayer(bmsd, taus, ntype, name_type, odir):
@@ -132,8 +127,6 @@ def write_msd_outputs_bilayer(bmsd, taus, ntype, name_type, odir):
 
         print(f'# Write MSDs for {name} in bilayer')
         write_msd(name, bmsd[i], taus, odir, side)
-
-    return
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -190,7 +183,7 @@ def run_msd_membrane(
     # print summary of arguments
     for i in range(0, ntype):
         print(f'#Split "{selection[i]}" into molecule level', qsplit[i])
-    if (qz is True):
+    if qz:
         print('Leaflets are assigned based on z-positions')
     else:
         print('Leaflets are assgined using a modified version of MDA LeafletFinder')
@@ -212,7 +205,7 @@ def run_msd_membrane(
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules
     # Taken from
-    if (center is True):
+    if center:
         origin = 0, 0, 0  # np.zeros([3],dtype=float) ; it did not work
         ag_cent = u.select_atoms(sel_sys)
         ag_all = u.atoms
@@ -295,7 +288,7 @@ def run_msd_membrane(
         ts = u.trajectory[interval*i]  # Is this update frame ?
 
         # do frame-wise bilayer recentering - remaining translation
-        if (center is True):
+        if center:
             Lag_ref = myleaflet.assign_leaflet_zpos(u, ag_cent)
             zref = np.zeros([2], dtype=float)
             for i in range(0, nside):
@@ -314,7 +307,7 @@ def run_msd_membrane(
             mymsd.read_coor(nmol[j], pos[j], ag[j])
             pos_sys[j] = ag_sys[j].positions
 
-            if (i == 0):
+            if i == 0:
                 # Initialization
 
                 # positions, unwrapped COM, and traj of unwrapped COM for the entire system
@@ -352,12 +345,12 @@ def run_msd_membrane(
     print('# UNWRAPPING TRAJ & COMS DONE')
     # sys.exit(0)
 
-    if (qcomsys is True):
+    if qcomsys:
         print('# Write unwrapped COM of leaflets')
         write_com_sys(traj_com_sys_unwrap, nside,
                       framenum, interval, odir, sside)
 
-    if (qcommol is True):
+    if qcommol:
         print('# Write unwrapped COMs of individual molecules')
         write_com_mol(traj_com_unwrap, nside, nmol,
                       framenum, interval, odir, sside)
@@ -380,7 +373,7 @@ def run_msd_membrane(
             taus, framenum, traj_com_unwrap[i], id_type[i], msd[i])
 
     # Write MSD outputs
-    if (qb is True):
+    if qb:
         # calculate MSD over bilayers
         bmsd = mymsd.calculate_msd_bilayer(msd, nside, ntype, ntau, nmol_type)
         write_msd_outputs_bilayer(bmsd, taus, ntype, name_type, odir)

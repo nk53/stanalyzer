@@ -42,9 +42,9 @@ def process_args(sel, split):
     for i in range(0, nsplit):
         split[i] = split[i].strip()
     qsplit = []
-    if (nsplit < ntype):  # add more qsplit options
+    if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
@@ -53,12 +53,12 @@ def process_args(sel, split):
     else:  # get split upto ntype
         qsplit = []
         for i in range(0, ntype):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
 
-    return (selection, ntype, qsplit)
+    return selection, ntype, qsplit
 
 
 def write_ave_std_leaflet(nside, ntype, nshell, sside, name_type, array1, array2, odir, otype):
@@ -70,7 +70,7 @@ def write_ave_std_leaflet(nside, ntype, nshell, sside, name_type, array1, array2
         side = sside[i]
         for j in range(0, ntype):
             sout = f'# {side} {name_type[j]}: shell [{otype}_comp & std]_shell ntype= {ntype}' +\
-                   f'nshell= {nshell}\n'
+                f'nshell= {nshell}\n'
             sout += '#     shell'
             for m in range(0, ntype):
                 sout += f' {name_type[m]:21s}'
@@ -78,14 +78,13 @@ def write_ave_std_leaflet(nside, ntype, nshell, sside, name_type, array1, array2
             for k in range(1, nshell+1):
                 sout += f' {k:10d}'  # shell number
                 for m in range(0, ntype):
-                    sout += f' {array1[i,j,k,m]:10.5f} {array2[i,j,k,m]:10.5f}'
+                    sout += f' {array1[i, j, k, m]:10.5f} {array2[i, j, k, m]:10.5f}'
                 sout += '\n'
             fout = f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo'
             f = open(fout, 'w')
             f.write(sout)
             f.close()
             print(sout)
-    return
 
 
 def write_ave_std_bilayer(ntype, nshell, name_type, array1, array2, odir, otype):
@@ -95,7 +94,7 @@ def write_ave_std_bilayer(ntype, nshell, name_type, array1, array2, odir, otype)
     side = "bilayer"
     for j in range(0, ntype):
         sout = f'# {side} {name_type[j]}: shell [{otype}_comp & std]_shell ntype= {ntype} ' +\
-               f'nshell= {nshell}\n'
+            f'nshell= {nshell}\n'
         sout += '#     shell'
         for m in range(0, ntype):
             sout += f' {name_type[m]:21s}'
@@ -103,14 +102,13 @@ def write_ave_std_bilayer(ntype, nshell, name_type, array1, array2, odir, otype)
         for k in range(1, nshell+1):
             sout += f' {k:10d}'  # shell number
             for m in range(0, ntype):
-                sout += f' {array1[j,k,m]:10.5f} {array2[j,k,m]:10.5f}'
+                sout += f' {array1[j, k, m]:10.5f} {array2[j, k, m]:10.5f}'
             sout += '\n'
         fout = f'{odir}/{side}_{name_type[j].lower()}_{otype}_comp.plo'
         f = open(fout, 'w')
         f.write(sout)
         f.close()
         print(sout)
-    return
 
 
 def write_time_series_leaflet(framenum, interval, nside, ntype, nshell,
@@ -139,14 +137,13 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, nshell,
                 sout += f' {interval*i:10d}'
                 for m in range(1, nshell+1):
                     for n in range(0, ntype):
-                        sout += f' {array[i,j,k,m,n]:10.5f}'
+                        sout += f' {array[i, j, k, m, n]:10.5f}'
                 sout += '\n'
             fout = f'{odir}/time_{side}_{name_type[k].lower()}_{otype}_comp.plo'
             f = open(fout, 'w')
             f.write(sout)
             f.close()
             # print(sout)
-    return
 
 
 def write_time_series_bilayer(framenum, interval, ntype, nshell, name_type, array, odir, otype):
@@ -172,14 +169,13 @@ def write_time_series_bilayer(framenum, interval, ntype, nshell, name_type, arra
             sout += f' {interval*i:10d}'
             for k in range(1, nshell+1):
                 for m in range(0, ntype):
-                    sout += f' {array[i,j,k,m]:10.5f}'
+                    sout += f' {array[i, j, k, m]:10.5f}'
             sout += '\n'
         fout = f'{odir}/time_{side}_{name_type[j].lower()}_{otype}_comp.plo'
         f = open(fout, 'w')
         f.write(sout)
         f.close()
         # print(sout)
-    return
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -245,12 +241,12 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
     # number of frames to be analyzed
     framenum = int(u.trajectory.n_frames/interval)
 
-    # if (center is True): bilayer recentering - should be done before any assignments
+    # if center: bilayer recentering - should be done before any assignments
     # - center in the box (an atom)
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules
     # Taken from
-    if (center is True):
+    if center:
         origin = 0, 0, 0  # np.zeros([3],dtype=float) ; it did not work
         ag_cent = u.select_atoms(sel_sys)
         ag_all = u.atoms
@@ -283,7 +279,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
         ts = u.trajectory[interval*i]
 
         # do frame-wise bilayer recentering - remaining translation
-        if (center is True):
+        if center:
             Lag_ref = myleaflet.assign_leaflet_zpos(u, ag_cent)
             zref = np.zeros([2], dtype=float)
             for i in range(0, nside):
@@ -298,7 +294,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
         box = np.array([xtla, xtlb], dtype=float)
 
         # initialize number of individual molecule types in the bilayer
-        if (qb is True):
+        if qb:
             nmol_typeb = np.zeros([ntype], dtype=float)
 
         # Assign leaflet & generate mol groups for membrane
@@ -356,8 +352,8 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
             # SHELL-WISE NUMBER & FRACTIONAL COMPOSITIONS.
             print('# GENERATE SHELL-WISE NUMBER & FRACTIONAL COMPOSITIONS')
             for imol in range(0, nmol):
-                if (nmol >= 1000):
-                    if (imol % int(nmol/10) == 0):
+                if nmol >= 1000:
+                    if imol % int(nmol/10) == 0:
                         print(f'shell analysis for molecule {imol}/{nmol}')
                 itype = id_type[imol]    # molecule type index
                 tnorm = nmol_type[itype]  # number of the molecule type,itype
@@ -367,7 +363,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
 
                 # update time series (un-normalized)
                 # Accumulating numbers.
-                if (qb is True):
+                if qb:
                     max_shell[i][itype], t_numb_comp[i][itype], t_frac_comp[i][itype] = \
                         myvorn.update_shell_comp(ntype, max_shell[i][itype],
                                                  t_numb_comp[i][itype], t_frac_comp[i][itype],
@@ -380,7 +376,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
                                                  t_frac_comp[i][iside][itype],
                                                  tmax_shell, tnumb_comp, tfrac_comp)
 
-            if (qb is True):
+            if qb:
                 # update nmol_typeb for normalization
                 nmol_typeb += nmol_type
             else:
@@ -389,7 +385,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
                     myvorn.normalize_raw_comp(
                         t_numb_comp[i][iside], t_frac_comp[i][iside], nmol_type)
         # normalize bilayer data
-        if (qb is True):
+        if qb:
             t_numb_comp[i], t_frac_comp[i] = \
                 myvorn.normalize_raw_comp(
                     t_numb_comp[i], t_frac_comp[i], nmol_typeb)
@@ -401,7 +397,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
     nshell = myvorn.set_nshell(max_shell, framenum, nside, ntype, qb)
 
     # Process to get statistics...
-    if (qa is True):
+    if qa:
         # Convert time series list arrays to ndarrays
         numb_comp, frac_comp = myvorn.convert_to_ndarray(
             t_numb_comp, t_frac_comp, framenum, nside, ntype, nshell, qb)
@@ -413,7 +409,7 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
         sfrac_comp = np.std(frac_comp, axis=0)
 
         print('# Write average output')
-        if (qb is True):
+        if qb:
             # write NUMB_COMP outputs # 1 to nshell
             otype = "numb"
             write_ave_std_bilayer(ntype, nshell, name_type,
@@ -436,10 +432,10 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
                 nside, ntype, nshell, sside, name_type, afrac_comp, sfrac_comp, odir, otype)
 
     # Time series output
-    if (qt is True):  # pass
+    if qt:  # pass
         print('# Write time series output')
         # dt=1.0/float(framenum) # increment in time
-        if (qb is True):
+        if qb:
             otype = "numb"
             write_time_series_bilayer(
                 framenum, interval, ntype, nshell, name_type, numb_comp, odir, otype)
@@ -458,8 +454,6 @@ def run_voronoi_shell_comp(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef
             otype = "frac"
             write_time_series_leaflet(
                 framenum, interval, nside, ntype, nshell, sside, name_type, frac_comp, odir, otype)
-
-    return
 
 
 def main(settings: dict | None = None) -> None:

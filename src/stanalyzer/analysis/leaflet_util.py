@@ -23,13 +23,13 @@ def find_min_dist(pos, pos_grp):
     ngrp = len(pos_grp)  # number of vectors in the position group
 
     min_dist = np.linalg.norm(pos-pos_grp[0])  # initial dist
-    if (ngrp > 1):
+    if ngrp > 1:
         for i in range(1, ngrp):
             tdist = np.linalg.norm(pos-pos_grp[i, :])
-            if (tdist < min_dist):
+            if tdist < min_dist:
                 min_dist = tdist
 
-    return (min_dist)
+    return min_dist
 
 
 def assign_groups_to_leaflets(sel_grp, ngroups):
@@ -56,7 +56,7 @@ def assign_groups_to_leaflets(sel_grp, ngroups):
 
     # strat from the 3rd group
     for i in range(2, ngroups):
-        if (ng[i] < int(0.1*ng[1]) and ng[i] < int(0.1*ng[0])):
+        if ng[i] < int(0.1*ng[1]) and ng[i] < int(0.1*ng[0]):
             # Merge members into a closer group between the largest two
             for j in range(0, ng[i]):
                 # find min. distances to group0 and group 1
@@ -65,14 +65,14 @@ def assign_groups_to_leaflets(sel_grp, ngroups):
                 tdmin1 = find_min_dist(tpos, pos_grp[1])
 
                 # now compare two min dist
-                if (tdmin0 < tdmin1):  # put this to B.groups(0)
+                if tdmin0 < tdmin1:  # put this to B.groups(0)
                     # print(f'assignment {j} to group0')
                     sel_grp[0] += sel_grp[i].atoms[j]
                 else:  # put this to B.groups(1)
                     # print(f'assignment {j} to group1')
                     sel_grp[1] += sel_grp[i].atoms[j]
             # print("# assignment done")
-    return (sel_grp)
+    return sel_grp
 
 
 def assign_leaflet_zpos(u, atomgroup):
@@ -112,7 +112,7 @@ def assign_leaflet_zpos(u, atomgroup):
     tag = atomgroup.difference(tag0+tag1)
     leaflets.append(tag)
 
-    return (leaflets)
+    return leaflets
 
 
 def assign_leaflet_mda(u, atomgroup):
@@ -137,7 +137,7 @@ def assign_leaflet_mda(u, atomgroup):
         # print(f'simplest: len(B.groups({i}))= {len(leaflets[i])}')
         # if(len(leaflets[i]) < 10): print(leaflets[i])
 
-    return (leaflets)
+    return leaflets
 
 
 def assign_leaflet_simple(u, atomgroup):
@@ -163,9 +163,9 @@ def assign_leaflet_simple(u, atomgroup):
     ngroups = len(B.groups())
 
     # a hybrid stride-bisection method to obtain two groups
-    if (ngroups != 2):
+    if ngroups != 2:
         # initial direction
-        if (ngroups > 2):        # increase dmax by the width of [dmin,dmax]
+        if ngroups > 2:        # increase dmax by the width of [dmin,dmax]
             dmax += (dmax-dmin)
         # decrease dmax by the half-widht of [dmin,dmax]
         else:
@@ -186,27 +186,25 @@ def assign_leaflet_simple(u, atomgroup):
             ngroups = len(B.groups())
 
             # check the current len(B.groups())
-            if (ngroups == 2):
+            if ngroups == 2:
                 # print(f'# simple iter {i}, len(B.groups)={ngroups} after LeafletFinder, dcut= {c_dcut}')
                 # print("# B.groups", B.groups())
                 break
             else:
-                if (ngroups < 2):  # decrease the cutoff distance for the next iteration
-                    if (p_ngroups > 2):  # p_dcut is too small
-                        if (p_dcut > c_dcut):
-                            print(
-                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                if ngroups < 2:  # decrease the cutoff distance for the next iteration
+                    if p_ngroups > 2:  # p_dcut is too small
+                        if p_dcut > c_dcut:
+                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (p_dcut, c_dcut)
                     else:  # move along the same direction, decrease dmax
                         # decrease dmax by the half-width of [dmin,dmax]
                         dmax -= 0.5*(dmax-dmin)
-                elif (ngroups > 2):  # increase the cutoff distance for the next iteration
-                    if (p_ngroups < 2):  # p_dcut is too large
-                        if (p_dcut < c_dcut):
-                            print(
-                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                elif ngroups > 2:  # increase the cutoff distance for the next iteration
+                    if p_ngroups < 2:  # p_dcut is too large
+                        if p_dcut < c_dcut:
+                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (c_dcut, p_dcut)
@@ -216,10 +214,10 @@ def assign_leaflet_simple(u, atomgroup):
 
                 # print(f'# simple: iter {i}, len(B.groups) = {len(B.groups())} dcut={c_dcut}')
 
-        if (ngroups != nside):
+        if ngroups != nside:
             print('# Job failed! Exit script !!')
             for j in range(0, len(B.groups())):
-                if (len(B.groups(j)) < 10):
+                if len(B.groups(j)) < 10:
                     print(B.groups(j))
             sys.exit(1)
 
@@ -229,7 +227,7 @@ def assign_leaflet_simple(u, atomgroup):
         leaflets.append(B.groups(i))
         # print(f'# simple: Lflt{i}: len(B.groups({i})) = {len(leaflets[i])}')
 
-    return (leaflets)
+    return leaflets
 
 
 def assign_leaflet(u, atomgroup):
@@ -262,15 +260,14 @@ def assign_leaflet(u, atomgroup):
         ng_sel.append(len(sel_grp[ig]))
 
     # check if selected groups for the leaflets are reasonable
-    if (ngroups == 2):
-        if (ng_sel[1] > int(0.5*ng_sel[0])):
+    if ngroups == 2:
+        if ng_sel[1] > int(0.5*ng_sel[0]):
             qdone = True
         else:
             qdone = False  # suspicious case; more groups may be assigned with smaller dcut
-    elif (ngroups > 2):
+    elif ngroups > 2:
         # special case: the 3rd group has significantly smaller members than the 2nd group
-        if (ng_sel[2] < int(0.1*ng_sel[1]) and
-                ng_sel[2] < int(0.1*ng_sel[0])):
+        if ng_sel[2] < int(0.1*ng_sel[1]) and ng_sel[2] < int(0.1*ng_sel[0]):
             sel_grp = assign_groups_to_leaflets(sel_grp, ngroups)
             qdone = True
         else:
@@ -279,13 +276,13 @@ def assign_leaflet(u, atomgroup):
         qdone = False
 
     # a hybrid stride-bisection method to obtain two groups
-    # if (ngroups != 2 and not qdone):
-    if (not qdone):
+    # if ngroups != 2 and not qdone:
+    if not qdone:
         # initial direction
         # suspicious case that needs decreased cutoff dist.
-        if (ngroups == 2):
+        if ngroups == 2:
             dmax -= 0.5*(dmax-dmin)
-        elif (ngroups > 2):      # increase dmax by the width of [dmin,dmax]
+        elif ngroups > 2:      # increase dmax by the width of [dmin,dmax]
             dmax += (dmax-dmin)
         # decrease dmax by the half-widht of [dmin,dmax]
         else:
@@ -310,13 +307,13 @@ def assign_leaflet(u, atomgroup):
                 ng_sel.append(len(sel_grp[ig]))
 
             # check the current iteration
-            if (ngroups == 2):
-                if (len(sel_grp[1]) > int(0.5*len(sel_grp[0]))):
+            if ngroups == 2:
+                if len(sel_grp[1]) > int(0.5*len(sel_grp[0])):
                     qdone = True
                 else:
                     qdone = False
 
-                if (not qdone):
+                if not qdone:
                     # suspicious case, need to decrease the cutoff distance
                     # i.e., other lipids vs. chol in the middle of flip-floping
                     # decrease dmax by the half-width of [dmin,dmax]
@@ -326,22 +323,20 @@ def assign_leaflet(u, atomgroup):
                     # print(f'# B.groups', B.groups())
                     break
             else:
-                if (ngroups > 2):  # increase the cutoff distance for the next iteration
+                if ngroups > 2:  # increase the cutoff distance for the next iteration
                     # special case:
                     # the 3rd group has significantly smaller members than the 2nd group
-                    if (ng_sel[2] < int(0.1*ng_sel[1]) and
-                            ng_sel[2] < int(0.1*ng_sel[0])):
+                    if ng_sel[2] < int(0.1*ng_sel[1]) and ng_sel[2] < int(0.1*ng_sel[0]):
                         sel_grp = assign_groups_to_leaflets(sel_grp, ngroups)
                         qdone = True
                     else:
                         qdone = False
-                    if (qdone):
+                    if qdone:
                         break
 
-                    if (p_ngroups < 2):  # p_dcut is too large
-                        if (p_dcut < c_dcut):
-                            print(
-                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                    if p_ngroups < 2:  # p_dcut is too large
+                        if p_dcut < c_dcut:
+                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (c_dcut, p_dcut)
@@ -349,11 +344,10 @@ def assign_leaflet(u, atomgroup):
                         # increase dmax by the width of [dmin,dmax]
                         dmax += (dmax-dmin)
 
-                elif (ngroups < 2):  # decrease the cutoff distance for the next iteration
-                    if (p_ngroups > 2):  # p_dcut is too small
-                        if (p_dcut > c_dcut):
-                            print(
-                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                elif ngroups < 2:  # decrease the cutoff distance for the next iteration
+                    if p_ngroups > 2:  # p_dcut is too small
+                        if p_dcut > c_dcut:
+                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (p_dcut, c_dcut)
@@ -363,14 +357,14 @@ def assign_leaflet(u, atomgroup):
 
                 # print(f'# iter {i}, len(B.groups) = {len(B.groups())} dcut={c_dcut}')
 
-        # if (ngroups != nside):
-        if (qdone):
+        # if ngroups != nside:
+        if qdone:
             pass
         else:
             print('# Job failed! Exit script !!')
             print(len(B.groups()))
             for j in range(0, len(B.groups())):
-                if (len(B.groups(j)) < 10):
+                if len(B.groups(j)) < 10:
                     print(B.groups(j))
                 # print(B.groups(j))
             sys.exit(1)
@@ -383,4 +377,4 @@ def assign_leaflet(u, atomgroup):
         leaflets.append(sel_grp[i])
         # print(f'# assgin_leaflet: leaflet {i}: nlipids = {len(leaflets[i])}')
 
-    return (leaflets)
+    return leaflets

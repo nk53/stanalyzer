@@ -42,9 +42,9 @@ def process_args(sel, split):
     for i in range(0, nsplit):
         split[i] = split[i].strip()
     qsplit = []
-    if (nsplit < ntype):  # add more qsplit options
+    if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
@@ -53,12 +53,12 @@ def process_args(sel, split):
     else:  # get split upto ntype
         qsplit = []
         for i in range(0, ntype):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
 
-    return (selection, ntype, qsplit)
+    return selection, ntype, qsplit
 
 
 def write_ave_std_leaflet(nside, ntype, sside, name_type, array1, array2, odir, otype):
@@ -73,7 +73,7 @@ def write_ave_std_leaflet(nside, ntype, sside, name_type, array1, array2, odir, 
         sout += '\n'
         for j in range(0, ntype):
             for k in range(0, ntype):
-                sout += f' {array1[i,j,k]:10.5f} {array2[i,j,k]:10.5f}'
+                sout += f' {array1[i, j, k]:10.5f} {array2[i, j, k]:10.5f}'
             sout += '\n'
 
         fout = f'{odir}/{side}_{otype}.plo'
@@ -81,7 +81,6 @@ def write_ave_std_leaflet(nside, ntype, sside, name_type, array1, array2, odir, 
         f.write(sout)
         f.close()
         print(sout)
-    return
 
 
 def write_ave_std_bilayer(ntype, name_type, array1, array2, odir, otype):
@@ -94,7 +93,7 @@ def write_ave_std_bilayer(ntype, name_type, array1, array2, odir, otype):
     sout += '\n'
     for j in range(0, ntype):
         for k in range(0, ntype):
-            sout += f' {array1[j,k]:10.5f} {array2[j,k]:10.5f}'
+            sout += f' {array1[j, k]:10.5f} {array2[j, k]:10.5f}'
         sout += '\n'
 
     fout = f'{odir}/{side}_{otype}.plo'
@@ -102,7 +101,6 @@ def write_ave_std_bilayer(ntype, name_type, array1, array2, odir, otype):
     f.write(sout)
     f.close()
     print(sout)
-    return
 
 
 def write_time_series_leaflet(framenum, interval, nside, ntype,
@@ -121,7 +119,7 @@ def write_time_series_leaflet(framenum, interval, nside, ntype,
                 # sout += f' {ct}'
                 sout += f' {interval*i:10d}'
                 for m in range(0, ntype):
-                    sout += f' {array[i,j,k,m]:10.5f}'
+                    sout += f' {array[i, j, k, m]:10.5f}'
                 sout += '\n'
 
             fout = f'{odir}/time_{side}_{name_type[k]}_{otype}.plo'
@@ -129,7 +127,6 @@ def write_time_series_leaflet(framenum, interval, nside, ntype,
             f.write(sout)
             f.close()
             # print(sout)
-    return
 
 
 def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir, otype):
@@ -146,7 +143,7 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir,
             # sout += f' {ct}'
             sout += f' {interval*i:10d}'
             for k in range(0, ntype):
-                sout += f' {array[i,j,k]:10.5f}'
+                sout += f' {array[i, j, k]:10.5f}'
             sout += '\n'
 
         fout = f'{odir}/time_{side}_{name_type[j]}_{otype}.plo'
@@ -154,7 +151,6 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir,
         f.write(sout)
         f.close()
         # print(sout)
-    return
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -220,12 +216,12 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
     # number of frames to be analyzed
     framenum = int(u.trajectory.n_frames/interval)
 
-    # if (center is True): bilayer recentering - should be done before any assignments
+    # if center: bilayer recentering - should be done before any assignments
     # - center in the box (an atom)
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules
     # Taken from
-    if (center is True):
+    if center:
         origin = 0, 0, 0  # np.zeros([3],dtype=float) ; it did not work
         ag_cent = u.select_atoms(sel_sys)
         ag_all = u.atoms
@@ -246,7 +242,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
         atomgroup += ag0[i]
 
     # Setup time series data
-    if (qb is True):
+    if qb:
         ncontact = np.zeros([framenum, ntype, ntype], dtype=float)
         fcontact = np.zeros([framenum, ntype, ntype], dtype=float)
         # normalization factor
@@ -262,7 +258,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
         ts = u.trajectory[interval*i]
 
         # do frame-wise bilayer recentering - remaining translation
-        if (center is True):
+        if center:
             Lag_ref = myleaflet.assign_leaflet_zpos(u, ag_cent)
             zref = np.zeros([2], dtype=float)
             for i in range(0, nside):
@@ -333,7 +329,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
                 myvorn.calculate_contact(
                     nmol, ntype, nmol_type, mol_ivc, id_type, contactMol)
             # update time series data
-            if (qb is True):
+            if qb:
                 ncontact[i] += (tncontact.T * nmol_type).T
                 tnmol_type[i] += nmol_type
             else:  # if (qb is False):
@@ -341,13 +337,13 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
                 np.copyto(fcontact[i, iside], tfcontact)
     # END: LOOP over frames
 
-    if (qb is True):  # Need to calculate ncontact & fcontact from un-normalized one
+    if qb:  # Need to calculate ncontact & fcontact from un-normalized one
         ncontact, fcontact =\
             myvorn.update_contact_bilayer(
                 framenum, ntype, ncontact, fcontact, tnmol_type)
 
     # Process to get statistics...
-    if (qa is True):
+    if qa:
         ancontact = np.average(ncontact, axis=0)
         sncontact = np.std(ncontact, axis=0)
 
@@ -356,7 +352,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
 
         print('# Write average output')
         # write CONTACT outputs
-        if (qb is True):
+        if qb:
             otype = "numb"
             write_ave_std_bilayer(
                 ntype, name_type, ancontact, sncontact, odir, otype)
@@ -374,10 +370,10 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
                                   name_type, afcontact, sfcontact, odir, otype)
 
     # Time series output
-    if (qt is True):  # pass
+    if qt:  # pass
         print('# Write time series output')
         # dt=1.0/float(framenum) # increment in time
-        if (qb is True):
+        if qb:
             otype = "numb"
             write_time_series_bilayer(
                 framenum, interval, ntype, name_type, ncontact, odir, otype)

@@ -42,9 +42,9 @@ def process_args(sel, split):
     for i in range(0, nsplit):
         split[i] = split[i].strip()
     qsplit = []
-    if (nsplit < ntype):  # add more qsplit options
+    if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
@@ -53,12 +53,12 @@ def process_args(sel, split):
     else:  # get split upto ntype
         qsplit = []
         for i in range(0, ntype):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
 
-    return (selection, ntype, qsplit)
+    return selection, ntype, qsplit
 
 
 def write_ave_std_leaflet(nside, ntype, name_type, sside, array1, array2, array3, odir):
@@ -72,19 +72,18 @@ def write_ave_std_leaflet(nside, ntype, name_type, sside, array1, array2, array3
             sout += f' {name_type[j]:21s}'
         sout += '\n'
         for j in range(0, ntype):
-            sout += f' {array1[i,j]:10.5f} {array2[i,j]:10.5f}'
+            sout += f' {array1[i, j]:10.5f} {array2[i, j]:10.5f}'
         sout += '\n'
         # add numbers
         sout += '# weights:'
         for j in range(0, ntype):
-            sout += f' {array3[i,j]:10.5f}'
+            sout += f' {array3[i, j]:10.5f}'
 
         fout = f'{odir}/{side}.plo'
         f = open(fout, 'w')
         f.write(sout)
         f.close()
         print(sout)
-    return
 
 
 def write_ave_std_bilayer(ntype, name_type, array1, array2, array3, odir):
@@ -109,7 +108,6 @@ def write_ave_std_bilayer(ntype, name_type, array1, array2, array3, odir):
     f.write(sout)
     f.close()
     print(sout)
-    return
 
 
 def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside, array, odir):
@@ -128,7 +126,7 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside
             # sout+= f' {ct}'
             sout += f' {interval*i:10d}'
             for k in range(0, ntype):
-                sout += f' {array[i,j,k]:10.5f}'
+                sout += f' {array[i, j, k]:10.5f}'
             sout += '\n'
 
         fout = f'{odir}/time_{side}.plo'
@@ -136,7 +134,6 @@ def write_time_series_leaflet(framenum, interval, nside, ntype, name_type, sside
         f.write(sout)
         f.close()
         # print(sout)
-    return
 
 
 def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir):
@@ -153,7 +150,7 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir)
         # sout += f' {ct}'
         sout += f' {interval*i:10d}'
         for j in range(0, ntype):
-            sout += f' {array[i,j]:10.5f}'
+            sout += f' {array[i, j]:10.5f}'
         sout += '\n'
 
     fout = f'{odir}/time_{side}.plo'
@@ -161,7 +158,6 @@ def write_time_series_bilayer(framenum, interval, ntype, name_type, array, odir)
     f.write(sout)
     f.close()
     # print(sout)
-    return
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -226,12 +222,12 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
     # number of frames to be analyzed
     framenum = int(u.trajectory.n_frames/interval)
 
-    # if (center is True): bilayer recentering - should be done before any assignments
+    # if (center): bilayer recentering - should be done before any assignments
     # - center in the box (an atom)
     # - center in the box (atom group for system)
     # - unwrap to get connectd molecules
     # Taken from
-    if (center is True):
+    if center:
         origin = 0, 0, 0  # np.zeros([3],dtype=float) ; it did not work
         ag_cent = u.select_atoms(sel_sys)
         ag_all = u.atoms
@@ -252,7 +248,7 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
         atomgroup += ag0[i]
 
     # Setup time series data
-    if (qb is True):
+    if qb:
         apl = np.zeros([framenum, ntype], dtype=float)
         ncomp = np.zeros([framenum, ntype], dtype=float)
     else:  # if (qb is False):
@@ -266,7 +262,7 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
         ts = u.trajectory[interval*i]
 
         # do frame-wise bilayer recentering - remaining translation
-        if (center is True):
+        if center:
             Lag_ref = myleaflet.assign_leaflet_zpos(u, ag_cent)
             zref = np.zeros([2], dtype=float)
             for i in range(0, nside):
@@ -327,7 +323,7 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
             # CALCULATE COMPONENT APL
             tapl, tncomp = myvorn.calc_apl(area, id_type, ntype)
             # update time series data
-            if (qb is True):
+            if qb:
                 apl[i, :] += tncomp * tapl
                 ncomp[i, :] += tncomp
             else:  # if (qb is False):
@@ -335,13 +331,13 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
                 np.copyto(ncomp[i, iside, :], tncomp)
 
     # END: LOOP over frames
-    if (qb is True):
+    if qb:
         # get APL
         for i in range(0, framenum):
             apl[i, :] /= ncomp[i, :]
 
     # Process to get statistics...
-    if (qa is True):
+    if qa:
         # aapl: average component APL
         # sapl: std of component APL
         # anum: total counts for component APL
@@ -350,17 +346,17 @@ def run_voronoi_apl(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, traj:
 
         # write APL outputs
         print('# Write average ouput')
-        if (qb is True):
+        if qb:
             write_ave_std_bilayer(ntype, name_type, aapl, sapl, anum, odir)
         else:  # if (qb is False):
             write_ave_std_leaflet(nside, ntype, name_type,
                                   sside, aapl, sapl, anum, odir)
 
     # Time series output
-    if (qt is True):  # pass
+    if qt:  # pass
         print('# Write time series output')
         # dt=1.0/float(framenum) # increment in time
-        if (qb is True):
+        if qb:
             write_time_series_bilayer(
                 framenum, interval, ntype, name_type, apl, odir)
         else:  # if (qb is False):

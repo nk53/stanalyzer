@@ -37,7 +37,7 @@ def set_mass_pos_displ_arrays(nmol, ag):
         displ.append(np.zeros([natom, 3], dtype=float))
         pos_unwrap.append(np.zeros([natom, 3], dtype=float))
 
-    return (mass_mol, tmass_mol, pos, pos_prev, displ, pos_unwrap)
+    return mass_mol, tmass_mol, pos, pos_prev, displ, pos_unwrap
 
 
 def setup_sys_mass_pos_displ_arrays(ag_sys):
@@ -65,7 +65,7 @@ def setup_sys_mass_pos_displ_arrays(ag_sys):
     displ_sys = np.zeros([natom, 3], dtype=float)
     displ_sys_com = np.zeros([3], dtype=float)
 
-    return (mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com)
+    return mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com
 
 
 # Read coordinates of molecules
@@ -87,7 +87,6 @@ def read_coor(nmol, pos, ag):
     for i in range(0, nmol):
         tpos = ag[i].positions
         np.copyto(pos[i], tpos)
-    return
 
 
 def setup_unwrapped_com_traj_array(framenum):
@@ -105,7 +104,7 @@ def setup_unwrapped_com_traj_array(framenum):
     """
     com = np.zeros([3], dtype=float)
     traj_com = np.zeros([framenum, 3], dtype=float)
-    return (com, traj_com)
+    return com, traj_com
 
 
 def setup_unwrapped_mol_com_traj_array(ag, framenum):
@@ -126,7 +125,7 @@ def setup_unwrapped_mol_com_traj_array(ag, framenum):
     nmol = len(ag)
     com_mol = np.zeros([nmol, 3], dtype=float)
     traj_com_mol = np.zeros([framenum, nmol, 3], dtype=float)
-    return (com_mol, traj_com_mol)
+    return com_mol, traj_com_mol
 
 
 def calculate_com(pos, mass, tmass):
@@ -184,8 +183,6 @@ def init_unwrap_mol_com(pos, mass_mol, tmass_mol, pos_prev, pos_unwrap,
 
     # print(f'unwrapped frame 0: molid {nmol-1}',com_unwrap[-1])
 
-    return
-
 
 def init_unwrap_sys_com(pos_sys, mass_sys, tmass_sys, pos_sys_prev, com_sys_unwrap,
                         traj_com_sys_unwrap):
@@ -218,8 +215,6 @@ def init_unwrap_sys_com(pos_sys, mass_sys, tmass_sys, pos_sys_prev, com_sys_unwr
     np.copyto(com_sys_unwrap, tcom)
     np.copyto(traj_com_sys_unwrap[0], com_sys_unwrap)
 
-    return
-
 
 def calculate_displ_sys_com(iframe, box, pos_sys, pos_sys_prev, mass_sys, tmass_sys, displ_sys_com):
     """
@@ -246,7 +241,7 @@ def calculate_displ_sys_com(iframe, box, pos_sys, pos_sys_prev, mass_sys, tmass_
     # tmpdispl = displ_sys; print(tmpdispl)
 
     maxdispl = np.max(np.absolute(displ_sys))  # max. displacement
-    if (maxdispl > 10.0):
+    if maxdispl > 10.0:
         print(f'frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
         # print(f'displacement:',displ)
 
@@ -259,8 +254,6 @@ def calculate_displ_sys_com(iframe, box, pos_sys, pos_sys_prev, mass_sys, tmass_
 
     # update previous positions
     np.copyto(pos_sys_prev, pos_sys)
-
-    return
 
 
 def update_unwrapped_mol_pos(iframe, box, pos, pos_prev, pos_unwrap, displ_sys_com):
@@ -288,7 +281,7 @@ def update_unwrapped_mol_pos(iframe, box, pos, pos_prev, pos_unwrap, displ_sys_c
         displ = displ - np.sign(np.trunc(displ/(box/2))) * box
 
         maxdispl = np.max(np.absolute(displ))
-        if (maxdispl > 10.0):
+        if maxdispl > 10.0:
             print(
                 f'# frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
             print(displ)
@@ -303,8 +296,6 @@ def update_unwrapped_mol_pos(iframe, box, pos, pos_prev, pos_unwrap, displ_sys_c
         np.copyto(pos_prev[i], pos[i])
 
     # print(f'# displ:',displ)
-
-    return
 
 
 def update_unwrapped_mol_com_traj(iframe, pos_unwrap, mass_mol, tmass_mol, com_unwrap,
@@ -335,8 +326,6 @@ def update_unwrapped_mol_com_traj(iframe, pos_unwrap, mass_mol, tmass_mol, com_u
     # update unwrapped trajectory & previous positions
     np.copyto(traj_com_unwrap[iframe, :, :], com_unwrap)
 
-    return
-
 
 def setup_msd_arrays(ntype, ntau):
     """
@@ -354,7 +343,7 @@ def setup_msd_arrays(ntype, ntau):
 
     msd = np.zeros([ntype, ntau, 3], dtype=float)  # msd[type,tau,x/y/z]
 
-    return (msd)
+    return msd
 
 
 def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
@@ -403,7 +392,7 @@ def calculate_msd_tau(tau, framenum, ntype, id_type, traj_com_unwrap):
         for j in range(0, 3):
             tmsd[i][j] = np.mean(sd_arr[i][j])
 
-    return (tmsd)
+    return tmsd
 
 
 def calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd):
@@ -426,9 +415,9 @@ def calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd):
     ntype = len(msd)
     for i in range(0, ntau):
         tau = taus[i]
-        if (tau > framenum - 1):
+        if tau > framenum - 1:
             break
-        if (tau % 100 == 0):
+        if tau % 100 == 0:
             print(f'MSD progress {tau}/{taus[-1]}')
 
         # Calculate MSD(tau)
@@ -437,8 +426,6 @@ def calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd):
 
         # update MSD
         np.copyto(msd[:, i, :], tmsd)
-
-    return
 
 
 def calculate_msd_bilayer(msd, nside, ntype, ntaus, nmol_type):

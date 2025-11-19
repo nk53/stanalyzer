@@ -30,23 +30,23 @@ def generate_mol_type_ags(ag, selection, qsplit):
     sel_type = tmps[0]  # segid/resname/moleculetype
     sel_name = tmps[1]  # PRO*/DSPC/DOPC/ ...
 
-    if (sel_type == "segid"):
-        if (qsplit is True):
+    if sel_type == "segid":
+        if qsplit:
             sel_ag = ag.split('segment')
         else:  # if (qsplit is False): # no split
             sel_ag = []
             sel_ag.append(ag)
         # for i in range(0,len(sel_ag)):
         #   print(sel_ag[i][0].segid,sel_ag[i][0].resid,sel_ag[i][0].resname)
-    elif (sel_type == "resname"):
-        if (qsplit is True):
+    elif sel_type == "resname":
+        if qsplit:
             sel_ag = ag.split('residue')
         else:
             sel_ag = []
             sel_ag.append(ag)
     # NEED to test!!!
-    elif (sel_type == "moltype"):  # GROMACS specific
-        if (qsplit is True):
+    elif sel_type == "moltype":  # GROMACS specific
+        if qsplit:
             sel_ag = ag.split('molecule')
         else:
             sel_ag = []
@@ -57,7 +57,7 @@ def generate_mol_type_ags(ag, selection, qsplit):
 
     sel_nmol = len(sel_ag)
 
-    return (sel_name, sel_ag, sel_nmol)
+    return sel_name, sel_ag, sel_nmol
 
 
 def generate_mol_groups(u, ntype, selection, qsplit):
@@ -165,7 +165,7 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
 
     # Assign leaflet at the beginning & use this for MSD
     # Do not consider flip-flop! - It cannot be handled properly
-    if (qz is True):
+    if qz:
         print('# leaflet assignment based on z-position')
         leaflet = myleaflet.assign_leaflet_zpos(u, ag_tmp)
     else:
@@ -189,7 +189,7 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
             tname_type, sel_ag, sel_nmol = generate_mol_type_ags(
                 ag_tmp, selection[j], qsplit[j])
 
-            if (i == 0):
+            if i == 0:
                 name_type.append(tname_type)
 
             nmol_type[i].append(sel_nmol)  # number of molecules of type, i
@@ -223,7 +223,7 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
         sout += f' # nmol = {nmol[i]:5d} ; # of ags = {len(ag[i]):5d}\n'
     print(sout)
 
-    return (name_type, nmol_type, nmol, id_type, ag)
+    return name_type, nmol_type, nmol, id_type, ag
 
 
 def generate_full_mol_groups(u, ntype, sel_type, name_type, qsplit):
@@ -286,7 +286,7 @@ def generate_full_mol_groups(u, ntype, sel_type, name_type, qsplit):
     sout += f' # nmol = {nmol:5d} ; # of ags = {len(ag_full)}\n'
     print(sout)
 
-    return (nmol_type, nmol, id_type, ag_full)
+    return nmol_type, nmol, id_type, ag_full
 
 
 def generate_sys_groups(u, sel_sys, qz):
@@ -308,7 +308,7 @@ def generate_sys_groups(u, sel_sys, qz):
 
     ag_tmp = u.select_atoms(sel_sys)
     # Leaflet assignment
-    if (qz is True):
+    if qz:
         ag_sys = myleaflet.assign_leaflet_zpos(u, ag_tmp)
     else:
         ag_sys = myleaflet.assign_leaflet(u, ag_tmp)

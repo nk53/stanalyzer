@@ -31,9 +31,9 @@ def process_args(sel, split):
     for i in range(0, nsplit):
         split[i] = split[i].strip()
     qsplit = []
-    if (nsplit < ntype):  # add more qsplit options
+    if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
@@ -42,11 +42,11 @@ def process_args(sel, split):
     else:  # get my_dict["split"] upto ntype
         qsplit = []
         for i in range(0, ntype):
-            if (split[i].lower() == "y"):
+            if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
-    return (selection, ntype, qsplit)
+    return selection, ntype, qsplit
 
 
 def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
@@ -63,14 +63,13 @@ def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
         sout += f' {interval*i:10d}'
         for j in range(0, nmol):
             for k in range(0, 3):
-                sout += f' {tcom[j,k]:10.5f}'
+                sout += f' {tcom[j, k]:10.5f}'
         sout += '\n'
     # print(sout)
     fout = f'{odir}/com_mol_unwrapped.dat'
     f = open(fout, 'w')
     f.write(sout)
     f.close()
-    return
 
 
 # Write x,y, and z-components of MSD for given molecule type
@@ -86,25 +85,21 @@ def write_msd(name, msd, taus, odir):
     for i in range(0, ntau):
         sout += f'{taus[i]:10.5f}'
         for j in range(0, 3):  # x,y,z
-            sout += f' {msd[i,j]:10.5f}'
+            sout += f' {msd[i, j]:10.5f}'
         sout += '\n'
 
     fout = f'{odir}/{name.lower()}_msd.dat'
     f = open(fout, 'w')
     f.write(sout)
     f.close()
-    return
+
 
 # Write MSD outputs
-
-
 def write_msd_outputs(msd, taus, ntype, name_type, odir):
     for i in range(0, ntype):
         name = name_type[i]
         print(f'# Write MSD output for {name}')
         write_msd(name, msd[i], taus, odir)
-
-    return
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -189,7 +184,7 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
         # read cooridnates (translate by ?)
         mymsd.read_coor(nmol, pos, ag)
 
-        if (i == 0):
+        if i == 0:
             # Initialization
 
             # mymsd.init_unwrap_sys_com(pos_sys,mass_sys,tmass_sys,pos_sys_prev,\
@@ -224,7 +219,7 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     # sys.exit(0)
 
     # Want to write unwrapped coordinates?
-    if (qcom is True):
+    if qcom:
         print('# Write unwrapped COM of individual molecules')
         write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir)
 
@@ -241,8 +236,6 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     # SP: NEED to make something consistent with STANALYSER output path ??!!
     # Write MSD outputs
     write_msd_outputs(msd, taus, ntype, name_type, odir)
-
-    return
 
 
 def main(settings: Optional[dict] = None) -> None:
