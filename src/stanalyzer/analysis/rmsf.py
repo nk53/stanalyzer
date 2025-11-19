@@ -3,6 +3,7 @@ from typing import Optional
 import io
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 import MDAnalysis as mda
 import numpy as np
 
@@ -71,7 +72,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection for trajectory alignment")
     parser.add_argument('--sel-rmsf', metavar='selection_rmsf',
                         help="Atom selection for RMSF calculation")
-    parser.add_argument('--align-out', type=argparse.FileType('w'),
+    parser.add_argument('--align-out', type=writable_outfile,
                         metavar='FILE', default=None,
                         help="Write aligned trajectory to this path")
 

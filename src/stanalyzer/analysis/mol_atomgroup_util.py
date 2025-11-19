@@ -1,10 +1,44 @@
 #!/usr/bin/python
 import sys
+import typing as t
+
 import numpy as np
 from . import leaflet_util as myleaflet
 
+if t.TYPE_CHECKING:
+    from MDAnalysis import AtomGroup, Universe
 
-def generate_mol_type_ags(ag, selection, qsplit):
+
+class MolTypeAGs(t.NamedTuple):
+    sel_name: str
+    sel_ag: list['AtomGroup']
+    sel_nmol: int
+
+
+class MolGroups(t.NamedTuple):
+    name_type: list[str]
+    nmol_type: list[int]
+    nmol: int
+    id_type: list[int]
+    ag: list['AtomGroup']
+
+
+class MolGroupsMemb(t.NamedTuple):
+    name_type: list[str]
+    nmol_type: list[list[int]]
+    nmol: list[int]
+    id_type: list[list[int]]
+    ag: list['AtomGroup']
+
+
+class MolGroupsFull(t.NamedTuple):
+    nmol_type: list[int]
+    nmol: int
+    id_type: list[int]
+    ag_full: list['AtomGroup']
+
+
+def generate_mol_type_ags(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolTypeAGs:
     """
     ----------
     Generate atom groups for the given selection of a molecule type
@@ -57,10 +91,11 @@ def generate_mol_type_ags(ag, selection, qsplit):
 
     sel_nmol = len(sel_ag)
 
-    return sel_name, sel_ag, sel_nmol
+    return MolTypeAGs(sel_name, sel_ag, sel_nmol)
 
 
-def generate_mol_groups(u, ntype, selection, qsplit):
+def generate_mol_groups(u: 'Universe', ntype: int, selection: list[str],
+                        qsplit: list[bool]) -> MolGroups:
     """
     ----------
     Generate atom groups for individual molecules.
@@ -80,18 +115,19 @@ def generate_mol_groups(u, ntype, selection, qsplit):
           ag        : atom groups for individual molecules
     """
 
-    name_type = []  # names of unique molecule types
-    nmol_type = []  # numbers of individual molecule types
-    id_type = []  # molecule type indices of individual molecules
+    name_type: list[str] = []  # names of unique molecule types
+    nmol_type: list[int] = []  # numbers of individual molecule types
+    id_type: list[int] = []  # molecule type indices of individual molecules
 
     # generate atom groups for individual molecules
-    imol, ag = 0, []
+    imol = 0
+    ag: list['AtomGroup'] = []
     for i in range(0, ntype):
         ag_tmp = u.select_atoms(selection[i])
 
-        name_type.append([])
-        name_type[i], sel_ag, sel_nmol = generate_mol_type_ags(
+        nt, sel_ag, sel_nmol = generate_mol_type_ags(
             ag_tmp, selection[i], qsplit[i])
+        name_type.append(nt)
 
         nmol_type.append(sel_nmol)  # number of molecules of type, i
         for j in range(0, sel_nmol):
@@ -101,7 +137,7 @@ def generate_mol_groups(u, ntype, selection, qsplit):
             id_type.append(i)         # update molecule type index
             imol += 1                 # update molecule index counter
 
-    nmol = np.sum(nmol_type)      # total number of molecules
+    nmol: int = np.sum(nmol_type)      # total number of molecules
 
     # print system info
     sout = '# SYS. INFO\n'
@@ -120,10 +156,12 @@ def generate_mol_groups(u, ntype, selection, qsplit):
     sout += f' # nmol = {nmol:5d} ; # of ags ={len(ag)}\n'
     print(sout)
 
-    return name_type, nmol_type, nmol, id_type, ag
+    return MolGroups(name_type, nmol_type, nmol, id_type, ag)
 
 
-def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
+def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
+                             selection: list[str], qsplit: list[bool], sside: list[str],
+                             qz: bool) -> MolGroupsMemb:
     """
     ----------
     Generate atom groups for individual molecules in individual leaflets.
@@ -146,15 +184,15 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
           ag        : atom groups for individual molecules in individual leaflets
     """
 
-    name_type = []  # names of unique molecule types
-    nmol_type = []  # numbers of individual molecule types
-    nmol = []  # number of molecules
-    id_type = []  # molecule type indices of individual molecules
+    name_type: list[str] = []  # names of unique molecule types
+    nmol_type: list[list[int]] = []  # numbers of individual molecule types
+    nmol: list[int] = []  # number of molecules
+    id_type: list[list[int]] = []  # molecule type indices of individual molecules
 
     # expand nmol_type and id_type for leaflets
     for i in range(0, nside):
         nmol_type.append([])
-        nmol.append([])
+        nmol.append(-1)
         id_type.append([])
 
     # generate ordered atom groups for individual lipid types
@@ -175,7 +213,7 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
     # sys.exit(0)
 
     # now setup leaflet ag
-    ag = []
+    ag: list['AtomGroup'] = []
     for i in range(0, nside):
         ag.append([])
         imol = 0
@@ -223,10 +261,11 @@ def generate_mol_groups_memb(u, nside, ntype, selection, qsplit, sside, qz):
         sout += f' # nmol = {nmol[i]:5d} ; # of ags = {len(ag[i]):5d}\n'
     print(sout)
 
-    return name_type, nmol_type, nmol, id_type, ag
+    return MolGroupsMemb(name_type, nmol_type, nmol, id_type, ag)
 
 
-def generate_full_mol_groups(u, ntype, sel_type, name_type, qsplit):
+def generate_full_mol_groups(u: 'Universe', ntype: int, sel_type: list[str],
+                             name_type: list[str], qsplit: list[bool]) -> MolGroupsFull:
     """
     ----------
     Generate reference atomgroups for individual molecules with full atoms.
@@ -286,10 +325,10 @@ def generate_full_mol_groups(u, ntype, sel_type, name_type, qsplit):
     sout += f' # nmol = {nmol:5d} ; # of ags = {len(ag_full)}\n'
     print(sout)
 
-    return nmol_type, nmol, id_type, ag_full
+    return MolGroupsFull(nmol_type, nmol, id_type, ag_full)
 
 
-def generate_sys_groups(u, sel_sys, qz):
+def generate_sys_groups(u: 'Universe', sel_sys: str, qz: bool) -> list['AtomGroup']:
     """
     ----------
     Generate system atom groups for individual leaflets

@@ -8,9 +8,10 @@ from typing import Optional, cast
 
 import stanalyzer.cli.stanalyzer as sta
 import MDAnalysis as mda
+import matplotlib.pyplot as plt
+from stanalyzer.cli.stanalyzer import writable_outfile
 from MDAnalysis.analysis.align import AlignTraj, AverageStructure
 from MDAnalysis.analysis import helix_analysis as hel
-import matplotlib.pyplot as plt
 
 ANALYSIS_NAME = 'helix_analysis'
 
@@ -124,9 +125,8 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-rn', '--ref-frame-num', type=int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                              "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('--align-out', type=argparse.FileType('w'),
-                        metavar='FILE', default=None,
-                        help="Write aligned trajectory to this path")
+    parser.add_argument('--align-out', type=writable_outfile, metavar='FILE',
+                        default=None, help="Write aligned trajectory to this path")
 
     return parser
 

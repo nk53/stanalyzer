@@ -4,7 +4,7 @@ import io
 import os
 import re
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, TypeVar, cast, overload
@@ -137,23 +137,23 @@ def get_abspath(pathstr: str | Path, relative_to: str | Path) -> str:
 
 
 @overload
-def writeable_outfile(v: str) -> LazyFile: ...
+def writable_outfile(v: str) -> LazyFile: ...
 
 
 @overload
-def writeable_outfile(v: T) -> T: ...
+def writable_outfile(v: T) -> T: ...
 
 
-def writeable_outfile(v: str | T) -> LazyFile | T:
+def writable_outfile(v: str | T) -> LazyFile | T:
     """Returns abspath to file in user's out dir if `v` is a relpath str."""
     global defaults
 
     def get_outpath() -> str:
         path = Path(cast(os.PathLike, v))
-        if not path.is_absolute():
-            path = path.relative_to(defaults['output_path'])
+        if not path.is_absolute() and (_opath := defaults.get('output_path', '')):
+            path = path.relative_to(_opath)
 
-        # TODO: merge with ..validation.dir_is_writeable()?
+        # TODO: merge with ..validation.dir_is_writable()?
         parent = path.parent
         if not parent.is_dir():
             try:
@@ -175,6 +175,35 @@ def writeable_outfile(v: str | T) -> LazyFile | T:
     return LazyFile(get_outpath(), 'w')
 
 
+def write_to_outfile(file: 'FileRef', contents: str, close: bool = True) -> io.TextIOWrapper:
+    """Write contents to `file`.
+
+    `file` may be a filename string, in which case `writable_outfile` is used
+    to obtain the path. That means the path will be interpreted as relative to
+    the value of `output_dir` in `project.json` *unless* it is provided as an
+    absolute path.
+
+    Otherwise, it is assumed to be a handle to an already open file.
+
+    Returns a TextIOWrapper to the (possibly closed) file.
+    """
+    outfile: io.TextIOWrapper
+    outref: FileLike
+    if isinstance(file, str):
+        outref = writable_outfile(file)
+    else:
+        outref = file
+
+    outfile = cast(io.TextIOWrapper, resolve_file(outref))
+    if close:
+        with outfile:
+            outfile.write(contents)
+        return outfile
+
+    outfile.write(contents)
+    return outfile
+
+
 def add_project_args(subparser: argparse.ArgumentParser, *args: str) -> None:
     global from_settings
 
@@ -189,7 +218,7 @@ def add_project_args(subparser: argparse.ArgumentParser, *args: str) -> None:
             help=f"One or more coordinate containing files {defstr}")
     if 'out' in args:
         subparser.add_argument(
-            '-o', '--out', type=writeable_outfile, default=sys.stdout,
+            '-o', '--out', type=writable_outfile, default=sys.stdout,
             help="File to write results (default: stdout)")
     if 'time_step' in args:
         subparser.add_argument(

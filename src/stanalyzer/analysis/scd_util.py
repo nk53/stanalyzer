@@ -4,13 +4,46 @@ import math
 import re
 import numpy as np
 
+import typing as t
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+    from MDAnalysis import AtomGroup, Universe
+
+T = t.TypeVar('T')
+Tup2: t.TypeAlias = tuple[T, T]
+List2D: t.TypeAlias = list[list[T]]
+List3D: t.TypeAlias = list[list[list[T]]]
+StrList2D: t.TypeAlias = List2D[str]
+StrList3D: t.TypeAlias = List3D[str]
+IntList2D: t.TypeAlias = List2D[int]
+IntList3D: t.TypeAlias = List3D[int]
+AGroup2D: t.TypeAlias = list[list['AtomGroup']]
+NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
+SmallWeightTup: t.TypeAlias = tuple[List2D[NDFloat64], list[NDFloat64]]
+BigWeightTup: t.TypeAlias = tuple[List3D[NDFloat64], List2D[NDFloat64]]
+WeightTup: t.TypeAlias = SmallWeightTup | BigWeightTup
+List2DTup: t.TypeAlias = Tup2[List2D[NDFloat64]]
+List3DTup: t.TypeAlias = Tup2[List3D[NDFloat64]]
+
+
+class CHInner(t.NamedTuple):
+    carbons: StrList2D
+    hydrogens: StrList2D
+    ncarbons: list[int]
+
+
+class CHOuter(t.NamedTuple):
+    carbons: StrList3D
+    hydrogens: StrList3D
+    ncarbons: IntList2D
+
+
 # nside=2     # up/dn
-
-
-def find_carbons_hydrogens(u, atomgroup, name_t, c_st, ntail):
+def find_carbons_hydrogens(u: 'Universe', atomgroup: 'AtomGroup',
+                           name_t: str, c_st: list[str], ntail: int) -> CHInner:
     """
     ----------
-    Find carbonds and associated bonded hydrogens in tails of a given molecule
+    Find carbons and associated bonded hydrogens in tails of a given molecule
     ----------
 
     input
@@ -28,9 +61,9 @@ def find_carbons_hydrogens(u, atomgroup, name_t, c_st, ntail):
 
     # list arrays of
     # carbons and hydrogens for the given lipid type
-    carbons = []
-    hydrogens = []
-    ncarbons = []
+    carbons: StrList2D = []
+    hydrogens: StrList2D = []
+    ncarbons: list[int] = []
 
     # expand arrays along chains
     for i in range(0, ntail):
@@ -100,11 +133,13 @@ def find_carbons_hydrogens(u, atomgroup, name_t, c_st, ntail):
             print(f'# {name_t}: chain {i} ica = {j}',
                   carbons[i][j], hydrogens[i][j])
 
-    return carbons, hydrogens, ncarbons
+    return CHInner(carbons, hydrogens, ncarbons)
 
 
-def generate_carbons_hydrogens_ncarbons_type(u, ag_full, ntype, name_type,
-                                             nmol_type, ic_name, nchain):
+def generate_carbons_hydrogens_ncarbons_type(
+        u: 'Universe', ag_full: 'AtomGroup', ntype: int,
+        name_type: list[str], nmol_type: list[int], ic_name: StrList2D,
+        nchain: list[int]) -> CHOuter:
     """
     ----------
     Generate carbons,hydroges,ncarbons for ind. chain in ind. lipid types
@@ -127,9 +162,9 @@ def generate_carbons_hydrogens_ncarbons_type(u, ag_full, ntype, name_type,
           ncarbons : number of carbons in ind. chains in ind. molecule types
     """
 
-    carbons = []    # [ntype][nchain][0-ncarbons]
-    hydrogens = []  # [ntype][nchain][0-ncarbons][...]
-    ncarbons = []
+    carbons: StrList3D = []    # [ntype][nchain][0-ncarbons]
+    hydrogens: StrList3D = []  # [ntype][nchain][0-ncarbons][...]
+    ncarbons: IntList2D = []
 
     imol = 0
     for i in range(0, ntype):
@@ -144,11 +179,14 @@ def generate_carbons_hydrogens_ncarbons_type(u, ag_full, ntype, name_type,
 
         imol += nmol_type[i]
 
-    return carbons, hydrogens, ncarbons
+    return CHOuter(carbons, hydrogens, ncarbons)
 
 
-def generate_ag_carbon_hydrogen(u, atomgroups, name_type, id_type, nchain,
-                                ncarbons, carbons, hydrogens):
+def generate_ag_carbon_hydrogen(
+        u: 'Universe', atomgroups: list['AtomGroup'], name_type:
+        list[str], id_type: list[int], nchain: list[int],
+        ncarbons: IntList2D, carbons: StrList3D,
+        hydrogens: StrList3D) -> tuple['AtomGroup', 'AtomGroup']:
     """
     ----------
     Generate atom groups of carbon/associated bonded hydrogens for individual lipids
@@ -158,9 +196,9 @@ def generate_ag_carbon_hydrogen(u, atomgroups, name_type, id_type, nchain,
           u         : MDA Universe
           atomgroups: atomgroups of individual molecules
           nchain    : number of chains in individual molecule types
+          ncarbons  : number of carbons in ind. chains in unique mol. types
           carbons   : carbon names in ind. chain in unique molecule types
           hydrogens : hydrogen names bonded to ind. carbons in ind. chains
-          carbons   : number of carbons in ind. chains in unique mol. types
 
     output
           ag_c      : atom groups of carbons in ind. chain in ind. lipids
@@ -170,7 +208,8 @@ def generate_ag_carbon_hydrogen(u, atomgroups, name_type, id_type, nchain,
     nmol = len(atomgroups)
 
     # atom group list arrays
-    ag_c, ag_h = [], []
+    ag_c: AGroup2D = []
+    ag_h: AGroup2D = []
 
     # Loop over lidids
     for i in range(0, nmol):
@@ -215,7 +254,9 @@ def generate_ag_carbon_hydrogen(u, atomgroups, name_type, id_type, nchain,
     return ag_c, ag_h
 
 
-def generate_ref_atomgroups(u, atomgroups, ntype, nmol_type, ref_name):
+def generate_ref_atomgroups(u: 'Universe', atomgroups: list['AtomGroup'],
+                            ntype: int, nmol_type: list[int],
+                            ref_name: StrList2D) -> 'AtomGroup':
     """
     ----------
     Generate (ordered) reference atom groups for leaflet assignment
@@ -232,7 +273,7 @@ def generate_ref_atomgroups(u, atomgroups, ntype, nmol_type, ref_name):
           ag_ref    : reference atom groups
     """
 
-    ag_ref = u.atoms[[]]
+    ag_ref: 'AtomGroup' = u.atoms[[]]
     imol = 0
     for i in range(0, ntype):
         for j in range(0, nmol_type[i]):
@@ -245,7 +286,8 @@ def generate_ref_atomgroups(u, atomgroups, ntype, nmol_type, ref_name):
     return ag_ref
 
 
-def setup_raw_scd(nmol, id_type, nchain, ncarbons):
+def setup_raw_scd(nmol: int, id_type: list[int], nchain: list[int],
+                  ncarbons: IntList2D) -> List2D[NDFloat64]:
     """
     ----------
     Set up raw SCD array
@@ -266,7 +308,7 @@ def setup_raw_scd(nmol, id_type, nchain, ncarbons):
           raw_scd : list array of raw scd
     """
 
-    raw_scd = []
+    raw_scd: List2D[NDFloat64] = []
     for i in range(0, nmol):
         # lipid type and associated number of tails
         itype = id_type[i]
@@ -281,7 +323,9 @@ def setup_raw_scd(nmol, id_type, nchain, ncarbons):
     return raw_scd
 
 
-def calculate_raw_scd(raw_scd, nmol, ag_c, ag_h, memb_norm):
+def calculate_raw_scd(raw_scd: List2D[NDFloat64], nmol: int,
+                      ag_c: list['AtomGroup'], ag_h: list['AtomGroup'],
+                      memb_norm: NDFloat64) -> None:
     """
     ----------
     Calculate raw SCD for ind. carbons in ind. chains in ind. molecules
@@ -326,7 +370,27 @@ def calculate_raw_scd(raw_scd, nmol, ag_c, ag_h, memb_norm):
                 raw_scd[j][k][m] = tscd
 
 
-def setup_scd_weight(nside, ntype, nchain, ncarbons, framenum, qb):
+@t.overload
+def setup_scd_weight(nside: int, ntype: int, nchain: list[int],
+                     ncarbons: IntList2D, framenum: int,
+                     qb: t.Literal[False]) -> SmallWeightTup: ...
+
+
+@t.overload
+def setup_scd_weight(nside: int, ntype: int, nchain: list[int],
+                     ncarbons: IntList2D, framenum: int,
+                     qb: t.Literal[True]) -> BigWeightTup: ...
+
+
+@t.overload
+def setup_scd_weight(nside: int, ntype: int, nchain: list[int],
+                     ncarbons: IntList2D, framenum: int,
+                     qb: bool) -> WeightTup: ...
+
+
+def setup_scd_weight(nside: int, ntype: int, nchain: list[int],
+                     ncarbons: IntList2D, framenum: int,
+                     qb: bool) -> WeightTup:
     """
     ----------
     Set up SCD time series arrays and associated un-normalized weights
@@ -343,10 +407,9 @@ def setup_scd_weight(nside, ntype, nchain, ncarbons, framenum, qb):
           scd     : SCD of ind. carbon in ind. chain in unique lipid types (bilayer/leaflet)
           weight  : number of counts for unique lipid types (bilayer/leaflet)
     """
-
-    scd = []
-    weight = []  # number of counts
-    if qb:
+    def do_small() -> SmallWeightTup:
+        scd: List2D[NDFloat64] = []
+        weight: list[NDFloat64] = []
         for i in range(0, ntype):
             scd.append([])
             weight.append(np.zeros([framenum], dtype=float))
@@ -355,8 +418,13 @@ def setup_scd_weight(nside, ntype, nchain, ncarbons, framenum, qb):
             for j in range(0, ntail):
                 nc = ncarbons[i][j]
                 scd[i].append(np.zeros([nc, framenum], dtype=float))
-    else:  # if (qb is False):
 
+        print(np.shape(scd))
+        return scd, weight
+
+    def do_big() -> BigWeightTup:
+        scd: List3D[NDFloat64] = []
+        weight: List2D[NDFloat64] = []
         for i in range(0, nside):
             scd.append([])
             weight.append([])
@@ -369,11 +437,31 @@ def setup_scd_weight(nside, ntype, nchain, ncarbons, framenum, qb):
                     nc = ncarbons[j][k]
                     scd[i][j].append(np.zeros([nc, framenum], dtype=float))
 
-    print(np.shape(scd))
-    return scd, weight
+        print(np.shape(scd))
+        return scd, weight
+
+    if qb:
+        return do_small()
+    return do_big()
 
 
-def setup_ascd_astd(nside, ntype, nchain, ncarbons, qb):
+@t.overload
+def setup_ascd_astd(nside: int, ntype: int, nchain: list[int],
+                    ncarbons: IntList2D, qb: t.Literal[True]) -> List2DTup: ...
+
+
+@t.overload
+def setup_ascd_astd(nside: int, ntype: int, nchain: list[int],
+                    ncarbons: IntList2D, qb: t.Literal[False]) -> List3DTup: ...
+
+
+@t.overload
+def setup_ascd_astd(nside: int, ntype: int, nchain: list[int],
+                    ncarbons: IntList2D, qb: bool) -> List2DTup | List3DTup: ...
+
+
+def setup_ascd_astd(nside: int, ntype: int, nchain: list[int],
+                    ncarbons: IntList2D, qb: bool) -> List2DTup | List3DTup:
     """
     ----------
     Setup average and std of SCDs
@@ -390,10 +478,9 @@ def setup_ascd_astd(nside, ntype, nchain, ncarbons, qb):
           ascd    : average SCD
           astd    : std of SCD
     """
-
-    ascd = []  # weighted mean
-    astd = []  # weighted std
-    if qb:
+    def do_small() -> List2DTup:
+        ascd: List2D[NDFloat64] = []  # weighted mean
+        astd: List2D[NDFloat64] = []  # weighted std
         for i in range(0, ntype):
             ascd.append([])
             astd.append([])
@@ -403,7 +490,13 @@ def setup_ascd_astd(nside, ntype, nchain, ncarbons, qb):
                 nc = ncarbons[i][j]
                 ascd[i].append(np.zeros([nc], dtype=float))
                 astd[i].append(np.zeros([nc], dtype=float))
-    else:  # if (qb is False):
+
+        print(np.shape(ascd))
+        return ascd, astd
+
+    def do_big() -> List3DTup:
+        ascd: List3D[NDFloat64] = []  # weighted mean
+        astd: List3D[NDFloat64] = []  # weighted std
         for i in range(0, nside):
             ascd.append([])
             astd.append([])
@@ -417,11 +510,16 @@ def setup_ascd_astd(nside, ntype, nchain, ncarbons, qb):
                     ascd[i][j].append(np.zeros([nc], dtype=float))
                     astd[i][j].append(np.zeros([nc], dtype=float))
 
-    print(np.shape(ascd))
-    return ascd, astd
+        print(np.shape(ascd))
+        return ascd, astd
+
+    if qb:
+        return do_small()
+    return do_big()
 
 
-def assign_leaflet_index(ag_ref, leaflets):
+def assign_leaflet_index(ag_ref: 'AtomGroup',
+                         leaflets: list['AtomGroup']) -> list[int]:
     """
     ----------
     Assign leaflet index to individual lipids (for a given frame)
@@ -437,10 +535,8 @@ def assign_leaflet_index(ag_ref, leaflets):
 
     nmol = len(ag_ref)
 
-    tid_side = []
-    [tid_side.append(-1) for i in range(0, nmol)]
-    flag = []
-    [flag.append(0) for i in range(0, nmol)]  # before assignment
+    tid_side = [-1] * nmol
+    flag = [0] * nmol  # before assignment
     nside = len(leaflets)  # number of leaflets
 
     # Loop over molecule
@@ -463,7 +559,33 @@ def assign_leaflet_index(ag_ref, leaflets):
     return tid_side
 
 
-def calculate_scd(iframe, ntype, raw_scd, scd, weight, id_side, id_type, nchain, ncarbons, qb):
+@t.overload
+def calculate_scd(iframe: int, ntype: int, raw_scd: List2D[NDFloat64],
+                  scd: List2D[NDFloat64], weight: list[NDFloat64],
+                  id_side: list[int], id_type: list[int], nchain: list[int],
+                  ncarbons: IntList2D, qb: t.Literal[True]) -> SmallWeightTup: ...
+
+
+@t.overload
+def calculate_scd(iframe: int, ntype: int, raw_scd: List2D[NDFloat64],
+                  scd: List3D[NDFloat64], weight: List2D[NDFloat64],
+                  id_side: list[int], id_type: list[int], nchain: list[int],
+                  ncarbons: IntList2D, qb: t.Literal[False]) -> BigWeightTup: ...
+
+
+@t.overload
+def calculate_scd(iframe: int, ntype: int, raw_scd: List2D[NDFloat64],
+                  scd: List2D[NDFloat64] | List3D[NDFloat64],
+                  weight: list[NDFloat64] | List2D[NDFloat64],
+                  id_side: list[int], id_type: list[int], nchain: list[int],
+                  ncarbons: IntList2D, qb: bool) -> WeightTup: ...
+
+
+def calculate_scd(iframe: int, ntype: int, raw_scd: List2D[NDFloat64],
+                  scd: List2D[NDFloat64] | List3D[NDFloat64],
+                  weight: list[NDFloat64] | List2D[NDFloat64],
+                  id_side: list[int], id_type: list[int], nchain: list[int],
+                  ncarbons: IntList2D, qb: bool) -> WeightTup:
     """
     ----------
     Calculate SCD from raw SCD
@@ -488,7 +610,7 @@ def calculate_scd(iframe, ntype, raw_scd, scd, weight, id_side, id_type, nchain,
     # ntype: global parameter
     # nsdie: global parameter
 
-    if qb:
+    def do_small(scd: List2D[NDFloat64], weight: list[NDFloat64]) -> SmallWeightTup:
         for i in range(0, nmol):
             ii = id_type[i]
             ntail = nchain[ii]
@@ -507,8 +629,9 @@ def calculate_scd(iframe, ntype, raw_scd, scd, weight, id_side, id_type, nchain,
             if tnorm > 0.0:
                 for j in range(0, ntail):
                     scd[i][j][:, iframe] /= tnorm
+        return scd, weight
 
-    else:  # if (qb is False):
+    def do_big(scd: List3D[NDFloat64], weight: List2D[NDFloat64]) -> BigWeightTup:
         nside = len(scd)
         for i in range(0, nmol):
             ii = id_type[i]
@@ -529,8 +652,16 @@ def calculate_scd(iframe, ntype, raw_scd, scd, weight, id_side, id_type, nchain,
                 if tnorm > 0.0:
                     for k in range(0, ntail):
                         scd[i][j][k][:, iframe] /= tnorm
+        return scd, weight
 
-    return scd, weight
+    if qb:
+        return do_small(
+            t.cast(List2D[NDFloat64], scd),
+            t.cast(list[NDFloat64], weight))
+
+    return do_big(
+        t.cast(List3D[NDFloat64], scd),
+        t.cast(List2D[NDFloat64], weight))
 
 
 def calculate_ave_and_std(ascd, astd, scd, weight, framenum, qb):

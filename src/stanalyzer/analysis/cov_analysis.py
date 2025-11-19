@@ -9,6 +9,7 @@ from MDAnalysis.analysis import align
 from sklearn.decomposition import PCA
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 
 ANALYSIS_NAME = 'cov_analysis'
 
@@ -113,10 +114,13 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
     parser.add_argument('--sel', metavar='selection', required=True)
-    parser.add_argument('--corr-matrix-out', metavar='filename', required=True)
-    parser.add_argument('--eigenvalues-out', metavar='filename', required=True)
-    parser.add_argument('--eigenvectors-out', metavar='filename', required=True)
-    parser.add_argument('--align-out', metavar='filename'),
+    parser.add_argument('--corr-matrix-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--eigenvalues-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--eigenvectors-out', metavar='filename',
+                        type=writable_outfile, required=True)
+    parser.add_argument('--align-out', type=writable_outfile, metavar='filename'),
 
     return parser
 

@@ -209,7 +209,6 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
 
     # make output dir
     odir = "./voronoi/contact"
-    os.system(f'mkdir -p {odir}')
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
@@ -328,6 +327,7 @@ def run_voronoi_contact(sel, split, qz, qb, qt, qa, sel_sys, psf: sta.FileRef, t
             tncontact, tfcontact =\
                 myvorn.calculate_contact(
                     nmol, ntype, nmol_type, mol_ivc, id_type, contactMol)
+
             # update time series data
             if qb:
                 ncontact[i] += (tncontact.T * nmol_type).T

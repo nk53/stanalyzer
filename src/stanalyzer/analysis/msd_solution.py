@@ -1,8 +1,7 @@
 #!/usr/bin/python
 import argparse
-import os
 import re
-from typing import Optional
+import typing as t
 
 import numpy as np
 import MDAnalysis as mda
@@ -14,7 +13,13 @@ from . import msd_util as mymsd
 ANALYSIS_NAME = 'msd_solution'
 
 
-def process_args(sel, split):
+class ProcessedArgs(t.NamedTuple):
+    selection: list[str]
+    ntype: int
+    qsplit: list[bool]
+
+
+def process_args(sel: str, split_str: str) -> ProcessedArgs:
     """
     ----------
     Process arguements
@@ -26,7 +31,7 @@ def process_args(sel, split):
     for i in range(0, ntype):
         selection[i] = selection[i].strip()
     # print("selection",selection);print(ntype); sys.exit(0);
-    split = re.split(';|,', f'{split:s}')
+    split = re.split(';|,', f'{split_str:s}')
     nsplit = len(split)
     for i in range(0, nsplit):
         split[i] = split[i].strip()
@@ -46,7 +51,7 @@ def process_args(sel, split):
                 qsplit.append(True)
             else:
                 qsplit.append(False)
-    return selection, ntype, qsplit
+    return ProcessedArgs(selection, ntype, qsplit)
 
 
 def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
@@ -66,10 +71,7 @@ def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
                 sout += f' {tcom[j, k]:10.5f}'
         sout += '\n'
     # print(sout)
-    fout = f'{odir}/com_mol_unwrapped.dat'
-    f = open(fout, 'w')
-    f.write(sout)
-    f.close()
+    sta.write_to_outfile(f'{odir}/com_mol_unwrapped.dat', sout)
 
 
 # Write x,y, and z-components of MSD for given molecule type
@@ -88,10 +90,7 @@ def write_msd(name, msd, taus, odir):
             sout += f' {msd[i, j]:10.5f}'
         sout += '\n'
 
-    fout = f'{odir}/{name.lower()}_msd.dat'
-    f = open(fout, 'w')
-    f.write(sout)
-    f.close()
+    sta.write_to_outfile(f'{odir}/{name.lower()}_msd.dat', sout)
 
 
 # Write MSD outputs
@@ -138,7 +137,6 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     print(f'MSD will be caulated every {interval} frames in delay time')
 
     odir = "msd"
-    os.system(f'mkdir -p {odir}')
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
@@ -238,7 +236,7 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     write_msd_outputs(msd, taus, ntype, name_type, odir)
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

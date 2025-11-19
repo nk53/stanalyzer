@@ -1,12 +1,18 @@
 #!/usr/bin/python
 import sys
+import typing as t
+
 import MDAnalysis.analysis.leaflet as mdaleaflet
 import numpy as np
+
+if t.TYPE_CHECKING:
+    from MDAnalysis import AtomGroup, Universe
+
 
 nside = 2  # number of leaflets in a bilayer !!!
 
 
-def find_min_dist(pos, pos_grp):
+def find_min_dist(pos: np.ndarray, pos_grp: np.ndarray) -> 'np.floating':
     """
     ----------
     Find min dist between a position vector and a group of position vectors
@@ -32,7 +38,8 @@ def find_min_dist(pos, pos_grp):
     return min_dist
 
 
-def assign_groups_to_leaflets(sel_grp, ngroups):
+def assign_groups_to_leaflets(sel_grp: list['AtomGroup'],
+                              ngroups: int) -> list['AtomGroup']:
     """
     ----------
     Put 3rd+ group members to the appropriate 1st or 2nd groups based on min. dist.
@@ -75,7 +82,7 @@ def assign_groups_to_leaflets(sel_grp, ngroups):
     return sel_grp
 
 
-def assign_leaflet_zpos(u, atomgroup):
+def assign_leaflet_zpos(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
     """
     ----------
     Assign leaflets based on z-positions of atoms.
@@ -93,7 +100,7 @@ def assign_leaflet_zpos(u, atomgroup):
 
     """
 
-    leaflets = []
+    leaflets: list['AtomGroup'] = []
     pos = atomgroup.positions  # position vector
     zmin = np.min(pos[:, 2])
     zmax = np.max(pos[:, 2])
@@ -101,7 +108,7 @@ def assign_leaflet_zpos(u, atomgroup):
     zcent = 0.5 * (zmin + zmax)
 
     # upper leaflet; z > zcent
-    tag0 = atomgroup.intersection(u.select_atoms("prop z > %g" % zcent))
+    tag0: 'AtomGroup' = atomgroup.intersection(u.select_atoms("prop z > %g" % zcent))
     leaflets.append(tag0)
 
     # lower leaflet; z < zcent
@@ -115,7 +122,7 @@ def assign_leaflet_zpos(u, atomgroup):
     return leaflets
 
 
-def assign_leaflet_mda(u, atomgroup):
+def assign_leaflet_mda(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
     """
     ----------
     Simple leaflet assignment using the default setting of LeafletFinder from MDA.
@@ -131,7 +138,7 @@ def assign_leaflet_mda(u, atomgroup):
     """
 
     B = mdaleaflet.LeafletFinder(u, atomgroup)
-    leaflets = []
+    leaflets: list['AtomGroup'] = []
     for i in range(0, len(B.groups())):
         leaflets.append(B.groups(i))
         # print(f'simplest: len(B.groups({i}))= {len(leaflets[i])}')
@@ -140,7 +147,7 @@ def assign_leaflet_mda(u, atomgroup):
     return leaflets
 
 
-def assign_leaflet_simple(u, atomgroup):
+def assign_leaflet_simple(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
     """
     ----------
     A hybrid stride-bisection method for leaflet assignment.
@@ -230,12 +237,12 @@ def assign_leaflet_simple(u, atomgroup):
     return leaflets
 
 
-def assign_leaflet(u, atomgroup):
+def assign_leaflet(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
     """
     ----------
     Assign leaflet using a hybdird stride-bisection method when necessary.
     ----------
-    NOTE: IN typical situations that chosen atoms are appropriate for lipid tails,
+    NOTE: In typical situations that chosen atoms are appropriate for lipid tails,
           leaflets should have comparable numbers of atoms.
 
     input
@@ -254,7 +261,8 @@ def assign_leaflet(u, atomgroup):
     B = mdaleaflet.LeafletFinder(u, atomgroup, cutoff=c_dcut, pbc=True)
     ngroups = len(B.groups())
     #
-    sel_grp, ng_sel = [], []
+    sel_grp: list['AtomGroup'] = []
+    ng_sel: list[int] = []
     for ig in range(0, ngroups):
         sel_grp.append(B.groups(ig))
         ng_sel.append(len(sel_grp[ig]))

@@ -6,6 +6,7 @@ import numpy as np
 from MDAnalysis.analysis import hole2
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'Pore Profile'
@@ -57,12 +58,12 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection containing pore. Default: protein.")
     parser.add_argument('-b', '--bins', default=100, type=p_int,
                         help="Number of histogram bins in output. Default: 100.")
-    parser.add_argument('-ho', '--hist-out', type=argparse.FileType('w'), default="hist.png",
+    parser.add_argument('-ho', '--hist-out', type=writable_outfile, default="hist.png",
                         help="File to write histogram image. Default: hist.png")
-    parser.add_argument('-bo', '--midpoints-out', '--bins-out', type=argparse.FileType('w'),
+    parser.add_argument('-bo', '--midpoints-out', '--bins-out', type=writable_outfile,
                         default="midpoints.dat",
                         help="File to write bin midpoints. Default: midpoints.dat")
-    parser.add_argument('-mo', '--means-out', type=argparse.FileType('w'), default="means.dat",
+    parser.add_argument('-mo', '--means-out', type=writable_outfile, default="means.dat",
                         help="File to write means image. Default: means.dat")
 
     return parser

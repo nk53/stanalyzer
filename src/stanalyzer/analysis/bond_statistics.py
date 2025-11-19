@@ -7,6 +7,7 @@ from collections.abc import Iterable
 import numpy as np
 import MDAnalysis as mda
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 
 if t.TYPE_CHECKING:
     import numpy.typing as npt
@@ -373,12 +374,12 @@ def get_parser() -> argparse.ArgumentParser:
                        "Bond example: (1,2,3)(4,5,6).")
     group.add_argument('-i', '--index-file', metavar='FILE',
                        help="File containing indices to read.")
-    parser.add_argument('-bo', '--bond-out', metavar='FILE', default='bond_lengths.dat',
-                        help="Location to write bonds.")
-    parser.add_argument('-ao', '--angle-out', metavar='FILE', default='bond_angles.dat',
-                        help="Location to write bonds.")
-    parser.add_argument('-do', '--dihedral-out', metavar='FILE', default='bond_dihedrals.dat',
-                        help="Location to write bonds.")
+    parser.add_argument('-bo', '--bond-out', metavar='FILE', type=writable_outfile,
+                        default='bond_lengths.dat', help="Location to write bonds.")
+    parser.add_argument('-ao', '--angle-out', metavar='FILE', type=writable_outfile,
+                        default='bond_angles.dat', help="Location to write bonds.")
+    parser.add_argument('-do', '--dihedral-out', metavar='FILE', type=writable_outfile,
+                        default='bond_dihedrals.dat', help="Location to write bonds.")
 
     return parser
 

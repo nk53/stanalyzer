@@ -1,14 +1,32 @@
 #!/usr/bin/python
 import sys
 import math
+import typing as t
+from collections.abc import Sequence
+
 import numpy as np
+
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+    from scipy.spatial import Voronoi
+    from MDAnalysis import AtomGroup, Universe
+
+
+T = t.TypeVar('T')
+List2D = list[list[T]]
+List3D = list[list[list[T]]]
+List4D = list[list[list[list[T]]]]
+List5D = list[list[list[list[list[T]]]]]
+NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
+NDInt64: t.TypeAlias = 'npt.NDArray[np.int64]'
 
 # --- The following are hard set for voronoi tessellation in 2D
 # dim=2              # 2 dimensions
 # nimage=int(3**dim) # number of total primary+images for 2D
 
 
-def connect_mol_and_vc(u, nmol, nmol_type, ag):
+def connect_mol_and_vc(u: 'Universe', nmol: int, nmol_type: list[int],
+                       ag: list['AtomGroup']) -> tuple[List2D[int], NDInt64]:
     """
     ----------
     Generate VC list for molecules &
@@ -33,7 +51,7 @@ def connect_mol_and_vc(u, nmol, nmol_type, ag):
     print(f'# total number of VCs = {npt}')
 
     id_mol_vc = np.zeros([npt], dtype=int)
-    mol_ivc = []
+    mol_ivc: List2D[int] = []
 
     iatom = 0
     for i in range(0, nmol):
@@ -47,7 +65,7 @@ def connect_mol_and_vc(u, nmol, nmol_type, ag):
     return mol_ivc, id_mol_vc
 
 
-def image_translation(box):
+def image_translation(box: NDFloat64) -> NDFloat64:
     """
     ----------
     Translation operators for images
@@ -78,7 +96,8 @@ def image_translation(box):
     return tran
 
 
-def prepare_voronoi_centers(ag, box, dim, nimage):
+def prepare_voronoi_centers(ag: list['AtomGroup'], box: NDFloat64, dim: int,
+                            nimage: int) -> tuple[int, int, NDFloat64]:
     """
     ----------
     Prepare voronoi centers (primary + 8 images)
@@ -143,7 +162,9 @@ def prepare_voronoi_centers(ag, box, dim, nimage):
 # Functions for CONTACT analysis
 # --------------------
 
-def generate_vc_contact_info(vorn, nprim, nimage, box):
+
+def generate_vc_contact_info(vorn: 'Voronoi', nprim: int, nimage: int, box: NDFloat64) \
+        -> tuple[list[NDInt64], list[NDFloat64], list[NDFloat64], list[NDFloat64]]:
     """
     ----------
     Generate a list array of contacting VCs for individual VCs in the primary cell
@@ -163,16 +184,16 @@ def generate_vc_contact_info(vorn, nprim, nimage, box):
     """
 
     # set contactVC for the VCs in the primary image
-    contactVC, borderVC, distVC, weightVC = [], [], [], []
-    for i in range(0, nprim):
-        contactVC.append([])
-        borderVC.append([])
-        distVC.append([])
-        weightVC.append([])
+    _contactVC: list[list[int]] = [[] for _ in range(nprim)]
+    _borderVC:  list[list[np.floating]] = [[] for _ in range(nprim)]
+    _distVC:    list[list[np.floating]] = [[] for _ in range(nprim)]
+    _weightVC:  list[list[np.floating]] = [[] for _ in range(nprim)]
 
     # search for vorn.ridge_points
     nridges = len(vorn.ridge_points)
     for i in range(0, nridges):
+        inx1: int
+        inx2: int
         inx1, inx2 = vorn.ridge_points[i, 0], vorn.ridge_points[i, 1]
 
         # check validity
@@ -195,32 +216,30 @@ def generate_vc_contact_info(vorn, nprim, nimage, box):
 
         # 1.  add indices to contactVC & update distVC and borderVC
         if inx1 < nprim:
-            contactVC[inx1].append(inx2)
-            borderVC[inx1].append(tborder)
-            distVC[inx1].append(tdist)
-            weightVC[inx1].append(tborder/tdist)
+            _contactVC[inx1].append(inx2)
+            _borderVC[inx1].append(tborder)
+            _distVC[inx1].append(tdist)
+            _weightVC[inx1].append(tborder/tdist)
 
         if inx2 < nprim:
-            contactVC[inx2].append(inx1)
-            borderVC[inx2].append(tborder)
-            distVC[inx2].append(tdist)
-            weightVC[inx2].append(tborder/tdist)
+            _contactVC[inx2].append(inx1)
+            _borderVC[inx2].append(tborder)
+            _distVC[inx2].append(tdist)
+            _weightVC[inx2].append(tborder/tdist)
 
     # convert into numpy array
-    for i in range(0, nprim):
-        tarray = contactVC[i]
-        contactVC[i] = np.array(tarray)
-        tarray = borderVC[i]
-        borderVC[i] = np.array(tarray)
-        tarray = distVC[i]
-        distVC[i] = np.array(tarray)
-        tarray = weightVC[i]
-        weightVC[i] = np.array(tarray)
+    contactVC: list[NDInt64] = [np.array(tarray) for tarray in _contactVC]
+    borderVC:  list[NDFloat64] = [np.array(tarray) for tarray in _borderVC]
+    distVC:    list[NDFloat64] = [np.array(tarray) for tarray in _distVC]
+    weightVC:  list[NDFloat64] = [np.array(tarray) for tarray in _weightVC]
 
     return contactVC, borderVC, distVC, weightVC
 
 
-def generate_mol_contact_info(mol_ivc, contactVC, id_mol_vc, nprim):
+def generate_mol_contact_info(mol_ivc: list[list[int]],
+                              contactVC: list[NDInt64],
+                              id_mol_vc: NDInt64,
+                              nprim: int) -> list[set[int]]:
     """
     ----------
     Generate a list array of molecular contact for individual molecules in the primary cell
@@ -249,7 +268,7 @@ def generate_mol_contact_info(mol_ivc, contactVC, id_mol_vc, nprim):
         nsite = len(mol_ivc[i])
         for elem1 in mol_ivc[i]:
             for elem2 in contactVC[elem1]:
-                tid = id_mol_vc[elem2 % nprim]  # molecule index
+                tid: int = id_mol_vc[elem2 % nprim]  # molecule index
                 if tid != i:
                     tset.add(tid)
 
@@ -259,7 +278,13 @@ def generate_mol_contact_info(mol_ivc, contactVC, id_mol_vc, nprim):
     return contactMol
 
 
-def calculate_contact(nmol, ntype, nmol_type, mol_ivc, id_type, contactMol):
+def calculate_contact(
+        nmol: int,
+        ntype: int,
+        nmol_type: list[int],
+        mol_ivc: List2D[int],
+        id_type: list[int],
+        contactMol: list[set[int]]) -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
     Calculate contacting lipid types for individual lipid types
@@ -279,8 +304,8 @@ def calculate_contact(nmol, ntype, nmol_type, mol_ivc, id_type, contactMol):
     """
 
     # define ncontact and fcontact
-    ncontact = np.zeros([ntype, ntype], dtype=float)
-    fcontact = np.zeros([ntype, ntype], dtype=float)
+    ncontact: NDFloat64 = np.zeros([ntype, ntype], dtype=float)
+    fcontact: NDFloat64 = np.zeros([ntype, ntype], dtype=float)
 
     # loop over mols
     for i in range(0, nmol):
@@ -311,7 +336,8 @@ def calculate_contact(nmol, ntype, nmol_type, mol_ivc, id_type, contactMol):
 # --------------
 
 
-def update_contact_bilayer(framenum, ntype, ncontact, fcontact, tnmol_type):
+def update_contact_bilayer(framenum: int, ntype: int, ncontact: NDFloat64, fcontact: NDFloat64,
+                           tnmol_type: NDFloat64) -> tuple[NDInt64, NDFloat64]:
     """
     ----------
     Update contacts for bilayer: weighted average of leaflet data
@@ -345,7 +371,25 @@ def update_contact_bilayer(framenum, ntype, ncontact, fcontact, tnmol_type):
 # Functions for Shell analysis
 # --------------------
 
-def setup_shell_comp_arrays(framenum, nside, ntype, qb):
+@t.overload
+def setup_shell_comp_arrays(framenum: int, nside: int, ntype: int, qb: t.Literal[True]) \
+        -> tuple[List2D[int], List4D[float], List4D[float]]: ...
+
+
+@t.overload
+def setup_shell_comp_arrays(framenum: int, nside: int, ntype: int, qb: t.Literal[False]) \
+        -> tuple[List3D[int], List5D[float], List5D[float]]: ...
+
+
+@t.overload
+def setup_shell_comp_arrays(framenum: int, nside: int, ntype: int, qb: bool) \
+        -> tuple[List2D[int], List4D[float], List4D[float]] | \
+        tuple[List3D[int], List5D[float], List5D[float]]: ...
+
+
+def setup_shell_comp_arrays(framenum: int, nside: int, ntype: int, qb: bool) \
+        -> tuple[List2D[int], List4D[float], List4D[float]] | \
+        tuple[List3D[int], List5D[float], List5D[float]]:
     """
     ----------
     Setup raw shell-wise composition arrays
@@ -363,9 +407,10 @@ def setup_shell_comp_arrays(framenum, nside, ntype, qb):
           t_frac_comp: list array of time series of shell-wise fractional compositions
     """
 
-    max_shell = []
-    t_numb_comp, t_frac_comp = [], []
-    if qb:
+    def do_small() -> tuple[List2D[int], List4D[float], List4D[float]]:
+        max_shell: List2D[int] = []
+        t_numb_comp: List4D[float] = []
+        t_frac_comp: List4D[float] = []
         for i in range(0, framenum):
             max_shell.append([])
             t_numb_comp.append([])
@@ -375,8 +420,13 @@ def setup_shell_comp_arrays(framenum, nside, ntype, qb):
                 max_shell[i].append(100)
                 t_numb_comp[i].append([])
                 t_frac_comp[i].append([])
-    else:
-        # if (qb is False):
+
+        return max_shell, t_numb_comp, t_frac_comp
+
+    def do_big() -> tuple[List3D[int], List5D[float], List5D[float]]:
+        max_shell: List3D[int] = []
+        t_numb_comp: List5D[float] = []
+        t_frac_comp: List5D[float] = []
         for i in range(0, framenum):
             max_shell.append([])
             t_numb_comp.append([])
@@ -390,10 +440,20 @@ def setup_shell_comp_arrays(framenum, nside, ntype, qb):
                     max_shell[i][j].append(100)
                     t_numb_comp[i][j].append([])
                     t_frac_comp[i][j].append([])
-    return max_shell, t_numb_comp, t_frac_comp
+
+        return max_shell, t_numb_comp, t_frac_comp
+
+    if qb:
+        return do_small()
+    return do_big()
 
 
-def calculate_shell_comp(imol, nmol, contactMol, ntype, mol_ivc, id_type):
+def calculate_shell_comp(imol: int,
+                         nmol: int,
+                         contactMol: list[set[int]],
+                         ntype: int,
+                         mol_ivc: list[list[int]],
+                         id_type: list[int]) -> tuple[int, list[NDFloat64], list[NDFloat64]]:
     """
     ----------
     Calculate shell-wise number and fractional compositions around a molecule
@@ -413,11 +473,10 @@ def calculate_shell_comp(imol, nmol, contactMol, ntype, mol_ivc, id_type):
     """
 
     # generate shells
-    member_shell = []
+    member_shell: list[set[int]] = []
 
     # shell index
-    id_shell = []
-    [id_shell.append(-1) for i in range(0, nmol)]
+    id_shell = [-1 for _ in range(nmol)]
 
     # set for already assigned molecules
     assigned_list = set()
@@ -432,7 +491,7 @@ def calculate_shell_comp(imol, nmol, contactMol, ntype, mol_ivc, id_type):
 
     # read contactMol from the shell & subtract already assigned molecule indices
     while True:
-        tset = set()  # temp set for the next shell
+        tset: set[int] = set()  # temp set for the next shell
         for elem1 in member_shell[ishell]:
             # all contactMol for the shell member
             tset = tset.union(contactMol[elem1])
@@ -454,13 +513,11 @@ def calculate_shell_comp(imol, nmol, contactMol, ntype, mol_ivc, id_type):
             # print(f'assigned_list', assigned_list)
 
     # setup number and fractional compositions for individual shells
-    numb_comp = []
-    frac_comp = []
+    numb_comp: list[NDFloat64] = []
+    frac_comp: list[NDFloat64] = []
     for i in range(0, max_shell+1):
-        numb_comp.append([])
-        frac_comp.append([])
-        numb_comp[i] = np.zeros([ntype], dtype=float)
-        frac_comp[i] = np.zeros([ntype], dtype=float)
+        numb_comp.append(np.zeros([ntype], dtype=float))
+        frac_comp.append(np.zeros([ntype], dtype=float))
         # for j in range(0,ntype):
         #   frac_comp[i].append(0.0)
 
@@ -477,11 +534,13 @@ def calculate_shell_comp(imol, nmol, contactMol, ntype, mol_ivc, id_type):
     return max_shell, numb_comp, frac_comp
 
 
-def update_shell_comp(ntype, max_shell, t_numb_comp, t_frac_comp,
-                      tmax_shell, tnumb_comp, tfrac_comp):
+def update_shell_comp(ntype: int, max_shell: int, t_numb_comp: List2D[float],
+                      t_frac_comp: List2D[float], tmax_shell: int,
+                      tnumb_comp: list[NDFloat64], tfrac_comp: list[NDFloat64]) \
+        -> tuple[int, List2D[float], List2D[float]]:
     """
     ----------
-    Updaet raw shell compositions
+    Update raw shell compositions
     ----------
     NOTE:
         update shell-wise compositions from data for a molecule
@@ -538,7 +597,9 @@ def update_shell_comp(ntype, max_shell, t_numb_comp, t_frac_comp,
     return max_shell, t_numb_comp, t_frac_comp
 
 
-def normalize_raw_comp(array1, array2, array3):
+def normalize_raw_comp(array1: List3D[float],
+                       array2: List3D[float],
+                       array3: Sequence[float] | NDFloat64) -> tuple[List3D[float], List3D[float]]:
     """
     ----------
     Normalize shell-wise compositions
@@ -569,7 +630,8 @@ def normalize_raw_comp(array1, array2, array3):
     return array1, array2
 
 
-def set_nshell(max_shell, framenum, nside, ntype, qb):
+def set_nshell(max_shell: List2D[int] | List3D[int], framenum: int, nside: int,
+               ntype: int, qb: bool) -> int:
     """
     ----------
     Set maximum shell number for statistics and outputs
@@ -587,28 +649,41 @@ def set_nshell(max_shell, framenum, nside, ntype, qb):
     """
 
     nshell = 100  # global value
-    if qb:
+
+    def do_small() -> int:
+        nonlocal nshell
+        _max_shell = t.cast(List2D[int], max_shell)
         for i in range(0, framenum):
             for j in range(0, ntype):
-                tmax_shell = max_shell[i][j]
+                tmax_shell = _max_shell[i][j]
                 # print(tmax_shell)
                 if nshell > tmax_shell:
                     nshell = tmax_shell
-    else:
-        # if (qb is False):
+        print(f'# nshell= {nshell}')  # min. max shell index for all lipid types.
+        return nshell
+
+    def do_big() -> int:
+        nonlocal nshell
+        _max_shell = t.cast(List3D[int], max_shell)
         for j in range(0, nside):
             for i in range(0, framenum):
                 for k in range(0, ntype):
-                    tmax_shell = max_shell[i][j][k]
+                    tmax_shell = _max_shell[i][j][k]
                     # print(tmax_shell)
                     if nshell > tmax_shell:
                         nshell = tmax_shell
+        print(f'# nshell= {nshell}')  # min. max shell index for all lipid types.
+        return nshell
 
-    print(f'# nshell= {nshell}')  # min. max shell index for all lipid types.
-    return nshell
+    if qb:
+        return do_small()
+    return do_big()
 
 
-def convert_to_ndarray(t_numb_comp, t_frac_comp, framenum, nside, ntype, nshell, qb):
+def convert_to_ndarray(t_numb_comp: List4D[float] | List5D[float],
+                       t_frac_comp: List4D[float] | List5D[float],
+                       framenum: int, nside: int, ntype: int, nshell: int,
+                       qb: bool) -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
     Convert list arrays of time series to ndarrays for simpler statistics
@@ -628,7 +703,9 @@ def convert_to_ndarray(t_numb_comp, t_frac_comp, framenum, nside, ntype, nshell,
           frac_comp  : ndarray of time series of shell-wise fractional compositions
     """
 
-    if qb:
+    def do_small() -> tuple[NDFloat64, NDFloat64]:
+        _t_numb_comp = t.cast(List4D[int], t_numb_comp)
+        _t_frac_comp = t.cast(List4D[float], t_numb_comp)
         # Statistics upto min_max_shell
         numb_comp = np.zeros([framenum, ntype, nshell+1, ntype], dtype=float)
         frac_comp = np.zeros([framenum, ntype, nshell+1, ntype], dtype=float)
@@ -637,26 +714,31 @@ def convert_to_ndarray(t_numb_comp, t_frac_comp, framenum, nside, ntype, nshell,
             for j in range(0, ntype):
                 for k in range(0, nshell+1):
                     for m in range(0, ntype):
-                        numb_comp[i, j, k, m] = t_numb_comp[i][j][k][m]
-                        frac_comp[i, j, k, m] = t_frac_comp[i][j][k][m]
-    else:  # if (qb is False):
+                        numb_comp[i, j, k, m] = _t_numb_comp[i][j][k][m]
+                        frac_comp[i, j, k, m] = _t_frac_comp[i][j][k][m]
+        return numb_comp, frac_comp
+
+    def do_big() -> tuple[NDFloat64, NDFloat64]:
+        _t_numb_comp = t.cast(List5D[int], t_numb_comp)
+        _t_frac_comp = t.cast(List5D[float], t_numb_comp)
+
         # Statistics upto min_max_shell
-        numb_comp = np.zeros(
-            [framenum, nside, ntype, nshell+1, ntype], dtype=float)
-        frac_comp = np.zeros(
-            [framenum, nside, ntype, nshell+1, ntype], dtype=float)
+        numb_comp = np.zeros([framenum, nside, ntype, nshell+1, ntype], dtype=float)
+        frac_comp = np.zeros([framenum, nside, ntype, nshell+1, ntype], dtype=float)
         # sum up value & get mean and ave
         for i in range(0, framenum):
             for j in range(0, nside):
                 for k in range(0, ntype):
                     for m in range(0, nshell+1):
                         for n in range(0, ntype):
-                            numb_comp[i, j, k, m,
-                                      n] = t_numb_comp[i][j][k][m][n]
-                            frac_comp[i, j, k, m,
-                                      n] = t_frac_comp[i][j][k][m][n]
+                            numb_comp[i, j, k, m, n] = _t_numb_comp[i][j][k][m][n]
+                            frac_comp[i, j, k, m, n] = _t_frac_comp[i][j][k][m][n]
+        return numb_comp, frac_comp
 
-    return numb_comp, frac_comp
+    if qb:
+        return do_small()
+    else:
+        return do_big()
 
 # TBD
 # Clustering analysis using Voronoi tessellation
@@ -711,7 +793,7 @@ def convert_to_ndarray(t_numb_comp, t_frac_comp, framenum, nside, ntype, nshell,
 # Functions for area analysis
 # --------------------
 
-def calc_vr_area(ivc, vorn):
+def calc_vr_area(ivc: int, vorn: 'Voronoi') -> float:
     """
     ----------
     Calculate area of a Voronoi region
@@ -746,7 +828,7 @@ def calc_vr_area(ivc, vorn):
     return area
 
 
-def calc_mol_area(mol_ivc, vorn):
+def calc_mol_area(mol_ivc: list['Voronoi'], vorn: 'Voronoi') -> float:
     """
     ----------
     Calculate molecular area
@@ -766,7 +848,8 @@ def calc_mol_area(mol_ivc, vorn):
     return area
 
 
-def calc_mol_area_all(nmol, mol_ivc, vorn):
+def calc_mol_area_all(nmol: int, mol_ivc: list['Voronoi'],
+                      vorn: 'Voronoi') -> NDFloat64:
     """
     ----------
     Calculate area of all molecules
@@ -790,7 +873,7 @@ def calc_mol_area_all(nmol, mol_ivc, vorn):
     return area
 
 
-def calc_apl(area, id_type, ntype):
+def calc_apl(area: NDFloat64, id_type: list[int], ntype: int) -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
     Calculate area per lipids for individual molecule types
@@ -831,7 +914,8 @@ def calc_apl(area, id_type, ntype):
     return apl, ncnt
 
 
-def calculate_ave_and_std(nside, ntype, apl, ncomp, qb):
+def calculate_ave_and_std(nside: int, ntype: int, apl: NDFloat64, ncomp: NDInt64,
+                          qb: bool) -> tuple[NDFloat64, NDFloat64, NDFloat64]:
     """
     ----------
     Calculate average and std of APLs
@@ -849,9 +933,7 @@ def calculate_ave_and_std(nside, ntype, apl, ncomp, qb):
           sapl  : std of component APL
           anum  : total counts for the component APL
     """
-
-    # APL:  WEIGHTED MEAN AND STD
-    if qb:
+    def do_small() -> tuple[NDFloat64, NDFloat64, NDFloat64]:
         aapl = np.zeros([ntype], dtype=float)  # mean
         sapl = np.zeros([ntype], dtype=float)  # std
         anum = np.zeros([ntype], dtype=float)  # number
@@ -868,7 +950,10 @@ def calculate_ave_and_std(nside, ntype, apl, ncomp, qb):
 
                 aapl[j] = ave
                 sapl[j] = std
-    else:  # if (qb is False):
+
+        return aapl, sapl, anum
+
+    def do_big() -> tuple[NDFloat64, NDFloat64, NDFloat64]:
         aapl = np.zeros([nside, ntype], dtype=float)  # mean
         sapl = np.zeros([nside, ntype], dtype=float)  # std
         anum = np.zeros([nside, ntype], dtype=float)  # number
@@ -887,14 +972,19 @@ def calculate_ave_and_std(nside, ntype, apl, ncomp, qb):
                     aapl[i, j] = ave
                     sapl[i, j] = std
 
-    return aapl, sapl, anum
+        return aapl, sapl, anum
+
+    # APL:  WEIGHTED MEAN AND STD
+    if qb:
+        return do_small()
+    return do_big()
 
 
 # --------------------
 # Other functions
 # --------------------
 
-def calc_com_all(nmol, mol_ivc, vorn, box):
+def calc_com_all(nmol: int, mol_ivc: List2D[int], vorn: 'Voronoi', box: NDFloat64) -> NDFloat64:
     """
     ----------
     Calculate XY-COM of molecules from associated VCs

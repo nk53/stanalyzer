@@ -8,6 +8,7 @@ from MDAnalysis.analysis.align import AlignTraj, AverageStructure
 import numpy as np
 
 import stanalyzer.cli.stanalyzer as sta
+from stanalyzer.cli.stanalyzer import writable_outfile
 from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'rmsd'
@@ -97,7 +98,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('-rn', '--ref-frame-num', type=p_int, default=1, metavar='N',
                         help="Frame to use for reference coordinates (default: 1). "
                         "Only meaningful if --ref-frame-type is 'specific'")
-    parser.add_argument('--align-out', type=argparse.FileType('w'),
+    parser.add_argument('--align-out', type=writable_outfile,
                         metavar='FILE', default=None,
                         help="Write aligned trajectory to this path")
 
