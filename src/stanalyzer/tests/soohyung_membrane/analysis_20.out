@@ -1,0 +1,1 @@
+args: stanalyzer msd_membrane --sel "resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3" --split "y,y;y" --sel_sys "name P or name O3" --interval "1" --center --qcommol --qcomsys

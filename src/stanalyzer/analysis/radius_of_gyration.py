@@ -29,7 +29,7 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -
 
 
 def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rg: str,
-                             out: sta.FileRef, align_out: io.TextIOWrapper,
+                             out: sta.FileRef, align_out: io.TextIOWrapper | None = None,
                              ref_psf: Optional[sta.FileRef] = None,
                              ref_coor: Optional[sta.FileRef] = None,
                              ref_frame_type: str = 'specific', ref_frame_num: int = 1,
@@ -55,11 +55,13 @@ def write_radius_of_gyration(psf: sta.FileRef, traj: sta.FileRefList, sel_align:
         print(f"unknown reference frame type: '{ref_frame_type}'", file=sys.stderr)
         sys.exit(1)
 
+    align_file = align_out.name if align_out else None
+
     # Align the mobile trajectory to the reference and save the aligned trajectory
-    AlignTraj(mobile, ref, filename=align_out.name, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_file, select=sel_align).run()
 
     # Load the aligned trajectory from the saved file
-    aligned_mobile = mda.Universe(psf, align_out.name)
+    aligned_mobile = mobile if align_out is None else mda.Universe(psf, align_file)
 
     # Calculate radius of gyration for the aligned trajectory
     protein = aligned_mobile.select_atoms(sel_rg)

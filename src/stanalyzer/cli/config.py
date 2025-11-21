@@ -266,9 +266,12 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
         # NB: see TODO in InteractiveModel.__pydantic_init_subclass__
         model = cls.as_model(other)
         exclude = set(cls._sta_no_write_fields)
-        write_settings(
-            Path(model.input_path) / output_path,
-            model.model_dump(mode='json', exclude=exclude))
+        settings = model.model_dump(mode='json', exclude=exclude)
+
+        time_step = settings['time_step']
+        settings['time_step'] = f"{time_step['num']} {time_step['scale']}"
+
+        write_settings(Path(model.input_path) / output_path, settings)
 
 
 def main(output_path: str = 'project.json') -> None:

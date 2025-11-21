@@ -1,0 +1,5 @@
+usage: stanalyzer msd_membrane [-h] [-p FILE] [-t FILE [FILE ...]]
+                               [-i INTERVAL] [--center] [--sel selection]
+                               [--split SPLIT] [--sel-sys selection] [--qz]
+                               [--qb] [--qcomsys] [--qcommol]
+stanalyzer msd_membrane: error: unrecognized arguments: --sel_sys name P or name O3

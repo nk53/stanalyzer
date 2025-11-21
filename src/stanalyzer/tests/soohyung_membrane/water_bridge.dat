@@ -1,0 +1,1 @@
+#frame site1 water_to_site1 water_to_site2 site2 (each site and water are in the form of [acceptor, None] or [donor_hydrogen, donor_heavy])

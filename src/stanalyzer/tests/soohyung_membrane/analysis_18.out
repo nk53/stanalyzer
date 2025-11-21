@@ -1,0 +1,1 @@
+args: stanalyzer system_size --interval "1" --out "system_size.dat"

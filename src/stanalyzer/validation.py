@@ -44,22 +44,26 @@ def maybe_raise(condition: object, error_type: CustomError,
     raise PydanticCustomError(error_type, tpl.format(*template_vars, **ctx))
 
 
-def exists(p: Path) -> Path:
+def exists(p: Path | str) -> Path:
+    p = Path(p)
     maybe_raise(p.exists(), 'file_not_found', p)
     return p
 
 
-def is_file(p: Path) -> Path:
+def is_file(p: Path | str) -> Path:
+    p = Path(p)
     maybe_raise(p.is_file(), 'not_a_regular_file', p)
     return p
 
 
-def is_dir(p: Path) -> Path:
+def is_dir(p: Path | str) -> Path:
+    p = Path(p)
     maybe_raise(p.is_dir(), 'not_a_directory', p)
     return p
 
 
-def path_is_absolute(p: Path) -> Path:
+def path_is_absolute(p: Path | str) -> Path:
+    p = Path(p)
     maybe_raise(p.is_absolute(), 'not_abspath', p)
     return p
 
@@ -69,15 +73,19 @@ def not_empty(v: T, info: ValidationInfo) -> T:
     return v
 
 
-def dir_is_writable(p: Path) -> Path:
+def dir_is_writable(p: Path | str) -> Path:
     """Check that we can write to OR create a dir"""
+    p = Path(p)
     if p.is_dir():
         # , f"No permission to write to {p}"
         maybe_raise(os.access(p, os.W_OK), 'dir_not_writable', p)
     else:
         # this approach doesn't require abspath args
-        parent = (p / '..').resolve()
-        maybe_raise(os.access(parent, os.W_OK), 'dir_not_creatable', p)
+        j = p.resolve()
+        while (j != j.parent and not j.exists()):
+            j = j.parent
+
+        maybe_raise(os.access(j, os.W_OK), 'dir_not_creatable', p)
     return p
 
 
@@ -165,15 +173,6 @@ class Project(BaseModel):
 
         # enforce schema: psf is relative to input_path
         return as_relpath
-
-    @model_validator(mode='after')
-    def valid_paths_to_str(self) -> Self:
-        """Convert Path -> str for SQLModel"""
-        for field, value in self:
-            if isinstance(value, Path):
-                setattr(self, field, str(value))
-
-        return self
 
 
 class User(BaseModel):

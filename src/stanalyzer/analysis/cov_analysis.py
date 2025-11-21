@@ -30,11 +30,13 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
                              interval: int = 1) -> None:
     """Writes correlation matrix to `out` file"""
 
-    align_filename: str | None
-    if align_out is None or not align_out:
-        align_filename = None
-    else:
-        align_filename = t.cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
+    #align_filename: str | None
+    #if align_out is None or not align_out:
+    #    align_filename = None
+    #else:
+    #    align_filename = t.cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
+
+    align_file = align_out.name if align_out else None
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -45,7 +47,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     atoms = u.select_atoms(sel)  # default 'name CA'
     ref = u.select_atoms(sel)
 
-    align.AlignTraj(u, ref, filename=align_filename, select=sel).run()
+    align.AlignTraj(u, ref, filename=align_file, select=sel).run()
 
     ts_positions: list[np.ndarray] = []
     for ts in u.trajectory:

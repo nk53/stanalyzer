@@ -42,8 +42,11 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     midpoints = midpoints[::interval]
     means = midpoints[::interval]
 
-    np.savetxt(midpoints_out, midpoints)
-    np.savetxt(means_out, means)
+    with sta.resolve_file(midpoints_out, 'w') as outfile:
+        np.savetxt(outfile, midpoints)
+    with sta.resolve_file(means_out, 'w') as outfile:
+        np.savetxt(outfile, means)
+
     plt.plot(midpoints, means)
     plt.ylabel(r"Mean HOLE radius $R$ ($\AA$)")
     plt.xlabel(r"Pore coordinate $\zeta$ ($\AA$)")
