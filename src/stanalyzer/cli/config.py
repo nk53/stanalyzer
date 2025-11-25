@@ -261,7 +261,7 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
     }
 
     @classmethod
-    def write_settings(cls: type['InteractiveProject'], output_path: str = 'project.json',
+    def write_settings(cls: type['InteractiveProject'], output_file: str = 'project.json',
                        other: type[Project] = Project, *args: t.Any, **kwargs: t.Any) -> None:
         # NB: see TODO in InteractiveModel.__pydantic_init_subclass__
         model = cls.as_model(other)
@@ -271,7 +271,7 @@ class InteractiveProject(InteractiveModel, _sta_inject=Project):
         time_step = settings['time_step']
         settings['time_step'] = f"{time_step['num']} {time_step['scale']}"
 
-        write_settings(Path(model.input_path) / output_path, settings)
+        write_settings(Path(model.output_path) / output_file, settings)
 
 
 def main(output_path: str = 'project.json') -> None:

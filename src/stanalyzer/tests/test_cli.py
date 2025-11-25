@@ -4,7 +4,6 @@ import re
 import typing as t
 import unittest
 from collections.abc import Callable
-from contextlib import ExitStack
 from pathlib import Path
 
 import invoke
@@ -48,7 +47,10 @@ def skipUnlessAttrNotNone(obj: object, attr: str) -> TestFunction:
 
 
 class ManagedConfig:
-    """Dynamically creates and removes project.json configs"""
+    """Dynamically creates project.json configs.
+
+    If used as a context manager, the file is removed on context exit.
+    """
 
     def __init__(self, *,
                  title: str = "Test Case",
@@ -80,12 +82,18 @@ class ManagedConfig:
         self.inp = inp
         self.out = out
         self.config = project
-        self.config_path = inp / 'project.json'
+        self.config_path = out / 'project.json'
         self.project_dict = project_dict
 
-    def __enter__(self) -> Project:
-        write_settings(path=self.inp / 'project.json', data=self.project_dict)
+    def write(self) -> None:
+        """Write project.json to output dir.
 
+        Overwrites existing file, if present.
+        """
+        write_settings(path=self.out / 'project.json', data=self.project_dict)
+
+    def __enter__(self) -> Project:
+        self.write()
         return self.config
 
     def __exit__(self, x: t.Any, y: t.Any, z: t.Any) -> t.Literal[False]:
@@ -208,9 +216,9 @@ class AnalysisCase(unittest.TestCase):
 
             assert self.manager is not None, "Missing project.json"
 
-            with self.manager:
-                with self.ctx.cd(self.config.input_path):
-                    result = super().run(result)
+            self.manager.write()
+            with self.ctx.cd(self.config.output_path):
+                result = super().run(result)
 
         return result
 

@@ -372,7 +372,7 @@ def get_parser() -> argparse.ArgumentParser:
                        help="Atom indices for groups to analyze. Number of groups given "
                        "determines analysis type. 2: bond, 3: angle, 4: dihedral. "
                        "Bond example: (1,2,3)(4,5,6).")
-    group.add_argument('-i', '--index-file', metavar='FILE',
+    group.add_argument('-i', '--index-file', metavar='FILE', type=sta.InputFile,
                        help="File containing indices to read.")
     parser.add_argument('-bo', '--bond-out', metavar='FILE', type=writable_outfile,
                         default='bond_lengths.dat', help="Location to write bonds.")

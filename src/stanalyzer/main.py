@@ -134,8 +134,19 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
         if analysis_id is None:
             return {'error': 'failed to add analysis to database'}
 
+        # auto-migration: settings from in_dir -> out_dir
+        in_settings = in_dir / 'project.json'
+        out_settings = out_dir / 'project.json'
+        if not out_settings.exists():
+            if in_settings.exists():
+                in_settings.rename(out_settings)
+            else:
+                # user deleted project.json?
+                response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+                return [{'pid': -1, 'args': 'missing project.json'}]
+
         # TODO: this should ONLY be used when localhost is allowed
-        with ctx.cd(in_dir):
+        with ctx.cd(out_dir):
             # log invocation for user
             out_stream = out_file.open('w')
             print('args:', args, file=out_stream)
@@ -175,8 +186,8 @@ async def update_project(settings: validation.Project) -> StrDict:
     project_settings = db.get_user_projects(uid=1).get(project_id)
     assert project_settings
 
-    in_dir = Path(project_settings['input_path'])
-    settings_path = Path(in_dir / "project.json")
+    out_dir = Path(project_settings['output_path'])
+    settings_path = Path(out_dir / "project.json")
     utils.write_settings(settings_path, project_settings)
 
     return {
@@ -201,8 +212,10 @@ async def insert_project(request: Request,
     assert project_settings
 
     # create settings file
-    in_dir = Path(project_settings['input_path'])
-    settings_path = Path(in_dir / "project.json")
+    out_dir = Path(project_settings['output_path'])
+    settings_path = Path(out_dir / "project.json")
+    if not settings_path.parent.exists():
+        settings_path.parent.mkdir(parents=True)
     utils.write_settings(settings_path, project_settings)
 
     return {

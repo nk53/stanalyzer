@@ -1,7 +1,7 @@
 import argparse
 import sys
 import io
-from typing import Optional, TypeAlias, cast
+from typing import TypeAlias, cast
 
 import MDAnalysis as mda
 from MDAnalysis.analysis.align import AlignTraj, AverageStructure
@@ -16,7 +16,7 @@ ANALYSIS_NAME = 'rmsd'
 OptFileRef: TypeAlias = sta.LazyFile | io.TextIOWrapper | str | None
 
 
-def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -> str:
+def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     """Returns a header string and, if optionally writes it to a file
 
     If np_formatted is true, the `#` is omitted."""
@@ -32,8 +32,8 @@ def header(outfile: Optional[sta.FileLike] = None, np_formatted: bool = False) -
 
 def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                out: sta.FileRef, align_out: OptFileRef,
-               ref_psf: Optional[sta.FileRef] = None,
-               ref_coor: Optional[sta.FileRef] = None,
+               ref_psf: sta.FileRef | None = None,
+               ref_coor: sta.FileRef | None = None,
                ref_frame_type: str = 'specific', ref_frame_num: int = 1,
                time_step: float | str = .1, interval: int = 1) -> None:
     """Writes RMSD to `out` file"""
@@ -83,10 +83,10 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
-    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.ExistingFile,
+    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.InputFile,
                         metavar='FILE',
                         help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.ExistingFile,
+    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.InputFile,
                         metavar='FILE',
                         help="Coordinate file to use for reference, if not same as --traj")
     parser.add_argument('--sel', metavar='selection',
@@ -105,7 +105,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

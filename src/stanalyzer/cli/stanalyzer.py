@@ -5,6 +5,7 @@ import os
 import re
 import sys
 from collections.abc import Iterable
+from glob import glob
 from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, TypeVar, cast, overload
@@ -21,6 +22,15 @@ def ExistingFile(path: str) -> str:
     if not p.is_file():
         raise ValueError(f"'{path}' is not a regular file")
     return path
+
+
+def InputFile(path: str) -> str:
+    global defaults
+
+    if not path.startswith('/'):
+        path = str(Path(defaults['input_path']) / path)
+
+    return ExistingFile(path)
 
 
 class LazyFile:
@@ -341,10 +351,22 @@ def get_settings(analysis_name: str | None = None) -> dict:
 
         if name == 'traj':
             value = get_traj(value)
+        if name == 'psf':
+            value = get_input_path(value)
 
         settings[name] = value
 
     return settings
+
+
+def get_input_path(relpath: str | Path) -> Path:
+    global defaults
+
+    relpath = Path(relpath)
+    if relpath.is_absolute():
+        return relpath
+
+    return Path(defaults['input_path']) / relpath
 
 
 def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
@@ -352,7 +374,8 @@ def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
     re_num = re.compile(r'(\d+)')
 
     if isinstance(pattern, str):
-        pattern = Path().glob(pattern)
+        # pattern = Path().glob(str(get_input_path(pattern)))
+        pattern = [Path(p) for p in glob(str(get_input_path(pattern)))]
     elif isinstance(pattern, list):
         pattern = [Path(p) for p in pattern]
 

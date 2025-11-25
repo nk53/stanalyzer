@@ -1,5 +1,4 @@
 import argparse
-from typing import cast
 import io
 
 import stanalyzer.cli.stanalyzer as sta
@@ -71,6 +70,9 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
 
     # Add two separate selection arguments, one for alignment and one for RMSF calculation
+    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.InputFile,
+                        metavar='FILE',
+                        help="PSF to use for reference, if not same as --psf")
     parser.add_argument('--sel-align', metavar='selection_align',
                         help="Atom selection for trajectory alignment")
     parser.add_argument('--sel-rmsf', metavar='selection_rmsf',
