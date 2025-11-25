@@ -147,33 +147,6 @@ class AnalysisCase(unittest.TestCase):
             outfile.seek(0, io.SEEK_END)
             return outfile.tell()
 
-    @classmethod
-    def prepare_config(cls) -> None:
-        inp = Path('.').resolve() / 'inputs'
-        out = Path('.').resolve() / 'results'
-
-        project = Project(
-            title="Test Case",
-            input_path=str(inp),    # absolute path
-            output_path=str(out),   # absolute path
-            traj="step7_*.dcd",     # relative to input_path
-            psf="step5_input.psf",  # relative to input_path
-            time_step="1 ns",
-            scheduler="interactive",
-        )
-
-        project_dict = project.model_dump()
-        project_dict.pop('id', None)
-
-        cls.config = project
-        cls.config_path = inp / 'project.json'
-
-        write_settings(path=inp / 'project.json', data=project_dict)
-
-    @classmethod
-    def remove_config(cls) -> None:
-        cls.config_path.unlink()
-
     @t.overload
     def run_analysis(self, args: str, stem: str = '', analysis: str = '',
                      accepts_o: t.Literal[True] = True) -> IOTriple: ...
@@ -318,16 +291,6 @@ class SaltBridge(AnalysisCase):
         args = f'--sel "{sel}" --negative-sel "{sel}" --positive-def "{pos}"'\
                f'--negative-def "{neg}" --dist-cutoff "4.5"'
 
-        #with ExitStack() as stack:
-        #    files = self.run_analysis(args)
-        #    for file in files:
-        #        if not isinstance(file, str):
-        #            stack.enter_context(file)
-
-        #    out, err, dat = files
-
-        #    self.assertTrue(self.file_exists(dat, outfile))
-        #    self.assertFalse(self.file_empty(out, outfile))
         out, err, dat = self.run_analysis(args)
         self.assertTrue(self.file_exists(dat, outfile))
         self.assertFalse(self.file_empty(out, outfile))
