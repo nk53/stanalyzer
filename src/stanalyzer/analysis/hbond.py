@@ -42,8 +42,10 @@ def write_hbond(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
                                     or (resname THR CTHR NTHR and name HG1) \
                                     or (resname TRP CTRP NTRP and name HE1) \
                                     or (resname TYR CTYR NTYR and name HH)"
+        hbonds.hydrogens_sel = "({}) and ({})".format(sel, hbonds.hydrogens_sel)
     else:
         hbonds.hydrogens_sel = "({}) and ({})".format(sel, hydrogens_sel)
+
     if acceptors_sel is None or acceptors_sel.lower() == 'none':
         try:
             hbonds.acceptors_sel = hbonds.guess_acceptors(sel)
@@ -58,6 +60,7 @@ def write_hbond(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
                                     or (resname SER CSER NSER and name OG) \
                                     or (resname THR CTHR NTHR and name OG1) \
                                     or (resname TYR CTYR NTYR and name OH)"
+        hbonds.acceptors_sel = "({}) and ({})".format(sel, hbonds.acceptors_sel)
     else:
         hbonds.acceptors_sel = "({}) and ({})".format(sel, acceptors_sel)
 
