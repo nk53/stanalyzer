@@ -13,7 +13,7 @@ from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'rmsd'
 
-OptFileRef: TypeAlias = sta.LazyFile | io.TextIOWrapper | str | None
+OptFileRef: TypeAlias = sta.LazyFile | io.TextIOWrapper | None
 
 
 def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
@@ -38,16 +38,14 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                time_step: float | str = .1, interval: int = 1) -> None:
     """Writes RMSD to `out` file"""
 
-    align_filename: str | None
-
     if ref_psf is None:
         ref_psf = cast(sta.FileRef, psf)
     if ref_coor is None:
         ref_coor = cast(sta.FileRef, traj[0])
-    if align_out is None or not align_out:
-        align_filename = None
-    else:
-        align_filename = cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
+    if align_out is None:
+        print("Aligning file in-memory. If this fails because traj is too "
+              "large, try again with the --align-out option")
+    align_file = align_out.name if align_out else None
 
     time_step = cast(float, sta.resolve_ts(time_step))
 
@@ -62,7 +60,9 @@ def write_rmsd(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
         print(f"unknown reference frame type: '{ref_frame_type}'", file=sys.stderr)
         sys.exit(1)
 
-    alignment = AlignTraj(mobile, ref, filename=align_filename, select=sel).run()
+    # Align the mobile trajectory to the reference based on the selection for alignment
+    alignment = AlignTraj(mobile, ref, filename=align_file, select=sel,
+                          in_memory=align_file is None).run()
 
     # TODO: settings for start/end?
     start = time_step

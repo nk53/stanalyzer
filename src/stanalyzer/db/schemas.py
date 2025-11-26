@@ -61,7 +61,8 @@ class Analysis(SQLModel, table=True):
             # return all of a small file (<2 pages)
             return p.read_text()
 
-        project_dir = Path(self.get_basepath())
+        analysis_name = self.args.split()[1]
+        project_dir = Path(self.get_basepath()) / analysis_name
         outfile = project_dir / f"analysis_{self.id}.out"
         errfile = outfile.with_suffix(".err")
 

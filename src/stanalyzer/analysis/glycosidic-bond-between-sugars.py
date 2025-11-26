@@ -5,7 +5,7 @@ import stanalyzer.cli.stanalyzer as sta
 import MDAnalysis as mda
 import numpy as np
 
-from MDAnalysis.analysis import distances  # type: ignore[import-untyped]
+from MDAnalysis.analysis import distances
 
 ANALYSIS_NAME = 'glycosidic_bond_between_sugars'
 
@@ -25,10 +25,7 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
 
 
 def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
-                   out: sta.FileRef, ref_psf: Optional[sta.FileRef] = None,
-                   ref_coor: sta.FileRef | None = None,
-                   ref_frame_type: str = 'specific',
-                   ref_frame_num: int = 1, interval: int = 1) -> None:
+                   out: sta.FileRef, interval: int = 1) -> None:
     """Writes contacts to `out` file"""
 
     # Load your trajectory and topology
@@ -60,8 +57,6 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'pdb', 'traj', 'out', 'interval')
     parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for glycosidic_bond calculation")
-    parser.add_argument('-c', '--center', action='store_true')
-    parser.add_argument('--sel', metavar='selection')
 
     return parser
 

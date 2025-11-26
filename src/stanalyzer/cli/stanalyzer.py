@@ -4,6 +4,7 @@ import io
 import os
 import re
 import sys
+import types
 from collections.abc import Iterable
 from glob import glob
 from importlib import import_module
@@ -148,6 +149,22 @@ def get_abspath(pathstr: str | Path, relative_to: str | Path) -> str:
     return str(path.relative_to(relative_to))
 
 
+def get_analysis_name() -> str:
+    global analysis
+
+    if analysis is None:
+        raise ValueError("analysis module not initialized yet")
+    elif (analysis_name := analysis.__name__) == '__main__':
+        analysis_file = analysis.__file__
+        if analysis_file is None:
+            raise NotImplementedError('dynamic analysis modules')
+        analysis_name = Path(analysis_file).stem
+    else:
+        analysis_name = analysis_name.split('.')[-1]
+
+    return analysis_name
+
+
 @overload
 def writable_outfile(v: str) -> LazyFile: ...
 
@@ -160,10 +177,12 @@ def writable_outfile(v: str | T) -> LazyFile | T:
     """Returns abspath to file in user's out dir if `v` is a relpath str."""
     global defaults
 
+    analysis_name = get_analysis_name()
+
     def get_outpath() -> str:
         path = Path(cast(os.PathLike, v))
         if not path.is_absolute() and (_opath := defaults.get('output_path', '')):
-            path = _opath / path
+            path = Path(_opath) / analysis_name / path
 
         # TODO: merge with ..validation.dir_is_writable()?
         parent = path.parent
@@ -300,8 +319,8 @@ def get_settings(analysis_name: str | None = None) -> dict:
             print(f"    {', '.join(analyses)}")
             sys.exit(0)
 
-        for analysis in analyses:
-            print(f"    {analysis}")
+        for analysis_name in analyses:
+            print(f"    {analysis_name}")
 
         sys.exit(0)
 
@@ -484,7 +503,7 @@ FileRef: TypeAlias = FileLike | str
 FileRefList: TypeAlias = list[FileRef]
 
 # module containing analysis to run
-analysis: Any | None = None
+analysis: types.ModuleType | None = None
 # lazy-loaded settings file containing defaults to use for absent arguments
 defaults: DictLike = {}
 # signals that a value should be obtained from the default dict

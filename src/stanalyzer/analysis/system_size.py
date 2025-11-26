@@ -1,6 +1,6 @@
 import argparse
 
-import MDAnalysis as mda    # type: ignore[import-untyped]
+import MDAnalysis as mda
 
 import stanalyzer.cli.stanalyzer as sta
 

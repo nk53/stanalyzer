@@ -40,10 +40,14 @@ def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf
     mobile = mda.Universe(psf, traj)
     ref = mda.Universe(ref_psf, traj[0])
 
+    if align_out is None:
+        print("Aligning file in-memory. If this fails because traj is too "
+              "large, try again with the --align-out option")
     align_file = align_out.name if align_out else None
 
     # Align the mobile trajectory to the reference based on the selection for alignment
-    AlignTraj(mobile, ref, filename=align_file, select=sel_align).run()
+    AlignTraj(mobile, ref, filename=align_file, select=sel_align,
+              in_memory=align_file is None).run()
 
     # Load the aligned trajectory from the saved file
     aligned_mobile = mobile if align_out is None else mda.Universe(psf, align_file)
@@ -62,7 +66,9 @@ def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf
     # Write the results to the output file
     with sta.resolve_file(out, 'w') as outfile:
         np.savetxt(outfile, output, fmt='%10.5f %10.5f', header="residue_indices RMSF")
-    print(f"RMSF results saved to {outfile.name}")
+
+    if align_out is not None:
+        print(f"RMSF results saved to {outfile.name}")
 
 
 def get_parser() -> argparse.ArgumentParser:

@@ -1,0 +1,4 @@
+[submodule "src/stanalyzer/tests/inputs"]
+	active = false
+	path = src/stanalyzer/tests/inputs
+	url = git@github.com:nk53/stanalyzer-tests.git

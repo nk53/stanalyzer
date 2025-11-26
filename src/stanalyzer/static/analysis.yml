@@ -489,12 +489,6 @@ glycosidic_bond_distances:
       type: form.textarea
       classes: [code]
       value: name C1 and name O1
-    ref_psf:
-      label: Use different PSF for reference structure
-      options:
-        path:
-          label: Reference structure PSF
-          type: form.path
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -510,12 +504,6 @@ contacts:
       type: form.textarea
       classes: [code]
       value: protein and name CA
-    ref_psf:
-      label: Use different PSF for reference structure
-      options:
-        path:
-          label: Reference structure PSF
-          type: form.path
     contact_threshold:
       label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
       type: form.input
@@ -535,12 +523,6 @@ contact_res_time:
       type: form.textarea
       classes: [code]
       value: protein and name CA
-    ref_psf:
-      label: Use different PSF for reference structure
-      options:
-        path:
-          label: Reference structure PSF
-          type: form.path
     threshold:
       label: Distance cutoff for calculating the residence time. This cutoff refers to the distance between the selected atom pairs.
       type: form.input

@@ -98,12 +98,6 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.InputFile,
-                        metavar='FILE',
-                        help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.InputFile,
-                        metavar='FILE',
-                        help="Coordinate file to use for reference, if not same as --traj")
     parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for contact calculation")
     parser.add_argument('--contact-threshold', type=p_float, metavar='N', default='5.0',

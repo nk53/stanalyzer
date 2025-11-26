@@ -124,12 +124,12 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
         analysis_id = db.insert_analysis(db.Analysis(uid=1, project_id=project_id, args=args))
 
         # setup streams
-        out_file = Path(out_dir / f"analysis_{analysis_id}.out")
-        err_file = Path(out_dir / f"analysis_{analysis_id}.err")
+        out_file = out_dir / analysis / f"analysis_{analysis_id}.out"
+        err_file = out_dir / analysis / f"analysis_{analysis_id}.err"
 
         # ensure out_dir exists (default mode=0o777)
-        if not out_dir.exists():
-            out_dir.mkdir(parents=True)
+        if not out_file.parent.exists():
+            out_file.parent.mkdir(parents=True)
 
         if analysis_id is None:
             return {'error': 'failed to add analysis to database'}

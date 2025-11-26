@@ -1,6 +1,5 @@
 import argparse
 import io
-import typing as t
 
 import MDAnalysis as mda
 import numpy as np
@@ -14,7 +13,7 @@ from stanalyzer.cli.stanalyzer import writable_outfile
 ANALYSIS_NAME = 'cov_analysis'
 
 
-def header(outfile: t.Optional[sta.FileLike] = None) -> str:
+def header(outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
     header_str = "#correlation matrix= Atomic x,y,z times atomic x,y,z coordinates"
 
@@ -26,17 +25,9 @@ def header(outfile: t.Optional[sta.FileLike] = None) -> str:
 def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
                              out: sta.FileRef, sel: str, time_step: float | str,
                              corr_matrix_out: str, eigenvalues_out: str,
-                             eigenvectors_out: str, align_out: sta.FileRef | None,
+                             eigenvectors_out: str, align_out: io.TextIOWrapper | None = None,
                              interval: int = 1) -> None:
     """Writes correlation matrix to `out` file"""
-
-    #align_filename: str | None
-    #if align_out is None or not align_out:
-    #    align_filename = None
-    #else:
-    #    align_filename = t.cast(io.TextIOWrapper, sta.resolve_file(align_out)).name
-
-    align_file = align_out.name if align_out else None
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -47,7 +38,13 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     atoms = u.select_atoms(sel)  # default 'name CA'
     ref = u.select_atoms(sel)
 
-    align.AlignTraj(u, ref, filename=align_file, select=sel).run()
+    if align_out is None:
+        print("Aligning file in-memory. If this fails because traj is too "
+              "large, try again with the --align-out option")
+    align_file = align_out.name if align_out else None
+
+    align.AlignTraj(u, ref, filename=align_file, select=sel,
+                    in_memory=align_file is None).run()
 
     ts_positions: list[np.ndarray] = []
     for ts in u.trajectory:
@@ -127,7 +124,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: t.Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

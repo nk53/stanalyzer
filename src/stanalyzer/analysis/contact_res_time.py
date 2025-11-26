@@ -1,11 +1,11 @@
 import argparse
-from typing import Optional, TypeAlias, cast
+from typing import TypeAlias
 
 import MDAnalysis as mda
 import numpy as np
 
 import stanalyzer.cli.stanalyzer as sta
-from stanalyzer.cli.validators import p_int, p_float
+from stanalyzer.cli.validators import p_float
 
 ANALYSIS_NAME = 'contact_res_time'
 CONTACT: TypeAlias = tuple[str, int, str, int]  # RESNAME-RESID RESNAME-RESID of contact pair
@@ -29,15 +29,8 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
 
 def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                            out: sta.FileRef, threshold: float = 5.0,
-                           ref_psf: Optional[sta.FileRef] = None,
-                           ref_coor: Optional[sta.FileRef] = None, ref_frame_num: int = 1,
                            interval: int = 1) -> None:
     """Writes RMSD to `out` file"""
-
-    if ref_psf is None:
-        ref_psf = cast(sta.FileRef, psf)
-    if ref_coor is None:
-        ref_coor = cast(sta.FileRef, traj[0])
 
     universe = mda.Universe(psf, traj)
 
@@ -108,24 +101,15 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('-rp', '--ref-psf', '--ref-psf-path', type=sta.InputFile,
-                        metavar='FILE',
-                        help="PSF to use for reference, if not same as --psf")
-    parser.add_argument('-rc', '--ref-coor', '--ref-coor-path', type=sta.InputFile,
-                        metavar='FILE',
-                        help="Coordinate file to use for reference, if not same as --traj")
     parser.add_argument('--sel', metavar='selection',
                         help="Atom selection for RMSD calculation")
     parser.add_argument('--threshold', type=p_float, metavar='N', default='5.0',
                         help="Distance cutoff for calculating the residence time.")
-    parser.add_argument('-rn', '--ref-frame-num', type=p_int, default=1, metavar='N',
-                        help="Frame to use for reference coordinates (default: 1). "
-                        "Only meaningful if --ref-frame-type is 'specific'")
 
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

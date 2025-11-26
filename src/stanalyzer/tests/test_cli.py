@@ -8,8 +8,8 @@ from pathlib import Path
 
 import invoke
 
-from stanalyzer.validation import Project
 from stanalyzer.utils import write_settings
+from stanalyzer.validation import Project
 
 T = t.TypeVar('T')
 P = t.ParamSpec('P')
@@ -125,9 +125,15 @@ class AnalysisCase(unittest.TestCase):
             outdir.mkdir(parents=True)
 
     def infile(self, relpath: str | Path) -> Path:
+        name = getattr(self, 'analysis_name', '')
+        if name:
+            return Path(self.config.input_path) / name / relpath
         return self.config.input_path / relpath
 
     def outfile(self, relpath: str | Path) -> Path:
+        name = getattr(self, 'analysis_name', '')
+        if name:
+            return Path(self.config.output_path) / name / relpath
         return self.config.output_path / relpath
 
     def file_empty(self, path: str | Path | io.TextIOWrapper,
@@ -198,8 +204,11 @@ class AnalysisCase(unittest.TestCase):
         return out_err
 
     def run_cmd(self, args: str, out_filename: str, err_filename: str) -> IOPair:
-        out_path = self.config.output_path / out_filename
-        err_path = self.config.output_path / err_filename
+        out_path = self.outfile(out_filename)
+        err_path = self.outfile(err_filename)
+
+        if not out_path.parent.exists():
+            out_path.parent.mkdir(parents=True)
 
         out_stream = out_path.open('w')
         err_stream = err_path.open('w')
@@ -246,7 +255,7 @@ class SoohyungCase(AnalysisCase):
     def __init_subclass__(cls, **kwargs):
         if not cls.analysis_name:
             cls.analysis_name = camel_to_snake(cls.__name__)
-        cls.default_output = Path('results') / cls.analysis_name
+        cls.default_output = Path('results') / "soohyung_membrane"
         cls.test_standard = skipUnlessAttrNotNone(cls, 'standard_args')(SoohyungCase.standard_test)
 
         super().__init_subclass__(**kwargs)
@@ -254,7 +263,7 @@ class SoohyungCase(AnalysisCase):
     def __init__(self, methodName='runTest'):
         if not hasattr(self, 'manager'):
             self.manager = ManagedConfig(
-                input_relpath="soohyung_membrane",
+                input_relpath=Path('inputs') / "soohyung_membrane",
                 output_relpath=self.default_output, traj="step7_*.dcd",
                 psf="step5_input.psf")
         super().__init__(methodName)
