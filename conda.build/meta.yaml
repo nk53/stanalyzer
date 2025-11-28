@@ -38,6 +38,7 @@ requirements:
     - python-multipart >=0.0.17
     - scikit-learn-extra >=0.3
     - psutil >=7.0
+    - bracex >=2.0
     - numpy
   run_constrained:
     - hole2 >=2.3

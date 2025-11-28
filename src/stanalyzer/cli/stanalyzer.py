@@ -11,7 +11,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, TypeVar, cast, overload
 from .validators import exec_name, p_int, p_float
-from ..utils import read_json
+from ..utils import braced_glob, read_json
 
 T = TypeVar('T')
 
@@ -394,7 +394,7 @@ def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
 
     if isinstance(pattern, str):
         # pattern = Path().glob(str(get_input_path(pattern)))
-        pattern = [Path(p) for p in glob(str(get_input_path(pattern)))]
+        pattern = [Path(p) for p in braced_glob(str(get_input_path(pattern)))]
     elif isinstance(pattern, list):
         pattern = [Path(p) for p in pattern]
 

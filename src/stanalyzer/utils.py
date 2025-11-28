@@ -1,8 +1,11 @@
 import json
 import pathlib
 import re
+from glob import glob
+from pathlib import Path
 from typing import Any, List, TypeVar
 
+import bracex
 import yaml
 
 T = TypeVar('T')
@@ -200,3 +203,13 @@ def get_active_settings(settings: dict[str, Any], analysis: dict[str, Any],
 def filter_unreleased(d: dict[str, dict[str, T]]) -> dict[str, dict[str, T]]:
     """Hide unfinished items for release and release-candidate builds"""
     return {k: v for k, v in d.items() if v.get('release', True)}
+
+
+def braced_glob(p: Path | str) -> list[Path]:
+    result = [
+        Path(globbed)
+        for expanded in bracex.iexpand(str(p), limit=0)
+        for globbed in glob(expanded)
+    ]
+
+    return sorted(result)

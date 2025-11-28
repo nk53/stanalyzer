@@ -1,6 +1,20 @@
 import os
 import sys
 from pathlib import Path
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    ValidationInfo,
+    field_validator,
+)
+from pydantic.functional_validators import (
+    AfterValidator as AV,
+    BeforeValidator as BV,
+)
+from pydantic_core import PydanticCustomError
+
+import stanalyzer
 from ._typing import (
     Any,
     Annotated,
@@ -11,22 +25,8 @@ from ._typing import (
     TYPE_CHECKING,
     error_templates,
 )
-from typing_extensions import Self
+from .utils import braced_glob
 
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    Field,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
-from pydantic.functional_validators import (
-    AfterValidator as AV,
-    BeforeValidator as BV,
-)
-from pydantic_core import PydanticCustomError
-import stanalyzer
 
 T = TypeVar('T', bound=type)
 BM = TypeVar('BM', bound=BaseModel)
@@ -144,13 +144,14 @@ class Project(BaseModel):
 
         # check traj pattern matches at least one file
         traj_path = Path(traj)
+
         if traj_path.is_absolute():
-            traj_relpathstr = '/'.join(traj_path.parts[1:])
-            traj_glob = sorted(Path('/').glob(traj_relpathstr))
+            traj_glob = sorted(braced_glob(traj_path))
             as_relpath = Path(traj)
         else:
+            abspath = info.data['input_path'] / traj_path
+            traj_glob = sorted(braced_glob(abspath))
             as_relpath = traj_path
-            traj_glob = sorted(info.data['input_path'].glob(traj))
         maybe_raise(traj_glob, 'glob_failed', traj)
 
         # enforce schema: traj is relative to input_path
