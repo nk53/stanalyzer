@@ -576,6 +576,7 @@ function load_project_json(elem) {
 
 var active_page = null;
 var loaded_pages = [];
+var global_popup = null;
 
 /**
  * Handles page changes, initializes event handlers
@@ -620,48 +621,104 @@ $(document).on('pagecontainerchange', setup_form);
 
 // popups w/o an activation link need to be explicitly initialized
 $(document).on("DOMContentLoaded", function() {
-    const msg = $('#global_message');
-    const msg_content = $('#global_message-content');
-    const msg_control = $('#message_control');
-    const msg_close = msg.find('button');
-
-    msg.popup();
-
-    // jqm's dynamic positioning (via top/left properties) interferes with
-    // style.css's positioning (via bottom/right)
-    msg.data('mobile-popup')._reposition = $.noop;
-
-    // setup other popup behavior
-    $('#global_message-screen').on('click', function() {
-        msg.popup("close");
-        msg_control.show();
-    });
-    msg_control.on('click', function() {
-        msg_control.hide();
-        msg.popup("open");
-    });
-    msg_close.on('click', function() {
-        msg.popup("close");
-    })
+    global_popup = new GlobalPopup();
 });
 
 function update_global_message(text, is_success=true, open=true) {
-    var msg_container, msg_elem, msg_control;
-    if (msg_elem === undefined) {
-        msg_container = $('#global_message');
-        msg_elem = $('#global_message-content');
-        msg_control = $('#message_control');
-    }
+    const popup = global_popup;
 
-    msg_elem.html(text);
-
-    msg_elem.removeClass(['errmsg', 'success']);
+    const content = popup.content;
+    const control = popup.control;
+    const container = popup.container;
 
     const cls = (is_success) ? 'success' : 'errmsg';
-    msg_elem.addClass(cls);
 
-    if (open) {
-        msg_container.popup("open");
-        msg_control.hide();
+    content.html(text);
+    content.removeClass(['errmsg', 'success']);
+    content.addClass(cls);
+
+    if (open)
+        popup.open()
+}
+
+class GlobalPopup {
+    #CLOSED = 0;
+    #MINIMIZED = 1;
+    #OPEN = 2;
+    #state = this.#CLOSED;
+
+    constructor() {
+        const that = this;
+        this.container = $('#global_message'); // original container
+        this.container.popup({
+            history: false
+        });
+
+        this.screen = $('#global_message-screen');
+        this.popup = $('#global_message-popup'); // container after popup()
+        this.content = $('#global_message-content');
+        this.control = $('#message_control');
+        this.close_btn = this.container.find('button');
+        this.search_root = this.popup.add(this.control);
+
+        // jqm's dynamic positioning (via top/left properties) interferes with
+        // style.css's positioning (via bottom/right)
+        this.container.data('mobile-popup')._reposition = $.noop;
+
+        // enable user to click buttons and dismiss messages simultaneously
+        $('body').on('click', function(event) {
+            const target = $(event.target);
+            if ($.contains(that.search_root, target))
+                return;
+
+            // clicks outside container should minimize popup
+            if (that.opened) {
+                that.minimize();
+                target.trigger('focus');
+            }
+        });
+
+        // setup other popup behavior
+        this.control.on('click', function(event) {
+            that.open();
+            event.stopPropagation();
+        });
+        this.close_btn.on('click', function(event) {
+            that.close();
+            event.stopPropagation();
+        });
+    }
+
+    close() {
+        this.container.popup("close");
+        this.#state = this.#CLOSED;
+    }
+
+    minimize() {
+        this.container.popup("close");
+        this.control.show();
+        this.#state = this.#MINIMIZED;
+    }
+
+    open() {
+        this.container.popup("open");
+        this.control.hide();
+        this.#state = this.#OPEN;
+    }
+
+    get state() {
+        return this.#state;
+    }
+
+    get closed() {
+        return this.#state == this.#CLOSED;
+    }
+
+    get minimized() {
+        return this.#state == this.#MINIMIZED;
+    }
+
+    get opened() {
+        return this.#state == this.#OPEN;
     }
 }

@@ -16,6 +16,10 @@ blockquote.code {
     margin: .5em 1em;
 }
 
+div#global_message-screen {
+    display: none;
+}
+
 /* #results page form is very hard to read w/o some adjustments */
 div#results blockquote.code {
     margin: 0;
