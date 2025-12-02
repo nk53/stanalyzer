@@ -225,7 +225,7 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out')
     parser.add_argument('-temp', type=float, help='System Temperature')
     parser.add_argument('-cntmin', type=int, help='first DCD number')
-    parser.add_argument('-cntmin', type=int, help='Last DCD number')
+    parser.add_argument('-cntmax', type=int, help='Last DCD number')
     parser.add_argument('-bs', type=int, help='block size in frames')
 
     return parser
