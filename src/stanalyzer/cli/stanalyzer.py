@@ -6,7 +6,6 @@ import re
 import sys
 import types
 from collections.abc import Iterable
-from glob import glob
 from importlib import import_module
 from pathlib import Path
 from typing import Any, TypeAlias, TypeVar, cast, overload
@@ -393,7 +392,6 @@ def get_traj(pattern: str | Iterable[str | Path]) -> list[Path]:
     re_num = re.compile(r'(\d+)')
 
     if isinstance(pattern, str):
-        # pattern = Path().glob(str(get_input_path(pattern)))
         pattern = [Path(p) for p in braced_glob(str(get_input_path(pattern)))]
     elif isinstance(pattern, list):
         pattern = [Path(p) for p in pattern]
