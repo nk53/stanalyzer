@@ -4,11 +4,14 @@ import typing as t
 
 import MDAnalysis.analysis.leaflet as mdaleaflet
 import numpy as np
+from scipy.ndimage import gaussian_filter
 
 if t.TYPE_CHECKING:
+    import numpy.typing as npt
     from MDAnalysis import AtomGroup, Universe
 
 
+NDFloat64: t.TypeAlias = "npt.NDFloat64"
 nside = 2  # number of leaflets in a bilayer !!!
 
 
@@ -108,7 +111,8 @@ def assign_leaflet_zpos(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGrou
     zcent = 0.5 * (zmin + zmax)
 
     # upper leaflet; z > zcent
-    tag0: 'AtomGroup' = atomgroup.intersection(u.select_atoms("prop z > %g" % zcent))
+    tag0: 'AtomGroup' = atomgroup.intersection(
+        u.select_atoms("prop z > %g" % zcent))
     leaflets.append(tag0)
 
     # lower leaflet; z < zcent
@@ -142,7 +146,7 @@ def assign_leaflet_mda(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup
     for i in range(0, len(B.groups())):
         leaflets.append(B.groups(i))
         # print(f'simplest: len(B.groups({i}))= {len(leaflets[i])}')
-        # if(len(leaflets[i]) < 10): print(leaflets[i])
+        # if len(leaflets[i]) < 10: print(leaflets[i])
 
     return leaflets
 
@@ -194,14 +198,17 @@ def assign_leaflet_simple(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGr
 
             # check the current len(B.groups())
             if ngroups == 2:
-                # print(f'# simple iter {i}, len(B.groups)={ngroups} after LeafletFinder, dcut= {c_dcut}')
+                # print(f'# simple iter {i}, len(B.groups)={ngroups} after LeafletFinder, '
+                #       f'dcut= {c_dcut}')
                 # print("# B.groups", B.groups())
                 break
             else:
                 if ngroups < 2:  # decrease the cutoff distance for the next iteration
                     if p_ngroups > 2:  # p_dcut is too small
                         if p_dcut > c_dcut:
-                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                            print(
+                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & '
+                                f'c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (p_dcut, c_dcut)
@@ -211,7 +218,9 @@ def assign_leaflet_simple(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGr
                 elif ngroups > 2:  # increase the cutoff distance for the next iteration
                     if p_ngroups < 2:  # p_dcut is too large
                         if p_dcut < c_dcut:
-                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                            print(
+                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & '
+                                f'c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (c_dcut, p_dcut)
@@ -327,7 +336,8 @@ def assign_leaflet(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
                     # decrease dmax by the half-width of [dmin,dmax]
                     dmax -= 0.5*(dmax-dmin)
                 else:
-                    # print(f'# iter {i}, len(B.groups) = {ngroups} after LeafletFinder, dcut= {c_dcut}')
+                    # print(f'# iter {i}, len(B.groups) = {ngroups} after LeafletFinder, '
+                    #       f'dcut= {c_dcut}')
                     # print(f'# B.groups', B.groups())
                     break
             else:
@@ -344,7 +354,9 @@ def assign_leaflet(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
 
                     if p_ngroups < 2:  # p_dcut is too large
                         if p_dcut < c_dcut:
-                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                            print(
+                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & '
+                                f'c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (c_dcut, p_dcut)
@@ -355,7 +367,9 @@ def assign_leaflet(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
                 elif ngroups < 2:  # decrease the cutoff distance for the next iteration
                     if p_ngroups > 2:  # p_dcut is too small
                         if p_dcut > c_dcut:
-                            print(f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & c_dcut {c_dcut} for cgr= {ngroups}')
+                            print(
+                                f'# errorneous p_dcut {p_dcut} for pgr= {p_ngroups} & '
+                                f'c_dcut {c_dcut} for cgr= {ngroups}')
                             sys.exit(1)
                         # update dmin,dmax
                         dmin, dmax = (p_dcut, c_dcut)
@@ -386,3 +400,131 @@ def assign_leaflet(u: 'Universe', atomgroup: 'AtomGroup') -> list['AtomGroup']:
         # print(f'# assgin_leaflet: leaflet {i}: nlipids = {len(leaflets[i])}')
 
     return leaflets
+
+
+# ###
+# #
+# #  Old version: 1. atom group for atoms => 2. atom group for molecule =>
+# #               3. density profile of leaflets (from molecules) =>
+# #               4. find crossing point between upper & lower leaflet profiles
+# #		5. return leaflets (from reprentative atoms)
+# #                         z-position of the crossing point
+# #
+# ###
+# def calc_bilayer_midplane_old(u,ag_sys,nside,method):
+#   """
+#   ----------
+#   Calculate bilayer center based on leaflet density profiles (e.g. termnial methyl)
+#   ----------
+#
+#   input
+#         u       : MDA Universe
+#         ag_sys  : atom group for membrane. Recommended to select all lipid types.
+#         nside   : number of leaflets (=2)
+#   output
+#         leaflets: leaflet atom groups from ag_sys
+#         zcent   : bilayer center along z
+#
+#   NOTE: currently, only PSF based analysis is supported.
+#   """
+#
+#   # Generate leaflet atom groups
+#   if method == 'zpos':
+#     leaflets = assign_leaflet_zpos(u,ag_sys)
+#   elif method == 'mda':
+#     leaflets = assign_leaflet(u,ag_sys)
+#
+#   # Process to get heavy atoms of membrane
+#   ag_memb=[]
+#   for i in range(0,nside):
+#     ag_memb.append(u.atoms[[]]) # empty atom group
+#     natom = len(leaflets[i])    # number of atoms
+#     seg = leaflets[i].segids
+#     rid = leaflets[i].resids
+#     rnm = leaflets[i].resnames
+#     # new selections & atom groups
+#     for j in range(0,natom):
+#       tag = u.select_atoms(f'segid {seg[j]} and resname {rnm[j]} and resid {rid[j]} '
+#                            'and not name H*')
+#       ag_memb[i] += tag
+#
+#   # Calculate leaflet density profiles
+#   pos=[]
+#   for i in range(0,nside): pos.append(ag_memb[i].positions)
+#
+#   # get histogram of heavy atom number z-profile
+#   zmin,zmax,dz=(-20.0,20.0,0.4) # dz=0.1 is too fine...
+#   nbin=int(2.0*zmax/dz)
+#   zbins=[]
+#   for i in range(0,nbin+1): zbins.append(zmin+i*dz)
+#
+#   hist = []
+#   for i in range(0,nside):
+#     hist.append([])
+#     hist[i],bin_edges = np.histogram(pos[i][:,2],bins=zbins)
+#
+#   # Smoothing histogram
+#   sig = int(1.0/dz) # Set sig = 1.0 A
+#   if sig < 1.0: sig = 1.0
+#   for i in range(0,nside):
+#     hist[i]=gaussian_filter(hist[i],sigma=sig)
+#
+#   # Find index where Xing occurs
+#   idx = np.argwhere(np.diff(np.sign(hist[0]-hist[1]))).flatten()
+#
+#   # Estimate zcenter from the intersection of two line segments
+#   i0,i1 = idx[0], int(idx[0]+1)
+#   fx0,fx1 = (hist[0][i0],hist[0][i1])
+#   gx0,gx1 = (hist[1][i0],hist[1][i1])
+#   zcent = zmin + (i0+0.5)*dz - (fx0-gx0)*dz/((fx1-fx0)-(gx1-gx0))
+#
+#   return leaflets,zcent
+
+
+def calc_bilayer_midplane(ag_memb, nside):
+    """
+    ----------
+    Calculate bilayer center based on leaflet density profiles (e.g. all heavy atoms)
+    ----------
+
+    input
+          ag_memb : atom groups for membrane. Assummed to be lipid tails or molecules
+          nside   : number of leaflets (=2)
+    output
+          zcent   : bilayer center along z
+    """
+
+    # Calculate leaflet density profiles
+    pos = []
+    for i in range(0, nside):
+        pos.append(ag_memb[i].positions)
+
+    # get histogram of heavy atom number z-profile
+    zmin, zmax, dz = (-20.0, 20.0, 0.4)  # dz=0.1 is too fine...
+    nbin = int(2.0*zmax/dz)
+    zbins = []
+    for i in range(0, nbin+1):
+        zbins.append(zmin+i*dz)
+
+    hist: list[NDFloat64] = []
+    for i in range(0, nside):
+        hist.append([])
+        hist[i], bin_edges = np.histogram(pos[i][:, 2], bins=zbins)
+
+    # Smoothing histogram
+    sig = float(int(1.0/dz))  # Set sig = 1.0 A
+    if sig < 1.0:
+        sig = 1.0
+    for i in range(0, nside):
+        hist[i] = gaussian_filter(hist[i], sigma=sig)
+
+    # Find index where Xing occurs
+    idx = np.argwhere(np.diff(np.sign(hist[0]-hist[1]))).flatten()
+
+    # Estimate zcenter from the intersection of two line segments
+    i0, i1 = idx[0], int(idx[0]+1)
+    fx0, fx1 = (hist[0][i0], hist[0][i1])
+    gx0, gx1 = (hist[1][i0], hist[1][i1])
+    zcent = zmin + (i0+0.5)*dz - (fx0-gx0)*dz/((fx1-fx0)-(gx1-gx0))
+
+    return zcent

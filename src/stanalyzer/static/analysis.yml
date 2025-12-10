@@ -1,5 +1,5 @@
 apl:
-  label: Average area per lipid (TODO)
+  label: Average Area Per Lipid (TODO)
   release: false
   options:
     x:
@@ -30,18 +30,23 @@ apl:
       type: form.path
       value: area_per_lipid.dat
 thickness:
-  label: Membrane thickness
+  label: Membrane Thickness
   options:
     sel:
-      label: Head group selection
+      label: Atom group for analysis
       type: form.textarea
       classes: [code]
       value:
         segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])
-    center:
-      label: Perform membrane centering
+    sel_sys:
+      label: Atom group(s) for centering
+      type: form.textarea
+      classes: [code]
+      value:
+        resname POPC and name P; resname POPE and name P, resname PAPS and resname P
+    qcent:
+      label: Fine-tuned midplane centering
       type: form.checkbox
-      checked: true
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -53,33 +58,54 @@ density_z:
   label: Z Density Profile
   options:
     sel:
-      label: Atom selection
+      label: Atom group(s) for analysis
       type: form.textarea
       classes: [code]
       value:
-        segid TIP3 and (name OH2)
-    center_sel:
-      label: Center group selection
+        segid TIP3 and (name OH2); name P, resname CLA
+    sel_name:
+      label: Atom group name(s)
+      type: form.textarea
+      classes: [code]
+      value:
+        water; P, Cl
+    sel_sys:
+      label: Atom group(s) for centering
       type: form.textarea
       classes: [code]
       value:
         segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])
-      _requires:
-        density_z_center: true
-    center:
-      label: Perform membrane centering
+    qcent:
+      label: Fine-tuned midplane centering
       type: form.checkbox
-      checked: true
-    bin_size:
-      label: Bin size (A)
-      type: form.input
-      value: 1.0
-    out:
-      label: Output file
-      type: form.path
-      value: density_z.dat
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outs: Individual
+        outc: Combined
+    nbin:
+      label: Bin number
+      type: form.positive_integer
+      value: 100
+    interval:
+      label: Frame interval
+      type: form.positive_integer
+      value: 1
+
 cov_analysis:
-  label: Covariance analysis
+  label: Covariance Analysis
   options:
     sel:
       label: Atom selection
@@ -185,7 +211,7 @@ rmsf:
       type: form.path
       value: rmsf.dat
 system_size:
-  label: System size
+  label: System Size
   options:
     interval:
       label: Frame interval
@@ -379,7 +405,7 @@ hole:
       type: form.path
       value: means.dat
 radius_of_gyration:
-  label: Radius of gyration (TODO)
+  label: Radius of Gyration (TODO)
   release: false
   options:
     sel_align:
@@ -428,7 +454,7 @@ radius_of_gyration:
       type: form.path
       value: radius_of_gyration.dat
 position_time:
-  label: Position with time series
+  label: Position with Time Series
   options:
     sel:
       label: Atom selection to print position for (eg. segid HETA or resname <LIG>)
@@ -481,7 +507,7 @@ rdf:
       type: form.path
       value: rdf.dat
 glycosidic_bond_distances:
-  label: Glycosidic bond between sugars (TODO)
+  label: Glycosidic Bond between Sugars (TODO)
   release: false
   options:
     sel:
@@ -497,7 +523,7 @@ glycosidic_bond_distances:
       type: form.path
       value: glycosidic_between_sugar.dat
 contacts:
-  label: Residue contacts
+  label: Residue Contacts
   options:
     sel:
       label: Atom selection for Residue contacts calculation
@@ -516,7 +542,7 @@ contacts:
       type: form.path
       value: residue_contacts.dat
 contact_res_time:
-  label: Residence time of a contact
+  label: Residence Time of a Contact
   options:
     sel:
       label: Atom selection for Residue contacts calculation
@@ -535,20 +561,39 @@ contact_res_time:
       type: form.path
       value: contact_residence_time.dat
 chol_tilt:
-  label: Cholesterol Tilt Angle
+  label: Sterol Tilt Angle
   options:
     sel:
-      label: Sterol lipid selection
+      label: Atom group for analysis
       type: form.textarea
       value: segid MEMB and resname CHL1
     center:
       label: Perform membrane centering
-      type: form.checkbox
-      checked: true
+      options:
+        sel:
+          label: Atom group for centering
+          type: form.textarea
+          classes: [code]
+          value:
+            name P or name O3
+    # suffix:
+    #   label: Suffix to output file(s)
+    #   type: form.textarea
+    #   classes: [code]
+    #   value: 1-100
+    # otype:
+    #   label: Output type
+    #   type: form.select
+    #   options:
+    #     outl: Leaflets
+    #     outb: Bilayer
     out:
       label: Output file
       type: form.path
-      value: contact_residence_time.dat
+      value: sterol_tilt.dat
+    interval:
+      label: Frame interval
+      type: form.positive_integer
 helix_analysis:
   label: Helix Analysis (TODO)
   release: false
@@ -619,7 +664,7 @@ helix_tilt_rotation_angle:
       type: form.path
       value: helix_tilt_rotation_angle.dat
 helix_distance_crossing_angle:
-  label: Helix-helix distance and crossing angle (TODO)
+  label: Helix-helix Distance and Crossing angle (TODO)
   release: false
   options:
     helix1_start:
@@ -649,41 +694,43 @@ helix_distance_crossing_angle:
 compressibility_modulus:
   label: Area Compressibility Modulus
   options:
-    cntmin:
-      label: First Trajectory Number for Analysis
-      type: form.input
-      value: 1
-    cntmax:
-      label: Last Trajectory Number for Analysis
-      type: form.input
-      value: 1
     temp:
-      label: System Temperature (Kelvin)
+      label: Temperature (in K)
       type: form.input
       value: 313
-    bs:
-      label: bin size
-      type: form.input
-      value: 100
     out:
       label: Output file
       type: form.path
-      value: avg_ka.dat
+      value: ka.dat
 msd_solution:
-  label: (Solution) Mean square displacement
+  label: (Solution) Mean Square Displacement
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom group(s) for analysis
       type: form.textarea
       classes: [code]
       value:
-        resname POT; resname CLA
+        resname POT; resname CLA ; resname TIP3 and name OH2
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom group(s) by molecule level
       type: form.textarea
       classes: [code]
       value: y,y
-    qcom:
+    qdrift:
+      label: Center of mass drift correction
+      type: form.select
+      options:
+        disabled: Disabled
+        enabled: Enabled
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    qcomsys:
+      label: Write unwrapped system COM trajectories.
+      type: form.checkbox
+    qcommol:
       label: Write unwrapped COM trajectories of individual molecules.
       type: form.checkbox
     interval:
@@ -691,153 +738,185 @@ msd_solution:
       type: form.positive_integer
       value: 1
 msd_membrane:
-  label: (Membrane) Mean square displacement
+  label: (Membrane) Mean Square Displacement
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom group(s) for analysis
       type: form.textarea
       classes: [code]
       value:
         resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom group(s) by molecule level
       type: form.textarea
       classes: [code]
       value: y,y;y
     sel_sys:
-      label: Selections for leaflet COMs. Leaflet COM drift is corrected in trajectory unwrapping.
+      label: Atom group(s) for leaflet COMs
       type: form.textarea
       classes: [code]
       value:
-        name P or name O3
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
-    qz:
-      label: Assign leaflets based on z-positions.
-      type: form.checkbox
-    qb:
-      label: Results for the bilayer. Use only for symmetric one.
-      type: form.checkbox
-    qcommol:
-      label: Write unwrapped COM trajectories of individual molecules
-      type: form.checkbox
+        resname DSPC and name P, resname DOPC and name P; resname CHL1 and name O3
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outl: Leaflets
+        outb: Bilayer
     qcomsys:
       label: Write unwrapped leafet COM trajectories.
+      type: form.checkbox
+    qcommol:
+      label: Write unwrapped COM trajectories of individual molecules.
       type: form.checkbox
     interval:
       label: Frame interval
       type: form.positive_integer
       value: 1
 scd:
-  label: SCD order paramter
+  label: SCD Order Paramter
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom group(s) for analysis
       type: form.textarea
       classes: [code]
       value:
         resname DSPC and (name C22 or C32 or name P), resname DOPC and (name C22 or name C32 or name P)
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom group(s) by molecule level
       type: form.textarea
       classes: [code]
       value: y,y
     sel_sys:
-      label: Selections for bilayer recentering.
+      label: Atom group(s) for centering
       type: form.textarea
       classes: [code]
       value:
         name P or name O3
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
-    qz:
-      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
-      type: form.checkbox
-    qb:
-      label: Results for the bilayer. Use only for symmetric one.
-      type: form.checkbox
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outl: Leaflets
+        outb: Bilayer
     qa:
-      label: Write average SCDs for individual chains in individual molecule types.
+      label: Write average SCDs with standard deviations.
       type: form.checkbox
     qt:
-      label: Write time series of SCDs for individual chains in individual molecule types.
+      label: Write time series of SCDs.
       type: form.checkbox
     interval:
       label: Frame interval
       type: form.positive_integer
       value: 1
 voronoi_apl:
-  label: Area per lipid using Voronoi tessellation.
+  label: Area Per Lipid (APL) using Voronoi Tessellation
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom groups for analysis
       type: form.textarea
       classes: [code]
       value:
         segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom groups by molecule level
       type: form.textarea
       classes: [code]
-      value: y,y;y;y
+      value: n,y;y;y
     sel_sys:
-      label: Selections for bilayer recentering.
+      label: Atom group(s) for centering
       type: form.textarea
       classes: [code]
       value:
         name P or name O3
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
-    qz:
-      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
-      type: form.checkbox
-    qb:
-      label: Results for the bilayer. Use only for symmetric one.
-      type: form.checkbox
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outl: Leaflets
+        outb: Bilayer
     qa:
-      label: Write average APLs for individual molecule types.
+      label: Write average APLs.
       type: form.checkbox
     qt:
-      label: Write time series of APLs for individual molecule types.
+      label: Write time series of APLs.
       type: form.checkbox
     interval:
       label: Frame interval
       type: form.positive_integer
       value: 1
 voronoi_contact:
-  label: Contact analysis between molecule types using Voronoi tessellation.
+  label: Contact Analysis using Voronoi Tessellation
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom groups for analysis
       type: form.textarea
       classes: [code]
       value:
         segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom groups by molecule level
       type: form.textarea
       classes: [code]
-      value: y,y;y;y
+      value: n,y;y;y
     sel_sys:
-      label: Selections for bilayer recentering.
+      label: Atom group(s) for centering
       type: form.textarea
       classes: [code]
       value:
         name P or name O3
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
-    qz:
-      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
-      type: form.checkbox
-    qb:
-      label: Results for the bilayer. Use only for symmetric one.
-      type: form.checkbox
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outl: Leaflets
+        outb: Bilayer
     qa:
-      label: Write average contact numbers/fractions for individual molecule types.
+      label: Write average contact numbers/fractions.
       type: form.checkbox
     qt:
       label: Write time series of contact numbers/fractions for individual molecule types.
@@ -847,39 +926,47 @@ voronoi_contact:
       type: form.positive_integer
       value: 1
 voronoi_shell_comp:
-  label: Shell composition analysis using Voronoi tessellation.
+  label: Shell Composition Analysis using Voronoi Tessellation
   options:
     sel:
-      label: Selections for individual molecule types. Starting with segid or resname, separated by comma(,) or semicolon (;).
+      label: Atom groups for analysis.
       type: form.textarea
       classes: [code]
       value:
         segid PROA and (resid 1:7 or resid 16:23) and not name H*,resname DSPC and (name C2 or name C21 or name C31), resname DOPC and (name C2 or name C21 or name C31); resname CHL1 and name O3
     split:
-      label: Split selections into molecules. Default is Y. Dimension will matched to selections. If there is any molecule type that respresent a single molecule or complex, split selections should be explicitly given.
+      label: Split atom groups by molecule level
       type: form.textarea
       classes: [code]
       value: y,y;y;y
     sel_sys:
-      label: Selections for bilayer recentering.
+      label: Atom group(s) for centering
       type: form.textarea
       classes: [code]
       value:
         name P or name O3
-    center:
-      label: Perform membrane centering
-      type: form.checkbox
-    qz:
-      label: Assign leaflets based on z-positions. Useful when lipid types are not major components of the bilayer.
-      type: form.checkbox
-    qb:
-      label: Results for the bilayer. Use only for symmetric one.
-      type: form.checkbox
+    # lam:
+    #   label: Leaflet assignment method
+    #   type: form.select
+    #   options:
+    #     mda: MDAnalysis.analysis.leaflet
+    #     zpos: Z-position
+    suffix:
+      label: Suffix to output file(s)
+      type: form.textarea
+      classes: [code]
+      value: 1-100
+    otype:
+      label: Output type
+      type: form.select
+      options:
+        outl: Leaflets
+        outb: Bilayer
     qa:
-      label: Write average compositions for individual molecule types.
+      label: Write average shell-wise compositions.
       type: form.checkbox
     qt:
-      label: Write time series of compositions for individual molecule types.
+      label: Write time series of shell-wise compositions.
       type: form.checkbox
     interval:
       label: Frame interval

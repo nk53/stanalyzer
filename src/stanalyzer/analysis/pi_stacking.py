@@ -1,6 +1,6 @@
 import argparse
-from typing import Optional
 import numpy as np
+import typing as t
 from operator import itemgetter
 
 import stanalyzer.cli.stanalyzer as sta
@@ -8,10 +8,15 @@ import MDAnalysis as mda
 from MDAnalysis.lib.distances import capped_distance
 from MDAnalysis.lib.mdamath import normal, angle
 
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+
 ANALYSIS_NAME = 'pi_stacking'
 
+NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
 
-def header(outfile: Optional[sta.FileLike] = None) -> str:
+
+def header(outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
     header_str = "#residue1 residue2 frames"
 
@@ -67,15 +72,15 @@ def write_pi_stacking(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
             if step_num % interval != 0:
                 step_num += 1
                 continue
-            pi_ring_centers = []
+            _pi_ring_centers: list = []
             pi_ring_normals = []
             for pi_ring in pi_rings:
                 pi_ring_center = pi_ring.positions.mean(axis=0)
-                pi_ring_centers.append(pi_ring_center)
+                _pi_ring_centers.append(pi_ring_center)
                 v1 = pi_ring.positions[0] - pi_ring_center
                 v2 = pi_ring.positions[1] - pi_ring_center
                 pi_ring_normals.append(normal(v1, v2))
-            pi_ring_centers = np.array(pi_ring_centers)
+            pi_ring_centers = np.array(_pi_ring_centers)
 
             pairs, distances = capped_distance(
                 pi_ring_centers, pi_ring_centers, max_cutoff=pi_pi_dist_cutoff,
@@ -116,9 +121,9 @@ def write_pi_stacking(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 
     with sta.resolve_file(out, 'w') as outfile:
         header(outfile)
-        count = []
+        count: list[tuple[tuple, int]] = []
         for key, value in pi_stacking.items():
-            count.append([key, len(value)])
+            count.append((key, len(value)))
         count = sorted(count, key=itemgetter(1), reverse=True)
         for key, _ in count:
             stacking = " ".join([str(frame) for frame in sorted(list(pi_stacking[key]))])
@@ -140,7 +145,7 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

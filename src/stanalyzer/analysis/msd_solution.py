@@ -2,6 +2,7 @@
 import argparse
 import re
 import typing as t
+from collections.abc import Sequence
 
 import numpy as np
 import MDAnalysis as mda
@@ -10,7 +11,12 @@ import stanalyzer.cli.stanalyzer as sta
 from . import mol_atomgroup_util as mymol
 from . import msd_util as mymsd
 
+if t.TYPE_CHECKING:
+    import numpy.typing as npt
+
 ANALYSIS_NAME = 'msd_solution'
+
+NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
 
 
 class ProcessedArgs(t.NamedTuple):
@@ -19,7 +25,7 @@ class ProcessedArgs(t.NamedTuple):
     qsplit: list[bool]
 
 
-def process_args(sel: str, split_str: str) -> ProcessedArgs:
+def process_args(sel: str, split_to_mol: str | None) -> ProcessedArgs:
     """
     ----------
     Process arguements
@@ -31,10 +37,17 @@ def process_args(sel: str, split_str: str) -> ProcessedArgs:
     for i in range(0, ntype):
         selection[i] = selection[i].strip()
     # print("selection",selection);print(ntype); sys.exit(0);
-    split = re.split(';|,', f'{split_str:s}')
-    nsplit = len(split)
-    for i in range(0, nsplit):
-        split[i] = split[i].strip()
+
+    # in case split_to_mol is None
+    if not split_to_mol:
+        nsplit = 0
+    # normal process of split_to_mol
+    else:
+        split = re.split(';|,', f'{split_to_mol:s}')
+        nsplit = len(split)
+        for i in range(0, nsplit):
+            split[i] = split[i].strip()
+
     qsplit = []
     if nsplit < ntype:  # add more qsplit options
         for i in range(0, nsplit):
@@ -54,7 +67,24 @@ def process_args(sel: str, split_str: str) -> ProcessedArgs:
     return ProcessedArgs(selection, ntype, qsplit)
 
 
-def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
+# Write system COM
+def write_sys_com(traj_com_sys_unwrap: NDFloat64,
+                  framenum: int, interval: int, time_step: float,
+                  odir: str, suffix: str) -> None:
+    sout = '#     frame       COM\n'
+    sout += '#                   x           y          z\n'
+    for j in range(0, framenum):
+        tcom = traj_com_sys_unwrap[j]
+        sout += f' {time_step*(interval*j+1):10.5f}'
+        # sout += f' {interval*j+1:10d}'
+        sout += f' {tcom[0]:10.5f} {tcom[1]:10.5f} {tcom[2]:10.5f}\n'
+    # print(sout)
+    sta.write_to_outfile(f'{odir}/sys_com_{suffix}.dat', sout)
+
+
+def write_com_mol(traj_com_unwrap: NDFloat64 | list[NDFloat64], nmol: int,
+                  framenum: int, interval: int, time_step: float,
+                  odir: str, suffix: str) -> None:
     """
     ----------
     Write unwrapped COMs of individual molecules
@@ -65,17 +95,19 @@ def write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir):
     sout += '#                   x           y          z\n'
     for i in range(0, framenum):
         tcom = traj_com_unwrap[i]
-        sout += f' {interval*i:10d}'
+        sout += f' {time_step*(interval*i+1):10.5f}'
+        # sout += f' {interval*i+1:10d}'
         for j in range(0, nmol):
             for k in range(0, 3):
                 sout += f' {tcom[j, k]:10.5f}'
         sout += '\n'
     # print(sout)
-    sta.write_to_outfile(f'{odir}/com_mol_unwrapped.dat', sout)
+    sta.write_to_outfile(f'{odir}/mol_com_{suffix}.dat', sout)
 
 
 # Write x,y, and z-components of MSD for given molecule type
-def write_msd(name, msd, taus, odir):
+def write_msd(time_step: float,
+              msd: NDFloat64, taus: list[int], fout: str) -> None:
     """
     ----------
     Write x,y, & z-components of MSD for a given molecule type"
@@ -85,25 +117,48 @@ def write_msd(name, msd, taus, odir):
     sout = f'#{"tau":10s} {"MSDX":10s} {"MSDY":10s} {"MSDZ":10s}\n'
     ntau = len(taus)
     for i in range(0, ntau):
-        sout += f'{taus[i]:10.5f}'
+        sout += f'{time_step*taus[i]:10.5f}'
+        # sout += f'{taus[i]:10d}'
         for j in range(0, 3):  # x,y,z
             sout += f' {msd[i, j]:10.5f}'
         sout += '\n'
-
-    sta.write_to_outfile(f'{odir}/{name.lower()}_msd.dat', sout)
+    sta.write_to_outfile(fout, sout)
 
 
 # Write MSD outputs
-def write_msd_outputs(msd, taus, ntype, name_type, odir):
+def write_msd_outputs(time_step: float,
+                      msd: Sequence[NDFloat64] | NDFloat64, taus: list[int], ntype: int,
+                      name_type: list[str], numb_type: list[int],
+                      odir: str, suffix: str) -> None:
     for i in range(0, ntype):
-        name = name_type[i]
-        print(f'# Write MSD output for {name}')
-        write_msd(name, msd[i], taus, odir)
+        tname = name_type[i]
+        print(f'# Write MSD output for {tname}')
+
+        if numb_type[i] == 0:  # NA
+            fout = f'{odir}/NA_{tname.lower()}_{suffix}.dat'
+            sout = f'no {tname} in the system.\n'
+            sta.write_to_outfile(fout, sout)
+        else:
+            fout = f'{odir}/{tname.lower()}_{suffix}.dat'
+            write_msd(time_step,
+                      msd[i], taus, fout)
+
+
+def write_mol_info(nmol: int, id_type: list[int], name_type: list[str],
+                   odir: str, suffix: str) -> None:
+    # write molecule info: molecule number name
+    sout = '# mol.index     name\n'
+    # loop over molecules
+    for j in range(0, nmol):
+        jtype = id_type[j]  # molecule type index of molecule, j
+        sout += f' {j:10d} {name_type[jtype]}\n'
+    fout = f'{odir}/mol_info_{suffix}.dat'
+    sta.write_to_outfile(fout, sout)
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
-    sta.add_project_args(parser, 'psf', 'traj', 'interval')
+    sta.add_project_args(parser, 'psf', 'traj', 'interval', 'time_step')
     parser.add_argument(
         '--sel', metavar='selection',
         help='Selection for individual molecule. MSD will be calculated for COMs of individual '
@@ -113,14 +168,24 @@ def get_parser() -> argparse.ArgumentParser:
         help='Y/N. If N, the atom group for the selection is considered as that for a single '
              'molecule. If Y, the atom group is further splitted to molecular level based on '
              'segid/resname/moleculename. Default is Y/y.')
-    parser.add_argument('--qcom', default=False, action='store_true',
-                        help='When provided, write a COMs trajectory for molecules.')
+    parser.add_argument('--qdrift', metavar='OPT', default='disabled',
+                        choices=['enabled', 'disabled'],
+                        help='If set on, COM drift is corrected.')
+    parser.add_argument('--suffix', type=str, default='0',
+                        help='Suffix  to output file(s)')
+    parser.add_argument(
+        '--qcomsys', default=False, action='store_true',
+        help='If set to True, write unwrapped COM trajectory of system.')
+    parser.add_argument(
+        '--qcommol', default=False, action='store_true',
+        help='If set to True, write unwrapped COM trajectoreis for molecules.')
 
     return parser
 
 
-def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: sta.FileRefList,
-                     interval: int = 1) -> None:
+def run_msd_solution(sel: str, split: str | None, qdrift: str, qcomsys: bool, qcommol: bool,
+                     psf: sta.FileRef, traj: sta.FileRefList, time_step: float | str,
+                     suffix: str, interval: int = 1) -> None:
     """
     ----------
     Calculate Mean Square Displacement of COMs of selected molecule types
@@ -129,14 +194,20 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
 
     # process non-system arguments
     selection, ntype, qsplit = process_args(sel, split)
+    if isinstance(time_step, str):
+        time_step = float(time_step.split()[0])
 
     # print summary of arguments
     for i in range(0, ntype):
         print(f'#Split "{selection[i]}" into molecule level', qsplit[i])
-    print('Writing unwrapped COM of individual molecules:', qcom)
+    print('Suffix to output files', suffix)
+    print('COM drift correction:', qdrift)
+    print('Writing unwrapped system COM:', qcomsys)
+    print('Writing unwrapped mol. COMs:', qcommol)
     print(f'MSD will be caulated every {interval} frames in delay time')
 
-    odir = "msd"
+    # output dir
+    odir = "./"
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
@@ -147,6 +218,8 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     name_type, nmol_type, nmol, id_type, ag =\
         mymol.generate_mol_groups(u, ntype, selection, qsplit)
 
+    # Set arrays in use
+    # For molecules
     # Set mass, position, and displacement arrays
     # Will be input for calculation of unwrapped COM of individual molecules
     mass_mol, tmass_mol, pos, pos_prev, displ, pos_unwrap =\
@@ -156,17 +229,17 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     com_unwrap, traj_com_unwrap =\
         mymsd.setup_unwrapped_mol_com_traj_array(ag, framenum)
 
-    # For solution system (There should be no system COM drift)
-    displ_sys_com = np.zeros([3], dtype=float)
+    # For System
+    if qdrift == 'enabled':
+        # There should be no system COM drift
+        ag_sys = u.atoms
+        mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com = \
+            mymsd.setup_sys_mass_pos_displ_arrays(ag_sys)
 
-    # ag_sys = u.atoms[[]]
-    # for i in range(0,nmol): ag_sys += ag[i]
-    ##
-    # mass_sys,tmass_sys,pos_sys,pos_sys_prev,displ_sys,displ_sys_com = \
-    # mymsd.setup_sys_mass_pos_displ_arrays(ag_sys)
-    ##
-    # com_sys_unwrap,traj_com_sys_unwrap = \
-    # mymsd.setup_unwrapped_com_traj_array(ag_sys,framenum)
+        com_sys_unwrap, traj_com_sys_unwrap = \
+            mymsd.setup_unwrapped_com_traj_array(framenum)
+    else:
+        displ_sys_com = np.zeros([3], dtype=float)  # Set no COM drift
 
     # UNWRAPPING
     print('# UNWRAP trajectories')
@@ -179,14 +252,15 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
         xtla, xtlb, xtlc = ts.dimensions[:3]
         box = np.array([xtla, xtlb, xtlc], dtype=float)
 
-        # read cooridnates (translate by ?)
+        # read cooridnates
         mymsd.read_coor(nmol, pos, ag)
 
         if i == 0:
             # Initialization
-
-            # mymsd.init_unwrap_sys_com(pos_sys,mass_sys,tmass_sys,pos_sys_prev,\
-            # com_sys_unwrap,traj_com_sys_unwrap)
+            if qdrift == 'enabled':
+                # pos, unwrapped COM, and traj. of unwrapped COM for the system
+                mymsd.init_unwrap_sys_com(pos_sys, mass_sys, tmass_sys, pos_sys_prev,
+                                          com_sys_unwrap, traj_com_sys_unwrap)
 
             # positions, unwrapped COM, and traj of unwraped COM for individual molecules
             mymsd.init_unwrap_mol_com(pos, mass_mol, tmass_mol, pos_prev,
@@ -194,16 +268,16 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
             print('# init unwrap_pos done')
             # sys.exit(0)
         else:
-            # TESTED - SYS COM show no displacement
-            # calculate sys COM displacement
-            # mymsd.calculate_displ_sys_com(i,box,pos_sys,pos_sys_prev,mass_sys,tmass_sys,\
-            # displ_sys_com)
-            # print(f'sys COM displacement:',displ_sys_com)
-            # update unwrapped system COM
-            # tcom_sys_unwrap = com_sys_unwrap + displ_sys_com
-            # np.copyto(com_sys_unwrap,tcom_sys_unwrap)
-            # update unwrapped system COM trajectory
-            # np.copyto(traj_com_sys_unwrap[i],com_sys_unwrap)
+            if qdrift == 'on':
+                # calculate sys COM displacement & update pos_sys
+                mymsd.calculate_displ_sys_com(i, box, pos_sys, pos_sys_prev,
+                                              mass_sys, tmass_sys, displ_sys_com)
+                # print(f'sys COM displacement:',displ_sys_com)
+
+                # update unwrapped system COM
+                com_sys_unwrap = com_sys_unwrap + displ_sys_com
+                # update unwrapped system COM trajectory
+                np.copyto(traj_com_sys_unwrap[i], com_sys_unwrap)
 
             # update unwrapped mol positions
             mymsd.update_unwrapped_mol_pos(
@@ -216,24 +290,39 @@ def run_msd_solution(sel: str, split: str, qcom: bool, psf: sta.FileRef, traj: s
     print('# UNWRAPPING TRAJ & COMS DONE')
     # sys.exit(0)
 
-    # Want to write unwrapped coordinates?
-    if qcom:
+    if qcomsys and qdrift == 'enabled':
+        print('# Write unwrapped system COM')
+        write_sys_com(traj_com_sys_unwrap, framenum, interval, time_step,
+                      odir, suffix)
+
+    if qcommol:
         print('# Write unwrapped COM of individual molecules')
-        write_com_mol(traj_com_unwrap, nmol, framenum, interval, odir)
+        write_com_mol(traj_com_unwrap, nmol, framenum, interval, time_step,
+                      odir, suffix)
+        print('# Write mol. info : (mol. number,type)')
+        write_mol_info(nmol, id_type, name_type, odir, suffix)
 
     print('# MSD calculations')
-    taus = [interval*i for i in range(0, framenum)]
+    taus = [int(interval*i) for i in range(0, framenum)]
     ntau = len(taus)  # number of data points along the delay time
+    # DEBUG
+    # print(f'ntau={ntau}')
+    # print(taus)
+    # for i in range(0,framenum):
+    # print(f'i={interval*i}')
+    # sys.exit(0)
+    # ####
 
     # Setup msd arrays for individual molecule types
     msd = mymsd.setup_msd_arrays(ntype, ntau)
 
     # Calculate MSD for delay times, tau in {taus}
-    mymsd.calculate_msd(taus, framenum, traj_com_unwrap, id_type, msd)
+    mymsd.calculate_msd(taus, framenum, interval,
+                        traj_com_unwrap, id_type, msd)
 
-    # SP: NEED to make something consistent with STANALYSER output path ??!!
     # Write MSD outputs
-    write_msd_outputs(msd, taus, ntype, name_type, odir)
+    write_msd_outputs(time_step,
+                      msd, taus, ntype, name_type, nmol_type, odir, suffix)
 
 
 def main(settings: dict | None = None) -> None:

@@ -1,6 +1,6 @@
 import argparse
 import sys
-from typing import Optional
+from collections.abc import Sequence
 
 import stanalyzer.cli.stanalyzer as sta
 import MDAnalysis as mda
@@ -9,23 +9,25 @@ from MDAnalysis.core.groups import AtomGroup
 import numpy
 import math
 
-ANALYSIS_NAME = 'sterol tilt angle to Z axis'
+ANALYSIS_NAME = 'Sterol tilt angles with respect to the Z-axis'
 
 
-def header(outfile: Optional[sta.FileLike] = None) -> str:
+def header(resids: Sequence[int], outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
-    header_str = "#time resid degree"
+    header_str = '# time (col1) tilt(RESID) (col2-col'+f'{len(resids)+1:d})\n'
+    header_str += '#     RESID'
+    for ires in resids:
+        header_str += f' {ires:10d}'
 
     print(header_str, file=outfile)
 
     return header_str
 
 
-def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef, sel: str,
-                      time_step: float | str, center: bool = False, interval: int = 1) -> None:
+def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
+                      sel: str, center_sel: str,
+                      time_step: float | str, interval: int = 1) -> None:
     """Writes sterol tilt angle to `out` file"""
-    n_fields = 3
-    output_fmt = ' '.join(["{:0<#10.5g}"]*n_fields)
 
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
@@ -34,15 +36,31 @@ def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
     step_num = 1
 
     # sele Sterols # segname MEMB and resname ( CHOL / ERGO / CAMP)
-    chol_sel = f"({sel})"
+    chol_sel = f'({sel})'
+    #
+    cent_sel = f'({center_sel})'
 
     with sta.resolve_file(out, 'w') as outfile:
-        header(outfile)
+        hflag = True  # header has not been processed
         for traj_file in traj:
             u = mda.Universe(psf, traj_file)
             chol_atoms = u.select_atoms(sel)
+            # process header
+            if hflag is True:
+                chol_o3 = u.select_atoms(sel+' and name O3')
+                header(chol_o3.resids, outfile)
+                hflag = False
+
+            # check for centering
+            cent_atoms = u.select_atoms(cent_sel)
+            if len(cent_atoms) == 0:
+                qcent = False
+            else:
+                qcent = True
+
             for ts in u.trajectory:
                 if step_num % interval:
+                    sim_time += 1
                     step_num += 1
                     continue
 
@@ -53,15 +71,16 @@ def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
                     sys.exit(1)
 
                 # membrane centering if selected by user
-                if center:
+                if qcent:
                     origin = 0, 0, 0
 
                     # picking a single atom ensures pbc boundary doesn't interfere
                     ts = center_in_box(
-                        AtomGroup([chol_atoms[0]]), point=origin)(ts)
+                        AtomGroup([cent_atoms[0]]), point=origin)(ts)
                     # first centering tends to be a bit off
-                    ts = center_in_box(chol_atoms, point=origin)(ts)
+                    ts = center_in_box(cent_atoms, point=origin)(ts)
 
+                output = f'{sim_time:10.5f}'
                 for i in chol_atoms.residues:  # loop through each cholesterol residue
                     C3 = i.atoms.select_atoms('name C3')[0]
                     C17 = i.atoms.select_atoms('name C17')[0]
@@ -74,17 +93,11 @@ def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
                     if degree > 90:
                         degree = abs(degree - 180)
 
-                    # write output
-                    output = output_fmt.format(sim_time, i.resid, degree)
-                    # time resid degree
-                    # 1.2 32 57.3
-                    # 1.2 36 55.6
-                    # 1.2 45 51.7
-                    # 1.3 32 57.5
-                    # 1.3 36 53.4
-                    # 1.3 45 55.9
-                    # ... the output should look like this
-                    print(output, file=outfile)
+                    # update output
+                    output += f' {degree:10.5f}'
+                # write output for a given time frame
+                # time {degree}
+                print(output, file=outfile)
 
                 # update time
                 sim_time += time_step
@@ -94,14 +107,14 @@ def write_chol_degree(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
-    parser.add_argument('-c', '--center', action='store_true')
     parser.add_argument('--sel', metavar='selection',
                         help="Sterol lipid selection. E.g.: segid MEMB and resname CHL1")
-
+    parser.add_argument('--center-sel', metavar='selection',
+                        help="Selection for centering. E.g.: segid MEMB and name P")
     return parser
 
 
-def main(settings: Optional[dict] = None) -> None:
+def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 

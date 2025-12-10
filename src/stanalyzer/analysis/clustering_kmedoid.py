@@ -27,7 +27,7 @@ def header(outfile: sta.FileLike | None = None,
 def run_clustering(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    k: int) -> None:
     # https://scikit-learn-extra.readthedocs.io/en/stable/generated/sklearn_extra.cluster.KMedoids.html
-    from sklearn_extra.cluster import KMedoids
+    from sklearn_extra.cluster import KMedoids  # type: ignore[import-not-found]
     u = mda.Universe(psf, traj)
     matrix = diffusionmap.DistanceMatrix(u, select=sel).run()
     dist_matrix = matrix.results.dist_matrix

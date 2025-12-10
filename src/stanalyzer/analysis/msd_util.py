@@ -51,10 +51,12 @@ def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplT
 
     mass_mol: list[NDFloat64] = []
     tmass_mol: list[float] = []
-    pos: list[NDFloat64] = []           # positions of each atom in each molecule
-    pos_prev: list[NDFloat64] = []      # previous position of each atom in each molecule
-    displ: list[NDFloat64] = []         # displacement array of each atoms in each molecule
-    pos_unwrap: list[NDFloat64] = []    # unwrapped positions
+    pos: list[NDFloat64] = []        # positions of each atom in each molecule
+    # previous position of each atom in each molecule
+    pos_prev: list[NDFloat64] = []
+    # displacement array of each atoms in each molecule
+    displ: list[NDFloat64] = []
+    pos_unwrap: list[NDFloat64] = []  # unwrapped positions
 
     for i in range(0, nmol):
         natom = len(ag[i])
@@ -179,7 +181,8 @@ def calculate_com(pos: 'NDArray', mass: 'ArrayLike', tmass: float) -> 'NDArray':
     return com
 
 
-def init_unwrap_mol_com(pos: Sequence['NDArray'] | 'NDArray', mass_mol: Sequence['ArrayLike'],
+def init_unwrap_mol_com(pos: Sequence['NDArray'] | 'NDArray',
+                        mass_mol: Sequence['ArrayLike'],
                         tmass_mol: NDFloat64 | Sequence[float],
                         pos_prev: Sequence['NDArray'],
                         pos_unwrap: Sequence['NDArray'],
@@ -272,16 +275,18 @@ def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
           displ_sys_com: displacement of system COM
     """
 
-    # natom = len(pos_sys)  # for debugging?
+    # natom = len(pos_sys)
     displ_sys = pos_sys - pos_sys_prev
     # tmpdispl = displ_sys; print(tmpdispl)
     displ_sys = displ_sys - np.sign(np.trunc(displ_sys/(box/2.0))) * box
     # tmpdispl = displ_sys; print(tmpdispl)
 
-    maxdispl = np.max(np.absolute(displ_sys))  # max. displacement
-    if maxdispl > 10.0:
-        print(f'frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
-        # print(f'displacement:',displ)
+    # # DEBUG
+    # maxdispl = np.max(np.absolute(displ_sys))  # max. displacement
+    # if maxdispl > 10.0:
+    #     print(f'frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
+    #     # print(f'displacement:',displ)
+    # # DEBUG
 
     # calculation of displacement of system COM
     displ_sys = (displ_sys.T * mass_sys).T  # numerator of disp_sys_com
@@ -320,11 +325,13 @@ def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
         displ = pos[i] - pos_prev[i]
         displ = displ - np.sign(np.trunc(displ/(box/2))) * box
 
-        maxdispl = np.max(np.absolute(displ))
-        if maxdispl > 10.0:
-            print(
-                f'# frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
-            print(displ)
+        # # DEBUG
+        # maxdispl = np.max(np.absolute(displ))
+        # if maxdispl > 10.0:
+        #     print(
+        #         f'# frame {iframe}: imol= {i} max. displ. {maxdispl:10.5f} box:', box)
+        #     print(displ)
+        # # DEBUG
 
         # COM drift correction
         for j in range(0, len(displ)):
@@ -391,7 +398,7 @@ def setup_msd_arrays(ntype: int, ntau: int) -> NDFloat64:
 
 
 def calculate_msd_tau(tau: int,
-                      framenum: int,
+                      framenum: int, interval: int,
                       ntype: int,
                       id_type: Sequence[int],
                       traj_com_unwrap: NDFloat64) -> NDFloat64:
@@ -402,7 +409,8 @@ def calculate_msd_tau(tau: int,
 
     input
           tau            : lag time
-          framenum       : total number of frames from input trajectories
+          framenum       : ST-analyaer processed number of frames from input trajectories
+          interval       : ST-analyzer set frame interval for analysis
           ntype          : number of molecule types
           id_type        : molecule type indices of individual molecules
           traj_com_unwrap: unwrapped COM trajectories of individual molecules
@@ -425,8 +433,10 @@ def calculate_msd_tau(tau: int,
 
     # calculate square displacement of individual molecules
     # & update square displacement array
-    for i in range(0, framenum-tau):
-        dis: NDFloat64 = traj_com_unwrap[i+tau, :, :] - traj_com_unwrap[i, :, :]
+    ttau = int(tau/interval)
+    for i in range(0, framenum - ttau):
+        dis: NDFloat64 = traj_com_unwrap[i +
+                                         ttau, :, :] - traj_com_unwrap[i, :, :]
         dis = np.square(dis)
         # loop over lipids & get msd for individual lipid type
         for j in range(0, nmol):
@@ -443,7 +453,7 @@ def calculate_msd_tau(tau: int,
     return tmsd
 
 
-def calculate_msd(taus: list[int], framenum: int,
+def calculate_msd(taus: list[int], framenum: int, interval: int,
                   traj_com_unwrap: NDFloat64, id_type: Sequence[int],
                   msd: NDFloat64) -> None:
     """
@@ -453,7 +463,8 @@ def calculate_msd(taus: list[int], framenum: int,
 
     input
           taus: delay times
-          framenum: total number of frames from input trajectories
+          framenum: ST-analyzer processed number of frames from input trajectories
+          interval: ST-analyer set frameinterval for analysis
           traj_com_unwrap: unwrapped COM trajectories of individual molecules
           id_type        : molecule type indices of individual molecules
 
@@ -465,13 +476,13 @@ def calculate_msd(taus: list[int], framenum: int,
     ntype = len(msd)
     for i in range(0, ntau):
         tau = taus[i]
-        if tau > framenum - 1:
+        if int(tau/interval) > framenum - 1:
             break
         if tau % 100 == 0:
             print(f'MSD progress {tau}/{taus[-1]}')
 
         # Calculate MSD(tau)
-        tmsd = calculate_msd_tau(tau, framenum, ntype,
+        tmsd = calculate_msd_tau(tau, framenum, interval, ntype,
                                  id_type, traj_com_unwrap)
 
         # update MSD
@@ -509,9 +520,17 @@ def calculate_msd_bilayer(msd: Sequence[NDFloat64], nside: int, ntype: int,
     #
     # msd[type,tau,:] = sd[type,tau]/np.sum(nmol_type,axis = 0)
     #
-    for i in range(0, nside):
-        for j in range(0, ntype):
-            for k in range(0, ntaus):
+    for j in range(0, ntype):
+        tnmolj = bnmol_type[j]
+        if tnmolj == 0:
+            continue  # when there's no type j in bilayer
+
+        for k in range(0, ntaus):
+            for i in range(0, nside):
+                tnmolij = nmol_type[i][j]
+                if tnmolij == 0:
+                    continue  # when there's no type j in leaflet i
+
                 for m in range(0, 3):
                     bmsd[j, k, m] += msd[i][j, k, m] * \
                         nmol_type[i][j] / bnmol_type[j]

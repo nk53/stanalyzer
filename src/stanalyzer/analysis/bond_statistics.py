@@ -70,7 +70,7 @@ def calculate_bond_lengths(atomgroup_positions: CoorMap,
     bond_lengths: Stats[Bond] = defaultdict(list)
     for bond in bonds:
         for pos1, pos2 in zip(atomgroup_positions[bond.group1], atomgroup_positions[bond.group2]):
-            length = np.linalg.norm(pos1 - pos2)
+            length = t.cast(np.float64, np.linalg.norm(pos1 - pos2))
             bond_lengths[bond].append(length)
     return bond_lengths
 

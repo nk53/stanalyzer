@@ -237,6 +237,7 @@ class SoohyungCase(AnalysisCase):
     default_output: t.ClassVar[str | Path] = 'test_case'
     standard_args: t.ClassVar[str | None] = None
     test_standard: Callable
+    accepts_o: t.ClassVar[bool] = True
 
     # subclass should override if its name doesn't follow camel_to_snake scheme
     analysis_name: t.ClassVar[str] = ''
@@ -247,9 +248,12 @@ class SoohyungCase(AnalysisCase):
 
         assert args is not None
 
-        out, err, dat = self.run_analysis(args)
+        if self.accepts_o:
+            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
+            self.assertTrue(self.file_exists(dat, outfile))
+        else:
+            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
 
-        self.assertTrue(self.file_exists(dat, outfile))
         self.assertFalse(self.file_empty(out, outfile))
 
     def __init_subclass__(cls, **kwargs):
@@ -270,7 +274,9 @@ class SoohyungCase(AnalysisCase):
 
 
 class DensityZ(SoohyungCase):
-    standard_args = '-c --sel "name C*"'
+    accepts_o = False
+    standard_args = '--sel "name C*" --sel-name "MEMB" ' \
+        '--sel-sys "segid MEMB and (name [PN] or name [CO]1[0-9])"'
 
 
 class ContactResidenceTime(SoohyungCase):
@@ -318,7 +324,8 @@ class SystemSize(SoohyungCase):
 
 
 class Thickness(SoohyungCase):
-    standard_args = '-c --sel "segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])"'
+    standard_args = '--sel "segid MEMB and (name P or name N or name C1[0-9] or name O1[0-9])" ' \
+        '--sel-sys "resname DOPC and name P; resname DSPC and name P"'
 
 
 class WaterBridge(SoohyungCase):

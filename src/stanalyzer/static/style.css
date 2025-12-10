@@ -290,6 +290,11 @@ label.sta-invalid .sta-tooltip-btn:not(#fake_button_id) {
     margin: 0 auto;
 }
 
+div[id$=_tooltip] :is(table,td,tr,th) {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
 /* matching ST-Analyzer webpage colors somewhat */
 .ui-overlay-a, .ui-page-theme-a, .ui-page-theme-a .ui-panel-wrapper {
     background-color: #fff;

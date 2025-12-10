@@ -8,7 +8,8 @@ import numpy as np
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_float
 
-warnings.simplefilter("ignore", category=np.VisibleDeprecationWarning)
+if hasattr(np, 'VisibleDeprecationWarning'):
+    warnings.simplefilter("ignore", category=np.VisibleDeprecationWarning)
 
 ANALYSIS_NAME = 'Radial distribution function'
 

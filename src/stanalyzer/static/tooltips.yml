@@ -125,3 +125,545 @@ bond_statistics_use_input_file_input_file: |
   by a list of one or more atom indices.</p>
   <p>Group position at any time step is the selected atoms' centroid.</p>
 bond_statistics_centroid: Method used to calculate a group's centroid.
+
+voronoi_apl_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters.
+  Ensure all molecule types in the membrane are selected. </p>
+  <p> Note: The analysis assumes the bilayer membrane is planar. </p>
+voronoi_apl_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+voronoi_apl_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      selected atoms at the origin. (Note: single selection) </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in acyl chain in phospholipids and the carbon
+      bonded to hydroxyl group in sterols.)</p>
+# ### Add later when non-planar membrane analysis is supported.
+# voronoi_apl_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+voronoi_apl_otype: |
+  <p> Use this option to choose how Area Per Lipid (APL) for individual molecule
+      types are saved.
+      Either average or time series APLs can be outputted by selecting the
+      appropriate <b>Write</b> options below. </p>
+  <p> Note: If no <b>Write</b> option is selected, no output file will be generated.
+  </p>
+  <p> <b>Caution:</b> <i>Do not select the Bilayer option if you are working with
+     an asymmetric bilayer system.</i> </p>
+voronoi_apl_qa: |
+  <p>When selected, average APLs with associated standard deviations (STDs) for
+     all molecule types will be outputted as: </p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> ave_{leaflet}_{suffix}.dat </td></tr>
+    <tr> <td> Bilayer </td> <td> ave_bilayer_{suffix}.dat </td></tr>
+  </table>
+  <p>The file structure is repeating block of APL and its STD for each individual
+     molecule types in units of (Trajectory Distance Unit)<sup>2</sup>.</p>
+voronoi_apl_qt: |
+  <p>When selected, APL time series for all molecule types will be outputted as:</p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> time_{leaflet}_{suffix}.dat </td></tr>
+    <tr> <td> Bilayer </td> <td> time_bilayer_{suffix}.dat </td></tr>
+  </table>
+  <p>The time series file is structured as:</p>
+  <ul>
+    <li>Column 1: Time (in units of Frame interval)</li>
+    <li>Columns 2+: Repeating APLs for each individual molecule types in units of (Trjectory Distance Unit)<sup>2</sup></li>
+  </ul>
+
+voronoi_contact_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters.
+  Ensure all molecule types in the membrane are selected. </p>
+  <p> Note: 1. The analysis assumes the bilayer membrane is planar.
+      2. The analysis calcualtes the composition of the molecules in the first
+      shell surrounding individual types. </p>
+voronoi_contact_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+voronoi_contact_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in acyl chain in phospholipids and the carbon
+      bonded to hydroxyl group in sterols.)</p>
+# ### Add later when non-planar membrane analysis is supported.
+# voronoi_contact_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+voronoi_contact_otype: |
+  <p> Use this option to choose how results are saved.
+      Either average or time series of contact shell composition of molecules can
+      be outputted by selecting the appropriate <b>Write</b> options below. </p>
+  <p> Note: If no <b>Write</b> option is selected, no output file will be generated.
+  </p>
+  <p> <b>Caution:</b> <i>Do not select the Bilayer option if you are working with
+     an asymmetric bilayer system.</i> </p>
+voronoi_contact_qa: |
+  <p>When selected, average contacts with associated standard deviations (STDs)
+     between all molecule type pairs will be outputed as: </p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> ave_{leaflet}_ncomp_{suffix}.dat </td> </tr>
+    <tr> <td>   </td> <td> ave_{leaflet}_fcomp_{suffix}.dat </td> </tr>
+    <tr> <td> Bilayer </td> <td> ave_bilayer_ncomp_{suffix}.dat </td> </tr>
+    <tr> <td>   </td> <td> ave_bilayer_fcomp_{suffix}.dat </td> </tr>
+  </table>
+  <p> In output file names, ncomp and fcomp represents number and fractional
+      compositions, respectively. </p>
+  <p> Each row in a output files is the first shell compostions of molecules
+      around individual molecules type, whose structure is repeating block of
+      average composition and its STD of molecule types. </p>
+voronoi_contact_qt: |
+  <p>When selected, Time series of compositions for individual molecule types will be outputted as:</p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> time_{leaflet}_{type}_ncomp_{suffix}.dat </td></tr>
+    <tr> <td>  </td> <td> time_{leaflet}_{type}_fcomp_{suffix}.dat </td></tr>
+    <tr> <td> Bilayer </td> <td> time_bilayer_{type}_ncomp_{suffix}.dat </td></tr>
+    <tr> <td>  </td> <td> time_bilayer_{type}_fcomp_{suffix}.dat </td></tr>
+  </table>
+  <p>The time series file is structured as:</p>
+  <ul>
+    <li>Column 1: Time (in units of Frame interval)</li>
+    <li>Columns 2+: Composition of molecule types</li>
+  </ul>
+  <p> If a specific molecule type is missing from a leaflet, the prefix "time"
+      will be replaces with "NA" in associated output file name
+      (e.g., NA_{leaflet}_{type}_ncomp/fcomp_{suffix}.dat)
+      and will contain the message, "no {type} in {leaflet}."</p>
+
+voronoi_shell_comp_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters.
+  Ensure all molecule types in the membrane are selected. </p>
+  <p> Note: 1. The analysis assumes the bilayer membrane is planar.
+  2. The analysis calcualtes the shell-wise composition of the molecules
+  surrounding individual types.
+  3. The maximum number of shells (<i>M</i>) analyzed is determined automatically based on
+  the average lateral dimension of the molecules (<i>L</i><sub>mol</sub>) and the
+  simulation box size (<i>L</i><sub>x</sub>, <i>L</i><sub>y</sub>) to
+  approximate half the smaller box dimension.
+  </p>
+  <p>Formulae used:</p>
+  <table>
+     <tr> <td> <i>L</i><sub>mol</sub> =
+          (2 <i>L</i><sub>x</sub> <i>L</i><sub>y</sub>
+          /<i>N</i><sub>mol</sub>)<sup>1/2</sup> </td> </tr>
+     <tr> <td> <i>M</i> = min{<i>L</i><sub>x</sub>, <i>L</i><sub>x</sub>}
+          / (2 <i>L</i><sub>mol</sub>) </td> </tr>
+  </table>
+voronoi_shell_comp_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+voronoi_shell_comp_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in acyl chain in phospholipids and the carbon
+      bonded to hydroxyl group in sterols.)</p>
+# ### Add later when non-planar membrane analysis is supported.
+# voronoi_shell_comp_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+voronoi_shell_comp_otype: |
+  <p> Use this option to choose how results are saved.
+      Either average or time series of contact shell composition of molecules can
+      be outputted by selecting the appropriate <b>Write</b> options below. </p>
+  <p> Note: If no <b>Write</b> option is selected, no output file will be generated.
+  </p>
+  <p> <b>Caution:</b> <i>Do not select the Bilayer option if you are working with
+     an asymmetric bilayer system.</i> </p>
+voronoi_shell_comp_qa: |
+  <p>When selected, average shell-wise compositions with associated standard
+     deviations (STDs) for individual molecule types will be outputed as: </p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> ave_{leaflet}_{type}_fcomp_{suffix}.dat </td> </tr>
+    <tr> <td>   </td> <td> ave_{leaflet}_{type}_ncomp_{suffix}.dat </td> </tr>
+    <tr> <td> Bilayer </td> <td> ave_bilayer_{type}_fcomp_{suffix}.dat </td> </tr>
+    <tr> <td>   </td> <td> ave_bilayer_{frac}_ncomp_{suffix}.dat </td> </tr>
+  </table>
+  <p> In output file names, fcomp and ncomp represents fractional and number
+      compositions, respectively .</p>
+  <p>The output file is structured as:</p>
+  <ul>
+    <li>Column 1: Shell index, <i>i</i><sub>shell</sub> </li>
+    <li>Columns 2+: Repeating block of <i>i</i><sub>shell</sub>-th shell
+        composition and its STD for individual molecule types.</li>
+  </ul>
+  <p> If a specific molecule type is missing from a leaflet, the prefix "ave"
+      will be replaces with "NA" in associated output file name
+      (e.g., NA_{leaflet}_{type}_ncomp/fcomp_{suffix}.dat)
+      and will contain the message, "no {type} in {leaflet}."</p>
+voronoi_shell_comp_qt: |
+  <p>When selected, Time series of shell-wise compositions for individual molecule types will be outputted as:</p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> time_{leaflet}_{type}_ncomp_{suffix}.dat </td></tr>
+    <tr> <td>  </td> <td> time_{leaflet}_{type}_fcomp_{suffix}.dat </td></tr>
+    <tr> <td> Bilayer </td> <td> time_bilayer_{type}_ncomp_{suffix}.dat </td></tr>
+    <tr> <td>  </td> <td> time_bilayer_{type}_fcomp_{suffix}.dat </td></tr>
+  </table>
+  <p>The time series file is structured as:</p>
+  <ul>
+    <li> Column 1: Time (in units of Frame interval)</li>
+    <li> Columns 2+: Repeating block of shell-compositions of individual molecule
+         types </li>
+  </ul>
+  <p> If a specific molecule type is missing from a leaflet, the prefix "time"
+      will be replaces with "NA" in associated output file name
+      (e.g., NA_{leaflet}_{type}_ncomp/fcomp_{suffix}.dat)
+      and will contain the message, "no {type} in {leaflet}."</p>
+
+scd_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters.
+  The selection for a lipid type is defined exclusively by starting carbons
+  in the individual chains.
+  <p> Note: The analysis assumes the bilayer membrane is planar. </p>
+  <p><b> Caution:</b> Sterols are <i>not</i> subject to SCD order parameter
+     calculations; <b>do not</b> include them in the selection.
+  </p>
+scd_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+scd_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin.
+      <i> It is required to include <b>all analyzed molecule types</b> are included in
+      this selection. </i>
+  </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in acyl chain in phospholipids and the carbon
+      bonded to hydroxyl group in sterols.)</p>
+# ### Add later when non-planar membrane analysis is supported.
+# scd_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+scd_otype: |
+  <p> Use this option to choose how results are saved.
+      Either average or time series of SCDs of molecules can
+      be outputted by selecting the appropriate <b>Write</b> options below. </p>
+  <p> Note: If no <b>Write</b> option is selected, no output file will be generated.  </p>
+  <p> <b>Caution:</b> <i>Do not select the Bilayer option if you are working with
+     an asymmetric bilayer system.</i> </p>
+scd_qa: |
+  <p>When selected, average SCDs with associated standard deviations (STDs)
+     for carbons in each tail in each molecule type will be outputed as: </p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> ave_{leaflet}_{type}_chain{id}_{suffix}.dat </td> </tr>
+    <tr> <td> Bilayer </td> <td> ave_bilayer_{type}_chain{id}_{suffix}.dat </td> </tr>
+  </table>
+  <p>In output file names, {id} is the chain id given in the sqeuence in selection above.</p>
+  <p>The file structure is:</p>
+  <table>
+    <tr> <th> Column</th> <th> Description </th>  </tr>
+    <tr> <td> 1 </td> <td> Carbon name</td> </tr>
+    <tr> <td> 2 </td> <td> average SCD</td> </tr>
+    <tr> <td> 3 </td> <td> STD </td> </tr>
+  </table>
+  <p> If a specific molecule type is missing from a leaflet, the prefix "ave"
+      will be replaces with "NA" in associated output file name
+      (e.g., NA_{leaflet}_{type}_chain{id}_{suffix}.dat)
+      and will contain the message, "no {type} in {leaflet}."</p>
+scd_qt: |
+  <p>When selected, Time series of compositions for individual molecule types will be outputted as:</p>
+  <table>
+    <tr> <th> Ouput type</th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> time_{leaflet}_{type}_chain{id}_{suffix}.dat </td></tr>
+    <tr> <td> Bilayer </td> <td> time_bilayer_{type}_chain{id}_{suffix}.dat </td></tr>
+  </table>
+  <p>The time series file is structured as:</p>
+  <ul>
+    <li>Column 1: Time (in units of Frame interval)</li>
+    <li>Columns 2+: SCD of carbons</li>
+  </ul>
+  <p> If a specific molecule type is missing from a leaflet, the prefix "time"
+      will be replaces with "NA" in associated output file name
+      (e.g., NA_{leaflet}_{type}_chain{id}_{suffix}.dat)
+      and will contain the message, "no {type} in bilayer."</p>
+
+msd_solution_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters. </p>
+  <p> Mean square displacement (MSD) outputs for each defined type are
+  generated using the naming convention {type}_{suffix}.dat</p>
+  <p>Each output file follows this column structure:</p>
+  <table>
+    <tr> <th>Column</th> <th>Description</th> <th>Units</th> </tr>
+    <tr> <td>1</td> <td>Lag Time</td> <td>Frame interval</td> </tr>
+    <tr> <td>2</td> <td>MSD(x)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tr> <td>3</td> <td>MSD(y)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tr> <td>4</td> <td>MSD(z)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tfoot><tr><td colspan="3"> TDU: Trajectory Distance Unit. </td></tr></tfoot>
+  </table>
+  <p> If a molecule type is missing from a bilayer, associated output file name
+   will be prefixed with "NA_" (e.g., NA_{type}_{suffix}.dat) containing
+   the message, "no {type} in the system."</p>
+msd_solution_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+msd_solution_qdrift: |
+  <p>When selected Enabled, the Center of Mass (COM) drift of the entire system is corrected
+     using the unwrapped trajectory. </p>
+msd_solution_qcomsys: |
+  <p>If COM drift correction is Enabled, this option will write unwrapped system COM time series to
+     msd_solution/sys_com_{suffix}.dat</p>
+  <p>The file structure is:</p>
+  <ul>
+    <li>Column 1: Lag Time (in units of Frame number)</li>
+    <li>Columns 2-4: : x-, y-, and z-COMs in units of (Trjectory Distance Unit)</li>
+  </ul>
+msd_solution_qcommol: |
+  <p>When selected, unwrapped COM time series for individual molecules will be outputted to
+     msd_solution/mol_com_{suffix}.dat with a corresponding list of molecule indices and
+     types saved to msd_solution/mol_info_{suffix}.dat</p>
+  <p>The time series file is structured analogously to system COM:</p>
+  <ul>
+    <li>Column 1: Lag Time (in units of Frame number)</li>
+    <li>Columns 2+: Repeating block of three values: x-, y-, and z-COMs for each individual molecules in units of (Trjectory Distance Unit)</li>
+  </ul>
+
+msd_membrane_sel: |
+  <p> Define the molecule types for analysis by listing their segid or resname
+  identifiers. Use commas (,) or semicolons (;) as delimiters. </p>
+  <p> Note: The analysis assumes the bilayer membrane is planar. </p>
+msd_membrane_split: |
+  <p>Specify whether atom groups should be split to the molecule level (Y or N).
+     The default is Y.</p>
+  <table>
+    <tr> <td> <b>Y:</b> Split the atom group by molecule level. </td> </tr>
+    <tr> <td> <b>N:</b> Consider the atom group as one single entity. </td> </tr>
+  </table>
+  <p> Note: Options for all preceding selections must be provided explicitly
+  if you change the default behavior for a specific entry. </p>
+msd_membrane_sel_sys: |
+  <p> Specify the atom group(s) for leaflet COM drift correction, by listing
+      their segid or resname identifiers. Use either a comma (,) or
+      a semicolon (;) to separate the entries.
+      Ensure all molecule types in the membrane are selected. </p>
+  <p> Leaflet assignment of membrane molecules is determined by the initial
+      z-position of these groups and is fixed throughout the analysis. For each
+      Leaflet, COM is calculated using all atoms in molecules assigned to the
+      leaflet. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in an acyl chain and the carbon bonded to the
+      hydroxyl group in sterols). </p>
+# ### Add later when non-planar membrane analysis is supported.
+# msd_membrane_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+msd_membrane_otype: |
+  <p> Use this option to choose how MSDs for individual molecule types are saved:</p>
+  <table>
+    <tr> <th> Option </th> <th> Output file name</th> </tr>
+    <tr> <td> Leaflets </td> <td> {leaflet}_{type}_{suffix}.dat</td> </tr>
+    <tr> <td> Bilayer </td> <td> bilayer_{type}_{suffix}.dat</td> </tr>
+  </table>
+  <p> MSD outputs for each defined type (in leaflet or in bilayer) are generated,
+      whose column structure is:</p>
+  <table>
+    <tr> <th>Column</th> <th>Description</th> <th>Units</th> </tr>
+    <tr> <td>1</td> <td>Lag Time</td> <td>Frame interval</td> </tr>
+    <tr> <td>2</td> <td>MSD(x)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tr> <td>3</td> <td>MSD(y)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tr> <td>4</td> <td>MSD(z)</td> <td>(TDU)<sup>2</sup></td> </tr>
+    <tfoot><tr><td colspan="3"> TDU: Trajectory Distance Unit. </td></tr></tfoot>
+  </table>
+  <p> If a specific molecule type is missing from a leaflet, associated output
+      file name will be prefixed with "NA_" (e.g., NA_up_{type}_{suffix}.dat)
+      and will contain the message, "no {type} in {leaflet}."</p>
+  <p> <b>Caution:</b> <i>Do not select the Bilayer option if you are working with
+     an asymmetric bilayer system.</i> </p>
+msd_membrane_qcomsys: |
+  <p>When selected, unwrapped system COM time series will be outputted to
+     {leaflet}_sys_com_{suffix}.dat</p>
+  <p>The file structure is:</p>
+  <ul>
+    <li>Column 1: Lag Time (in units of Frame interval)</li>
+    <li>Columns 2-4: : x-, y-, and z-COMs in units of (Trjectory Distance Unit)</li>
+  </ul>
+msd_membrane_qcommol: |
+  <p>When selected, COM time series for individual molecules will be outputted to
+     {leaflet}_mol_com_{suffix}.dat with a corresponding list of molecule indices and
+     types saved to {leaflet}_mol_info_{suffix}.dat</p>
+  <p>The time series file is structured analogously to system COM:</p>
+  <ul>
+    <li>Column 1: Lag Time (in units of Frame interval)</li>
+    <li>Columns 2+: Repeating block of three values: x-, y-, and z-COMs for each individual molecules in units of (Trjectory Distance Unit)</li>
+  </ul>
+
+density_z_sel: |
+  <p> Define the atom groups for analysis. Use commas (,) or semicolons (;)
+  as delimiters. </p>
+  <p> Note: The analysis assumes the bilayer membrane is planar. </p>
+density_z_sel_name: |
+  <p> Specify names of selected targets.
+      Use either a comma (,) or a semicolon (;) to separate the entries.
+      These names will be used as prefix for output file names.</p>
+density_z_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in an acyl chain and the carbon bonded to the
+      hydroxyl group in sterols). </p>
+  <p> <b>Fine-tuned midplane centering option:</b> if used, the bilyer
+      midplane will be centered via leaflet density profiles of all heavy
+      atoms in listed lipid types. For this option, it is recommended to
+      select all lipid types in the membrane by using either a comma (,)
+      or a semicolon (;) to separate entries.
+  </p>
+density_z_qcent: |
+  <p> Sets the bilayer midplane z-position to z=0. The midplane is
+   determined by the z-position of the crossing point between the
+   two leaflet z-density profiles. </p>
+# ### Add later when non-planar membrane analysis is supported.
+# density_z_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+density_z_otype: |
+  <p> Use this option to choose how z-density profiles for selected atom groups
+      are saved:</p>
+  <table>
+    <tr> <th> Option </th> <th> Output file name</th> </tr>
+    <tr> <td> Individual </td> <td> {name}_{binw}_{suffix}.dat</td> </tr>
+    <tr> <td> Combined </td> <td> comb_{binw}_{suffix}.dat</td> </tr>
+  </table>
+  <p> File structure of Z-density profile for individual types is: </p>
+  <table>
+    <tr> <th>Column</th> <th>Description</th> <th>Units</th> </tr>
+    <tr> <td>1</td> <td>Z </td> <td> TDU </td> </tr>
+    <tr> <td>2</td> <td>Number density</td> <td> (TDU)<sup>-3</sup></td> </tr>
+    <tr> <td>3</td> <td>STD</td> <td>(TDU)<sup>-3</sup></td> </tr>
+    <tfoot>
+      <tr><td colspan="3"> TDU: Trajectory Distance Unit. </td></tr>
+      <tr><td colspan="3"> STD: Standard deviation. </td></tr>
+    </tfoot>
+  </table>
+  <p> If a specific selected type is missing from a leaflet, associated output
+      file name will be prefixed with "NA_" (e.g., NA_{name}_{suffix}.dat)
+      and will contain the message, "no {name} in the system."</p>
+  <p> File strucutre of combined Z-density profile is analogous: </p>
+  <ul>
+    <li>Column 1: Z (in units of TDU)</li>
+    <li>Columns. 2+: Repeating Number Density and associated STD for individual
+        selected types in units of (TDU)<sup>-3</sup>.</li>
+  </ul>
+  <p> When only a single type is selected for analysis, the output file name will
+      be set to {name}_{suffix}.dat</p>
+
+thickness_sel: |
+  <p> Define atom group for analysis. </p>
+  <p> Note: The analysis assumes the bilayer membrane is planar. </p>
+thickness_sel_sys: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in an acyl chain and the carbon bonded to the
+      hydroxyl group in sterols). </p>
+  <p> <b>Fine-tuned midplane centering option:</b> if used, the bilyer
+      midplane will be centered via leaflet density profiles of all heavy
+      atoms in listed lipid types. For this option, it is recommended to
+      select all lipid types in the membrane by using either a comma (,)
+      or a semicolon (;) to separate entries.
+  </p>
+thickness_qcent: |
+  <p> Sets the bilayer midplane z-position to z=0. The midplane is
+   determined by the z-position of the crossing point between the
+   two leaflet z-density profiles. </p>
+# ### Add later when non-planar membrane analysis is supported.
+# thickness_lam: |
+#   <p> Determine how leaflet assignments are made (using MDAnalysis.analysis.leaflet
+#      or z-positions)</p>
+thickness_out: |
+  <p> Time series of average z-position of selected atom group in upper and lower
+      leaflets will be outputted.
+      The file strucutre of output file is:
+  <table>
+    <tr> <th>Column</th> <th>Description</th> <th>Units</th> </tr>
+    <tr> <td>1</td> <td>Time </td> <td>Frame Interval</td> </tr>
+    <tr> <td>2</td> <td>Upper leaflet Z-pos. (z<sub>up</sub>)</td> <td> TDU</td> </tr>
+    <tr> <td>3</td> <td>Lower leaflet Z-pos. (z<sub>dn</sub>)</td> <td> TDU</td> </tr>
+    <tr> <td>4</td> <td>Thickness (= z<sub>up</sub> - z<sub>dn</sub>)</td> <td> TDU</td> </tr>
+    <tfoot><tr><td colspan="3"> TDU: Trajectory Distance Unit. </td></tr></tfoot>
+  </table>
+  <p> Average leaflet thicknesses with STD (over frames) are given in the
+      header as comments. </p>
+
+chol_tilt_sel: |
+  <p> Define sterol atom group for analysis. </p>
+chol_tilt_center_sel: |
+  <p> Specify atom group(s) for centering, simply placing the COM of
+      of selected atoms at the origin. </p>
+  <p> It is recommended to select atoms in similar z-positions in each leaflet
+      (e.g., the first carbon in an acyl chain and the carbon bonded to the
+      hydroxyl group in sterols). </p>
+chol_tilt_out: |
+  <p> Time series of tilt angles of sterol molecules will be outputted.
+      Tilt angle of a sterol is defined as the angle between the membrane normal
+      (Z-axis) and a vector connecting C17 and C3.
+      The file strucutre of output file is: </p>
+  <ul>
+    <li>Column 1: Time (in units of Frame interval)</li>
+    <li>Columns 2+: Tilt angles of individual sterol molecules in units of (Degree).</li>
+  </ul>
+
+system_size_out: |
+  <p> File structure of time series is: </p>
+  <table>
+    <tr> <th>Column</th> <th>Description</th> <th>Units</th> </tr>
+    <tr> <td>1</td> <td>Time </td> <td>Frame Interval</td> </tr>
+    <tr> <td>2</td> <td>A </td> <td> TDU</td> </tr>
+    <tr> <td>3</td> <td>B </td> <td> TDU</td> </tr>
+    <tr> <td>4</td> <td>C </td> <td> TDU</td> </tr>
+    <tr> <td>5</td> <td>Alpha </td> <td> Degree</td> </tr>
+    <tr> <td>6</td> <td>Beta </td> <td> Degree </td> </tr>
+    <tr> <td>7</td> <td>Gamma </td> <td> Degree </td> </tr>
+    <tr> <td>8</td> <td>Volume </td> <td> (TDU)<sup>3</sup> </td> </tr>
+    <tfoot><tr><td colspan="3"> TDU: Trajectory Distance Unit. </td></tr></tfoot>
+  </table>
+
+compressibility_modulus_temp: |
+  <p> Temparature (<i>T</i>) of the simulation system. </p>
+  <p> Area compressibility modulus (<i>K</i><sub>A</sub>) will be calculated using
+  <i>K</i><sub>A</sub> = <i>k</i><sub>B</sub><i>T</i> &lang; A &rang;
+      / ( &lang; A<sup>2</sup> &rang; - &lang; A &rang; <sup>2</sup>) </p>
+  <p> where <i>k</i><sub>B</sub> is the Boltzmann constant, and &lang; A &rang; and &lang; A<sup>2</sup> &rang; - &lang; A &rang; <sup>2</sup> are average and flucatuation of system's XY area. Calculated <i>K</i><sub>A</sub> is in units of dyn/cm (= mN/m).
+  </p>
