@@ -15,7 +15,7 @@ from starlette.templating import Jinja2Templates
 import invoke
 
 # intra-package
-from stanalyzer import utils, _release
+from stanalyzer import utils, _release, __version__
 from stanalyzer.db import db
 from stanalyzer import validation
 from stanalyzer._typing import Any, StrDict, StrDictList
@@ -28,11 +28,13 @@ templates = Jinja2Templates(directory="templates",
 MENU = utils.read_yaml('static/menu.yml')
 PAGES = utils.read_yaml('static/pages.yml')
 ANALYSIS = utils.read_yaml('static/analysis.yml')
-ANALYSIS_CATEGORIES = utils.read_yaml('static/analysis.category.yml')
+ANALYSIS_CATEGORIES: dict[str, utils.AnalysisCategory] = \
+    utils.read_yaml('static/analysis.category.yml')
 
 if _release:
     MENU = utils.filter_unreleased(MENU)
     ANALYSIS = utils.filter_unreleased(ANALYSIS)
+    ANALYSIS_CATEGORIES = utils.filter_empty_categories(ANALYSIS_CATEGORIES, ANALYSIS)
 
 db.setup_db()
 
@@ -47,7 +49,7 @@ async def page(request: Request, page: str) -> HTMLResponse:
     context = {
         "request": request, "page_id": page, "menu": MENU,
         "page": PAGES.get(page, None), "auto_tooltip": utils.auto_tooltip,
-        "call_macro_by_name": utils.call_macro_by_name,
+        "call_macro_by_name": utils.call_macro_by_name, "__version__": __version__,
     }
     kwargs: dict[str, Any] = {}
 

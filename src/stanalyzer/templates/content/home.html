@@ -1,9 +1,15 @@
 {%- filter indent(_indent_level) -%}
 <div style="min-height: 20em;">
 <h1>About ST-Analyzer</h1>
-<p>ST-Analyzer is a web GUI, CLI, and API for quickly running common analysis, job management, and visualizing results.</p>
+<p>ST-Analyzer is a web GUI, CLI, and API for quickly running common analysis, job management, and checking results.</p>
 <p>To get started, create your project in the Projects menu, then schedule analysis to run in the Analysis menu.</p>
 <p>For help, see the project's <a href="https://github.com/nk53/stanalyzer/blob/master/README.md">README</a> or report an <a href="https://github.com/nk53/stanalyzer/issues">issue</a>.</p>
 <!--<p>Don't see the analysis you want? Consider creating or installing your own with the Plugins menu. Refer to the Documentation for ST-Analyzer concepts.</p>-->
+<p>Currently installed version: {{ __version__ }}.</p>
+{% if "dev" in __version__ %}
+    <p>This is a development version. Some features are incomplete or broken.</p>
+{% elif "rc" in __version__ %}
+    <p>This is a beta "release candidate" version. Some features are incomplete or disabled.</p>
+{% endif %}
 </div>
 {%- endfilter -%}

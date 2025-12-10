@@ -3,7 +3,7 @@ import pathlib
 import re
 from glob import glob
 from pathlib import Path
-from typing import Any, List, TypeVar
+from typing import Any, List, TypedDict, TypeVar
 
 import bracex
 import yaml
@@ -31,6 +31,11 @@ except ModuleNotFoundError:
 # groups strings[like][this] into their individual tokens
 P_RE = re.compile(r'^([^[]*)|\[([^]]*)\]')
 TOOLTIPS: dict[str, Any] | None = None
+
+
+class AnalysisCategory(TypedDict):
+    label: str
+    options: list[str]
 
 
 def load_tooltips() -> dict[str, Any]:
@@ -203,6 +208,18 @@ def get_active_settings(settings: dict[str, Any], analysis: dict[str, Any],
 def filter_unreleased(d: dict[str, dict[str, T]]) -> dict[str, dict[str, T]]:
     """Hide unfinished items for release and release-candidate builds"""
     return {k: v for k, v in d.items() if v.get('release', True)}
+
+
+def filter_empty_categories(categories: dict[str, AnalysisCategory],
+                            analysis: dict[str, Any]) -> dict[str, AnalysisCategory]:
+    result: dict[str, AnalysisCategory] = {}
+    for category, info in categories.items():
+        options = [opt for opt in info['options']
+                   if opt in analysis and analysis[opt].get('release', True)]
+        if options:
+            info['options'] = options
+            result[category] = info
+    return result
 
 
 def braced_glob(p: Path | str) -> list[Path]:
