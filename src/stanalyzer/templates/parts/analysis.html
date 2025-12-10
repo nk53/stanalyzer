@@ -7,6 +7,7 @@
         {%- if options is mapping -%}
             {%- set optname = name ~ "_" ~ option -%}
             {%- set option = options[option].copy() -%}
+            {%- do option.pop('_requires', None) -%}
             {%- if "type" in option -%}
                 {%- set optinput = option.pop('type') -%}
                 {{ call_macro_by_name(optinput, optname, **option) }}

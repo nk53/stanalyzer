@@ -197,22 +197,19 @@
 {% endif -%}
 {%- endmacro -%}
 
-{%- macro input_integer(name, value=0, pattern="-?[0-9]+", size=None) -%}
-    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
-    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- macro input_integer(name, value=0, size=None) -%}
+    {{ input(name, value=value, type='number', size=size, **kwargs) }}
 {%- endmacro -%}
 
-{%- macro non_negative_integer(name, value=0, pattern="[0-9]+", size=None) -%}
-    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
-    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- macro non_negative_integer(name, value=0, size=None) -%}
+    {{ input(name, value=value, type='number', size=size, **kwargs) }}
 {%- endmacro -%}
 
-{%- macro positive_integer(name, value=1, pattern="[1-9][0-9]*", optional=False, size=None) -%}
-    {%- if optional %}{% set pattern = "("~pattern~")?" %}{% endif -%}
-    {{ input(name, value=value, pattern=pattern, type='number', size=size, **kwargs) }}
+{%- macro positive_integer(name, value=1, size=None) -%}
+    {{ input(name, value=value, type='number', size=size, **kwargs) }}
 {%- endmacro -%}
 
-{%- macro memory_size(name, value=0, pattern="[1-9][0-9]*", label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
+{%- macro memory_size(name, value=0, label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
 {%- if num_opts is none %}{% set num_opts = {} %}{% endif -%}
 {%- do num_opts.setdefault('placeholder', '#') -%}
 {%- do num_opts.setdefault('mini', True) -%}
@@ -229,14 +226,14 @@
 {%- filter indent %}
 {{ label_field(label, _for=name, tooltip=auto_tooltip(name)) }}
 <div{{ utils.get_id_attr(name) }} data-role="controlgroup" data-type="horizontal" data-mini="True">
-{{ positive_integer(iname, add_div=False, value=value, pattern=pattern, **num_opts) }}
+{{ positive_integer(iname, add_div=False, value=value, **num_opts) }}
 {{ radio(sname, [('GB', 'GB', True), 'MB', 'kB'], **radio_opts) }}
 </div><!-- horizontal controlgroup -->
 {%- endfilter %}
 </div><!-- .ui-field-contain -->
 {%- endmacro -%}
 
-{%- macro time_step(name, value=0, pattern="[1-9][0-9]*", label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
+{%- macro time_step(name, value=0, label=None, num_opts=None, radio_opts=None, no_enhance=False) -%}
 {%- if num_opts is none %}{% set num_opts = {} %}{% endif -%}
 {%- do num_opts.setdefault('placeholder', '#') -%}
 {%- do num_opts.setdefault('mini', True) -%}

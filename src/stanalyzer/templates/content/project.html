@@ -44,4 +44,5 @@
 {{ form.input('add_project', value='Add Project', type='button',
               visibility={'allowed_project': 'add_new'}, onclick='submit_async(this)',
               **{'data-method': 'post', 'data-success': 'update_projects_menu'}) }}
+</form>
 {%- endfilter %}

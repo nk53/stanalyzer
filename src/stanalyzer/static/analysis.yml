@@ -904,7 +904,6 @@ sasa:
       options:
         shrake: Shrake-Rupley
         lee: Lee-Richards
-      value: shrake
     interval:
       label: Frame interval
       type: form.positive_integer
@@ -925,6 +924,8 @@ bond_statistics:
           value: index.ndx
           _requires:
             bond_statistics_index: true
+          visibility:
+            allowed_bond_statistics_index: true
     atom_groups:
       label: Atom groups
       type: form.textarea
