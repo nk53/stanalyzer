@@ -24,7 +24,7 @@ def header(outfile: sta.FileLike | None = None) -> str:
 
 def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
                              out: sta.FileRef, sel: str, time_step: float | str,
-                             corr_matrix_out: str, eigenvalues_out: str,
+                             corr_matrix_out: sta.FileRef, eigenvalues_out: str,
                              eigenvectors_out: str, align_out: io.TextIOWrapper | None = None,
                              interval: int = 1) -> None:
     """Writes correlation matrix to `out` file"""
@@ -59,27 +59,31 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     centered_positions_flat = centered_positions.reshape(
         len(u.trajectory), len(atoms) * 3)
 
+    print("Generating covariance matrix")
     covariance_matrix = np.cov(centered_positions_flat, rowvar=False)
-
-    # Compute and plot the correlation matrix
     correlation_matrix = np.corrcoef(
         centered_positions_flat, rowvar=False)  # normalizes the coefficients
 
+    print("Saving correlation matrix")
     with sta.resolve_file(corr_matrix_out, 'w') as outfile1:
         header(outfile1)
         np.savetxt(outfile1, correlation_matrix, fmt='%.6f')
+        corr_matrix_out = outfile1.name
 
     correlation_matrix = np.loadtxt(corr_matrix_out, skiprows=1)
+
     plt.figure(figsize=(10, 8))
     plt.imshow(correlation_matrix, cmap='coolwarm', interpolation='none')
     plt.colorbar(label='Correlation')
     plt.title('Correlation Matrix')
     plt.xlabel('Atomic x,y,z Coordinates')
     plt.ylabel('Atomic x,y,z Coordinates')
+
+    print("Generating heatmap")
     plt.grid()
     plt.savefig('correlation_matrix_heatmap.png', format='png', dpi=300)
 
-    # Perform PCA
+    print("Running PCA")
     pca = PCA()
     pca.fit(covariance_matrix)
 
@@ -90,7 +94,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     threshold = 0.85
     num_components = np.argmax(cumulative_variance_sum >= threshold) + 1
 
-    # Compute eigenvalues and eigenvectors
+    print("Computing eigenvalues and eigenvectors")
     eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
 
     # Sort eigenvalues and eigenvectors in descending order
@@ -99,6 +103,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     eigenvectors = eigenvectors[:, sorted_indices]
 
     # Save eigenvalues to file
+    print("Saving eigenvalues and eigenvectors")
     with sta.resolve_file(eigenvalues_out, 'w') as outfile2:
         np.savetxt(outfile2, eigenvalues[:num_components],
                    fmt='%.6f', header='Top Eigenvalues')
@@ -114,12 +119,12 @@ def get_parser() -> argparse.ArgumentParser:
     sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval', 'time_step')
     parser.add_argument('--sel', metavar='selection', required=True)
     parser.add_argument('--corr-matrix-out', metavar='filename',
-                        type=writable_outfile, required=True)
+                        default='corr_matrix.dat', type=writable_outfile)
     parser.add_argument('--eigenvalues-out', metavar='filename',
-                        type=writable_outfile, required=True)
+                        default='eigenvalues.dat', type=writable_outfile)
     parser.add_argument('--eigenvectors-out', metavar='filename',
-                        type=writable_outfile, required=True)
-    parser.add_argument('--align-out', type=writable_outfile, metavar='filename'),
+                        default='eigenvectors.dat', type=writable_outfile)
+    parser.add_argument('--align-out', type=writable_outfile, metavar='filename')
 
     return parser
 

@@ -102,13 +102,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection for contact calculation")
     parser.add_argument('--contact-threshold', type=p_float, metavar='N', default='5.0',
                         help="Distance cutoff for calculating the contact frequency.")
-    parser.add_argument('-rt', '--ref-frame-type', choices=['specific', 'average'],
-                        default='specific', metavar='TYPE',
-                        help="specific: use a given frame as the reference; "
-                        "average: use average structure")
-    parser.add_argument('-rn', '--ref-frame-num', type=p_int, default=1, metavar='N',
-                        help="Frame to use for reference coordinates (default: 1). "
-                        "Only meaningful if --ref-frame-type is 'specific'")
 
     return parser
 

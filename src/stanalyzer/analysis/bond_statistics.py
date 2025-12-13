@@ -154,6 +154,9 @@ def read_index_file(index_file: sta.FileRef) -> BondParams:
         for line in f:
             line = line.strip()
 
+            if not line:
+                continue
+
             if line in sections:
                 section = line.strip('[]').lower()
                 in_section = True
@@ -375,11 +378,14 @@ def get_parser() -> argparse.ArgumentParser:
     group.add_argument('-i', '--index-file', metavar='FILE', type=sta.InputFile,
                        help="File containing indices to read.")
     parser.add_argument('-bo', '--bond-out', metavar='FILE', type=writable_outfile,
-                        default='bond_lengths.dat', help="Location to write bonds.")
+                        default='bond_lengths.dat', help="Location to write bonds. "
+                        "(default: bond_lengths.dat)")
     parser.add_argument('-ao', '--angle-out', metavar='FILE', type=writable_outfile,
-                        default='bond_angles.dat', help="Location to write angles.")
+                        default='bond_angles.dat', help="Location to write angles."
+                        "(default: bond_angles.dat)")
     parser.add_argument('-do', '--dihedral-out', metavar='FILE', type=writable_outfile,
-                        default='bond_dihedrals.dat', help="Location to write dihedrals.")
+                        default='bond_dihedrals.dat', help="Location to write dihedrals."
+                        "(default: bond_dihedrals.dat)")
 
     return parser
 
