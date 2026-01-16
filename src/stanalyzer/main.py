@@ -107,7 +107,9 @@ async def insert_analysis(settings: dict, response: Response) -> StrDict | StrDi
     in_dir = Path(project_settings['input_path'])
     out_dir = Path(project_settings['output_path'])
 
-    ctx = invoke.Context()
+    ctx = invoke.Context(
+        invoke.Config(overrides={'shell': project_settings['shell_path']})
+    )
     processes = []
     for analysis, analysis_settings in job_settings.items():
         # setup invocation args

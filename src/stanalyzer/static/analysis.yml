@@ -4,12 +4,12 @@ apl:
   options:
     x:
       label: System Size (X)
-      type: form.positive_integer
-      value: 50
+      type: form.input
+      value: 50.0
     y:
       label: System Size (Y)
-      type: form.positive_integer
-      value: 50
+      type: form.input
+      value: 50.0
     sel:
       label: Head group selection
       type: form.textarea

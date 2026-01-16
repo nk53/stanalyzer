@@ -31,17 +31,16 @@ protein_dna:
   options:
     - secondary_structure
     - hole
+    - rmsd
+    - rmsf
 dist_angle:
   label: Distances and Angles
   options:
     - bond_statistics
     - contact_res_time
     - contacts
-    - msd_solution
     - radius_of_gyration
     - rdf
-    - rmsd
-    - rmsf
 nonbond:
   label: Non-bond interactions
   options:
@@ -53,4 +52,5 @@ misc:
   label: Other
   options:
     - cov_analysis
+    - msd_solution
     - sasa
