@@ -3,10 +3,10 @@ import typing as t
 
 import MDAnalysis as mda
 import numpy as np
-from MDAnalysis.analysis import distances
+from MDAnalysis.lib.distances import self_capped_distance
 
 import stanalyzer.cli.stanalyzer as sta
-from stanalyzer.cli.validators import p_int, p_float
+from stanalyzer.cli.validators import p_float
 
 ANALYSIS_NAME = 'contacts'
 
@@ -15,15 +15,13 @@ CDict: t.TypeAlias = dict[CPair, int]
 
 
 def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
-    """Returns a header string and, if optionally writes it to a file
+    header_str = "Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency"
 
-    If np_formatted is true, the `#` is omitted."""
-    if np_formatted:
-        header_str = "Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency"
-    else:
-        header_str = "Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency"
+    if not np_formatted:
+        header_str = "# " + header_str
 
-    print(header_str, file=outfile)
+    if outfile is not None:
+        print(header_str, file=outfile)
 
     return header_str
 
@@ -31,66 +29,106 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
 def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    out: sta.FileRef, contact_threshold: float = 5.0,
                    interval: int = 1, debug: bool = False) -> None:
-    """Writes contacts to `out` file"""
+    """
+    Calculate residue-residue contact frequencies.
+
+    A contact is recorded when the distance between the centers of mass
+    of two residues is below `contact_threshold`.
+
+    Optimized version:
+    - Computes residue COMs once per frame.
+    - Uses MDAnalysis self_capped_distance() to find only nearby pairs.
+    - Avoids O(N^2) Python distance checks for every residue pair.
+    """
 
     if contact_threshold <= 0:
-        raise ValueError("contact_threshold must be a positive number, "
-                         f"not '{contact_threshold}'")
+        raise ValueError(
+            "contact_threshold must be a positive number, "
+            f"not '{contact_threshold}'"
+        )
 
     universe = mda.Universe(psf, traj)
 
-    # Create a dictionary to store contact frequency information
-    contact_frequency: CDict = {}
-    residues = universe.select_atoms(sel).residues
+    # Perform atom selection only once.
+    # Residue objects remain valid as trajectory frames advance.
+    atoms = universe.select_atoms(sel)
+    residues = atoms.residues
 
-    # Iterate over frames in the trajectory
+    if len(residues) == 0:
+        raise ValueError(f"No residues found for selection: {sel}")
+
+    contact_frequency: CDict = {}
+
+    # Cache residue metadata once instead of repeatedly accessing
+    # res.resname and res.resid inside the frame loop.
+    residue_labels: list[tuple[str, int]] = [
+        (res.resname, res.resid) for res in residues
+    ]
+
+    # Iterate through trajectory frames.
     for step_num, ts in enumerate(universe.trajectory):
+
         if step_num % interval:
             continue
 
-        # Select all atoms
-        atoms = universe.select_atoms(sel)
+        # Compute each residue center-of-mass exactly once per frame.
+        # Old implementation recomputed COMs for every residue pair.
+        coms = np.asarray(
+            [res.atoms.center_of_mass() for res in residues],
+            dtype=np.float64,
+        )
 
-        # Calculate the pairwise distances
-        if debug:
-            pairwise_distances = distances.distance_array(
-                atoms.positions, atoms.positions, box=atoms.dimensions
+        # Use MDAnalysis spatial search to find only residue pairs
+        # within the contact cutoff.
+        #
+        # This replaces the nested:
+        #
+        #   for i:
+        #       for j:
+        #           distance(...)
+        #
+        # loop from the original implementation.
+        pairs, _ = self_capped_distance(
+            coms,
+            max_cutoff=contact_threshold,
+            box=ts.dimensions,
+            return_distances=True,
+        )
+
+        # Prevent duplicate counting within a frame.
+        frame_contacts: set[CPair] = set()
+
+        for i, j in pairs:
+
+            if i == j:
+                continue
+
+            # Ensure contact ordering is consistent.
+            if i > j:
+                i, j = j, i
+
+            res_i_name, res_i_id = residue_labels[i]
+            res_j_name, res_j_id = residue_labels[j]
+
+            frame_contacts.add(
+                (res_i_name, res_i_id,
+                 res_j_name, res_j_id)
             )
-            print(pairwise_distances)
 
-        # Check distances between residues
-        num_residues = len(residues)
-        for i in range(num_residues):
-            for j in range(i + 1, num_residues):
-                # Get the residue positions
-                residue_i = residues[i].atoms
-                residue_j = residues[j].atoms
+        if debug:
+            print(f"frame={step_num} contacts={len(frame_contacts)}")
 
-                # Calculate distance between the center of mass of residues
-                com_i = residue_i.center_of_mass()
-                com_j = residue_j.center_of_mass()
+        # Increment contact frequency once per frame.
+        for contact in frame_contacts:
+            contact_frequency[contact] = (
+                contact_frequency.get(contact, 0) + 1
+            )
 
-                # Calculate distance
-                dist = np.linalg.norm(com_i - com_j)
-
-                if dist < contact_threshold:
-                    contact = (residues[i].resname, residues[i].resid,
-                               residues[j].resname, residues[j].resid)
-
-                    # Increment the contact frequency
-                    if contact in contact_frequency:
-                        contact_frequency[contact] += 1
-                    else:
-                        contact_frequency[contact] = 1
-
-    # Write the contact frequencies to the output file
     with sta.resolve_file(out, 'w') as outfile:
-        outfile.write(
-            "# Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency\n")
+        header(outfile)
+
         for contact, freq in contact_frequency.items():
-            res_i_name, res_i_id, res_j_name, res_j_id = contact
-            outfile.write(
-                f"{res_i_name} {res_i_id} {res_j_name} {res_j_id} {freq}\n")
+            print(*contact, freq, file=outfile)
 
     print(f"Contact frequencies written to {out}")
 
@@ -102,7 +140,6 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection for contact calculation")
     parser.add_argument('--contact-threshold', type=p_float, metavar='N', default='5.0',
                         help="Distance cutoff for calculating the contact frequency.")
-
     return parser
 
 

@@ -210,14 +210,17 @@ class AnalysisCase(unittest.TestCase):
         if not out_path.parent.exists():
             out_path.parent.mkdir(parents=True)
 
-        out_stream = out_path.open('w')
-        err_stream = err_path.open('w')
-        print('args:', args, file=out_stream)
-        out_stream.flush()
+        with out_path.open('w') as out_stream, err_path.open('w') as err_stream:
+            print('args:', args, file=out_stream)
+            out_stream.flush()
 
-        self.ctx.run(args, out_stream=out_stream, err_stream=err_stream)
+            self.ctx.run(args, out_stream=out_stream, err_stream=err_stream)
 
-        return out_stream, err_stream
+        # Reopen files for reading/checking after command finishes.
+        out_read = out_path.open('r')
+        err_read = err_path.open('r')
+
+        return out_read, err_read
 
     def run(self, result: unittest.TestResult | None = None) -> unittest.TestResult | None:
         if not getattr(self, '__unittest_skip__', False):
@@ -250,11 +253,19 @@ class SoohyungCase(AnalysisCase):
 
         if self.accepts_o:
             out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
-            self.assertTrue(self.file_exists(dat, outfile))
+            try:
+                self.assertTrue(self.file_exists(dat, outfile))
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
         else:
             out, err = self.run_analysis(args, accepts_o=self.accepts_o)
-
-        self.assertFalse(self.file_empty(out, outfile))
+            try:
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
 
     def __init_subclass__(cls, **kwargs):
         if not cls.analysis_name:
@@ -331,6 +342,10 @@ class Thickness(SoohyungCase):
 class WaterBridge(SoohyungCase):
     standard_args = '--sel "protein" --sel2 "None" --water-sel "resname TIP3" '\
                     '--d-a-cutoff "3.0" --d-h-a-angle-cutoff "150.0"'
+
+
+class Contacts(SoohyungCase):
+    standard_args = '--sel "protein" --contact-threshold "5.0"'
 
 
 if __name__ == '__main__':
