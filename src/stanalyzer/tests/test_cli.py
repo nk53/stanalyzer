@@ -267,7 +267,6 @@ class SoohyungCase(AnalysisCase):
                 out.close()
                 err.close()
 
-
     def __init_subclass__(cls, **kwargs):
         if not cls.analysis_name:
             cls.analysis_name = camel_to_snake(cls.__name__)
@@ -347,6 +346,7 @@ class WaterBridge(SoohyungCase):
 
 class Contacts(SoohyungCase):
     standard_args = '--sel "protein" --contact-threshold "5.0"'
+
 
 if __name__ == '__main__':
     unittest.main()

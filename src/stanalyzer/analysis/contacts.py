@@ -13,6 +13,7 @@ ANALYSIS_NAME = 'contacts'
 CPair: t.TypeAlias = tuple[str, int, str, int]
 CDict: t.TypeAlias = dict[CPair, int]
 
+
 def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     header_str = "Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency"
 
@@ -23,6 +24,7 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
         print(header_str, file=outfile)
 
     return header_str
+
 
 def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    out: sta.FileRef, contact_threshold: float = 5.0,
