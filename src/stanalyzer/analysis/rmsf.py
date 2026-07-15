@@ -6,8 +6,7 @@ from stanalyzer.cli.stanalyzer import writable_outfile
 import MDAnalysis as mda
 import numpy as np
 
-from MDAnalysis.analysis.align import AlignTraj
-from MDAnalysis.analysis.rms import RMSF
+from MDAnalysis.analysis.align import rotation_matrix
 
 
 ANALYSIS_NAME = 'rmsf'
@@ -33,35 +32,81 @@ def write_rmsf(psf: sta.FileRef, traj: sta.FileRefList, sel_align: str, sel_rmsf
                interval: int = 1) -> None:
     """Writes RMSF (Root Mean Square Fluctuation) to `out` file."""
 
+    if interval < 1:
+        raise ValueError("interval must be at least 1")
+
     if ref_psf is None:
         ref_psf = psf
 
-    # Load mobile and reference universes
+    # Load mobile and reference universes. The reference uses the first
+    # trajectory frame, matching the previous AlignTraj implementation.
     mobile = mda.Universe(psf, traj)
     ref = mda.Universe(ref_psf, traj[0])
 
-    if align_out is None:
-        print("Aligning file in-memory. If this fails because traj is too "
-              "large, try again with the --align-out option")
-    align_file = align_out.name if align_out else None
+    mobile_align = mobile.select_atoms(sel_align)
+    reference_align = ref.select_atoms(sel_align)
+    rmsf_atoms = mobile.select_atoms(sel_rmsf)
 
-    # Align the mobile trajectory to the reference based on the selection for alignment
-    AlignTraj(mobile, ref, filename=align_file, select=sel_align,
-              in_memory=align_file is None).run()
+    if len(mobile_align) == 0:
+        raise ValueError(f"Alignment selection matched no atoms: {sel_align}")
+    if len(rmsf_atoms) == 0:
+        raise ValueError(f"RMSF selection matched no atoms: {sel_rmsf}")
+    if len(mobile_align) != len(reference_align):
+        raise ValueError(
+            "Mobile and reference alignment selections must contain "
+            "the same number of atoms"
+        )
 
-    # Load the aligned trajectory from the saved file
-    aligned_mobile = mobile if align_out is None else mda.Universe(psf, align_file)
+    reference_center = reference_align.positions.mean(axis=0)
+    reference_coordinates = (
+        reference_align.positions.astype(np.float64, copy=True)
+        - reference_center
+    )
 
-    # Calculate RMSF using the aligned trajectory and the selection for RMSF calculation
-    # rmsf_analysis = RMSF(mobile.select_atoms(sel_rmsf)).run()
-    atoms = aligned_mobile.select_atoms(sel_rmsf)
-    rmsf_analysis = RMSF(aligned_mobile.select_atoms(sel_rmsf)).run()
-    # atom_index = np.arange(len(rmsf_analysis.rmsf))
+    mean = np.zeros((len(rmsf_atoms), 3), dtype=np.float64)
+    sumsquares = np.zeros_like(mean)
+    frame_count = 0
 
-    # Combine atom index and RMSF values
-    # output = np.stack([atom_index, rmsf_analysis.rmsf]).T
-    residue_indices = atoms.resids
-    output = np.stack([residue_indices, rmsf_analysis.rmsf]).T
+    writer = None
+    if align_out is not None:
+        writer = mda.Writer(align_out.name, n_atoms=len(mobile.atoms))
+
+    try:
+        for ts in mobile.trajectory[::interval]:
+            mobile_center = mobile_align.positions.mean(axis=0)
+            mobile_coordinates = (
+                mobile_align.positions.astype(np.float64, copy=False)
+                - mobile_center
+            )
+            rotation, _ = rotation_matrix(
+                mobile_coordinates,
+                reference_coordinates,
+            )
+
+            aligned_positions = (
+                (rmsf_atoms.positions - mobile_center) @ rotation.T
+                + reference_center
+            )
+
+            frame_count += 1
+            delta = aligned_positions - mean
+            mean += delta / frame_count
+            sumsquares += delta * (aligned_positions - mean)
+
+            if writer is not None:
+                mobile.atoms.translate(-mobile_center)
+                mobile.atoms.rotate(rotation)
+                mobile.atoms.translate(reference_center)
+                writer.write(mobile.atoms)
+    finally:
+        if writer is not None:
+            writer.close()
+
+    if frame_count == 0:
+        raise ValueError("Trajectory contains no frames")
+
+    rmsf = np.sqrt(sumsquares.sum(axis=1) / frame_count)
+    output = np.stack([rmsf_atoms.resids, rmsf]).T
 
     # Write the results to the output file
     with sta.resolve_file(out, 'w') as outfile:
