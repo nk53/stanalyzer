@@ -48,6 +48,11 @@ def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
                 # get X/Y/Z and possibly also alpha/beta/gamma
                 # dim_fields = ts.dimensions if include_angles else ts.dimensions[:3]
                 dim_fields = ts.dimensions
+                if dim_fields is None:
+                    raise ValueError(
+                        "Trajectory frame has no box dimensions. "
+                        "system_size requires trajectory files with unit cell/box information."
+                    )
 
                 # calc volume
                 x, y, z = dim_fields[:3]

@@ -1,156 +1,262 @@
 import argparse
-import numpy as np
-import typing as t
-from operator import itemgetter
+import time
+from collections import defaultdict
+
+import MDAnalysis as mda
 
 import stanalyzer.cli.stanalyzer as sta
-import MDAnalysis as mda
-from MDAnalysis.lib.distances import capped_distance
-from MDAnalysis.lib.mdamath import normal, angle
 
-if t.TYPE_CHECKING:
-    import numpy.typing as npt
+from stanalyzer.workers.pi_stacking_worker import (
+    CATION_SELECTION,
+    RESIDUE_TO_RING_ATOMS,
+    pi_stacking_worker,
+)
+from stanalyzer.runtime import (
+    RuntimeContext,
+    RuntimeExecutor,
+    RuntimeScheduler,
+    chunk_frames,
+)
 
-ANALYSIS_NAME = 'pi_stacking'
 
-NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
+ANALYSIS_NAME = "pi_stacking"
+
+PiPair = tuple[str, str]
+PiEvents = dict[PiPair, set[int]]
 
 
-def header(outfile: sta.FileLike | None = None) -> str:
-    """Returns a header string and, if optionally writes it to a file"""
+def header(
+    outfile: sta.FileLike | None = None,
+) -> str:
     header_str = "#residue1 residue2 frames"
 
-    print(header_str, file=outfile)
+    if outfile is not None:
+        print(header_str, file=outfile)
 
     return header_str
 
 
-def write_pi_stacking(psf: sta.FileRef, traj: sta.FileRefList, out: sta.FileRef,
-                      sel: str = 'all', pi_pi_dist_cutoff: float = 6.0,
-                      pi_cation_dist_cutoff: float = 6.0, interval: int = 1) -> None:
-    """Writes pi stacking to `out` file"""
-    residue2atoms = {'PHE': 'name CG CD* CE* CZ',
-                     'TYR': 'name CG CD* CE* CZ',
-                     'TRP': 'name CD2 CE2 CZ2 CH2 CZ3 CE3',
-                     'HIS': 'name CG ND1 CE1 NE2 CD2'}
-    # CHARMM FF
-    for residue in ['HSD', 'HSE', 'HSP']:
-        residue2atoms[residue] = residue2atoms['HIS']
-    # AMBER FF
-    for residue in ['HID', 'HIE', 'HIP']:
-        residue2atoms[residue] = residue2atoms['HIS']
-        residue2atoms['C'+residue] = residue2atoms['HIS']
-        residue2atoms['N'+residue] = residue2atoms['HIS']
+def merge_events(
+    partial_results: list[PiEvents],
+) -> PiEvents:
+    merged: dict[PiPair, set[int]] = defaultdict(set)
 
-    # the angle between ring normal and vector(ring center to cation) is within 0-30 degrees
-    pi_cation_radian_limit = np.pi / 6
-    pi_cation_radian_limit2 = np.pi - pi_cation_radian_limit
+    for partial in partial_results:
+        for pair, frames in partial.items():
+            merged[pair].update(frames)
 
-    pi_stacking = {}
-    step_num = 0
+    return dict(merged)
 
-    for traj_file in traj:
-        u = mda.Universe(psf, traj_file)
-        all_atoms = u.select_atoms(sel)
 
-        pi_rings = []
-        for residue in all_atoms.residues:
-            if residue.resname in residue2atoms:
-                pi_ring_atoms = residue.atoms.select_atoms(residue2atoms[residue.resname])
-                pi_rings.append(pi_ring_atoms)
-        if len(pi_rings) == 0:
-            print('Unable to find aromatic residues!')
-            return
-        cations = all_atoms.select_atoms(
-            "(resname ARG LYS CARG CLYS NARG NLYS) and (name NE NH* NZ)")
-        if len(pi_rings) + len(cations) < 2:
-            print('The total number of aromatic residues and positively '
-                  'charge residues is less than 2!')
-            return
+def write_pi_stacking(
+    psf: sta.FileRef,
+    traj: sta.FileRefList,
+    out: sta.FileRef,
+    sel: str = "all",
+    pi_pi_dist_cutoff: float = 6.0,
+    pi_cation_dist_cutoff: float = 6.0,
+    interval: int = 1,
+    workers: int | None = None,
+    debug: bool = False,
+) -> None:
+    if pi_pi_dist_cutoff <= 0:
+        raise ValueError(
+            "pi_pi_dist_cutoff must be positive"
+        )
 
-        for ts in u.trajectory:
-            if step_num % interval != 0:
-                step_num += 1
-                continue
-            _pi_ring_centers: list = []
-            pi_ring_normals = []
-            for pi_ring in pi_rings:
-                pi_ring_center = pi_ring.positions.mean(axis=0)
-                _pi_ring_centers.append(pi_ring_center)
-                v1 = pi_ring.positions[0] - pi_ring_center
-                v2 = pi_ring.positions[1] - pi_ring_center
-                pi_ring_normals.append(normal(v1, v2))
-            pi_ring_centers = np.array(_pi_ring_centers)
+    if pi_cation_dist_cutoff <= 0:
+        raise ValueError(
+            "pi_cation_dist_cutoff must be positive"
+        )
 
-            pairs, distances = capped_distance(
-                pi_ring_centers, pi_ring_centers, max_cutoff=pi_pi_dist_cutoff,
-                min_cutoff=1.0, return_distances=True)
-            for idx1, idx2 in pairs:
-                atom1 = pi_rings[idx1].atoms[0]
-                residue1 = atom1.segid + '_' + atom1.resname + '_' + str(atom1.resid)
-                atom2 = pi_rings[idx2].atoms[0]
-                residue2 = atom2.segid + '_' + atom2.resname + '_' + str(atom2.resid)
-                key = tuple(sorted([residue1, residue2]))
-                if key not in pi_stacking:
-                    pi_stacking[key] = set([step_num])
-                else:
-                    pi_stacking[key].add(step_num)
+    if interval < 1:
+        raise ValueError(
+            "interval must be at least 1"
+        )
 
-            pairs2, distances2 = capped_distance(
-                pi_ring_centers, cations, max_cutoff=pi_cation_dist_cutoff,
-                min_cutoff=1.0, return_distances=True)
+    if workers is not None and workers < 1:
+        raise ValueError(
+            "workers must be at least 1"
+        )
 
-            for idx1, idx2 in pairs2:
-                atom1 = pi_rings[idx1].atoms[0]
-                residue1 = atom1.segid + '_' + atom1.resname + '_' + str(atom1.resid)
-                atom2 = cations[idx2]
-                residue2 = atom2.segid + '_' + atom2.resname + '_' + str(atom2.resid)
-                # check if the angle between ring normal
-                # and vector(ring center to cation) is within 0-30 degrees
-                v_center2cation = cations.positions[idx2] - pi_ring_centers[idx1]
-                radian = angle(pi_ring_normals[idx1], v_center2cation)
-                if (radian >= -pi_cation_radian_limit and radian <= pi_cation_radian_limit
-                        or radian >= pi_cation_radian_limit2 or radian <= -pi_cation_radian_limit2):
-                    key = (residue1, residue2)
-                    if key not in pi_stacking:
-                        pi_stacking[key] = set([step_num])
-                    else:
-                        pi_stacking[key].add(step_num)
+    universe = mda.Universe(psf, traj)
+    all_atoms = universe.select_atoms(sel)
 
-            step_num += 1
+    if len(all_atoms) == 0:
+        raise ValueError(
+            f"No atoms found for selection: {sel}"
+        )
 
-    with sta.resolve_file(out, 'w') as outfile:
+    aromatic_count = sum(
+        1
+        for residue in all_atoms.residues
+        if residue.resname in RESIDUE_TO_RING_ATOMS
+    )
+
+    cations = all_atoms.select_atoms(
+        CATION_SELECTION
+    )
+
+    if aromatic_count == 0:
+        raise ValueError(
+            "Unable to find aromatic residues"
+        )
+
+    if aromatic_count + len(cations) < 2:
+        raise ValueError(
+            "The total number of aromatic residues and "
+            "cation atoms is less than two"
+        )
+
+    n_frames = len(universe.trajectory)
+    analyzed_frames = len(
+        range(0, n_frames, interval)
+    )
+
+    print("\n============= PI STACKING INFO =============")
+    print(f"Frames            : {n_frames}")
+    print(f"Analyzed          : {analyzed_frames}")
+    print(f"Aromatic residues : {aromatic_count}")
+    print(f"Cation atoms      : {len(cations)}")
+    print(f"Pi-Pi cutoff      : {pi_pi_dist_cutoff}")
+    print(f"Pi-cation cutoff  : {pi_cation_dist_cutoff}")
+    print(f"Interval          : {interval}")
+    context = RuntimeContext.detect_desktop()
+    plan = RuntimeScheduler(context).create_plan(
+        task_count=n_frames or None,
+        n_workers=workers,
+    )
+    print(f"Backend           : {plan.backend}")
+    print(f"Strategy          : {plan.strategy}")
+    print(f"Workers           : {plan.n_workers}")
+    print("============================================\n")
+
+    chunks = chunk_frames(
+        n_frames=n_frames,
+        n_workers=plan.n_workers,
+    )
+
+    tasks = [
+        (
+            psf,
+            traj,
+            sel,
+            pi_pi_dist_cutoff,
+            pi_cation_dist_cutoff,
+            interval,
+            start,
+            stop,
+            debug,
+        )
+        for start, stop in chunks
+    ]
+
+    start_time = time.perf_counter()
+
+    partial_results = RuntimeExecutor(plan=plan).run(
+        pi_stacking_worker,
+        tasks,
+    )
+
+    pi_stacking = merge_events(
+        partial_results
+    )
+
+    elapsed = time.perf_counter() - start_time
+
+    print(
+        f"Pi-stacking time: {elapsed:.3f} sec"
+    )
+
+    sorted_events = sorted(
+        pi_stacking.items(),
+        key=lambda item: (
+            -len(item[1]),
+            item[0],
+        ),
+    )
+
+    with sta.resolve_file(
+        out,
+        "w",
+    ) as outfile:
         header(outfile)
-        count: list[tuple[tuple, int]] = []
-        for key, value in pi_stacking.items():
-            count.append((key, len(value)))
-        count = sorted(count, key=itemgetter(1), reverse=True)
-        for key, _ in count:
-            stacking = " ".join([str(frame) for frame in sorted(list(pi_stacking[key]))])
-            output = "{} {} ".format(*key) + stacking
-            print(output, file=outfile)
+
+        for pair, frames in sorted_events:
+            residue1, residue2 = pair
+
+            frame_text = " ".join(
+                str(frame)
+                for frame in sorted(frames)
+            )
+
+            print(
+                residue1,
+                residue2,
+                frame_text,
+                file=outfile,
+            )
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f'stanalyzer {ANALYSIS_NAME}')
-    sta.add_project_args(parser, 'psf', 'traj', 'out', 'interval')
-    parser.add_argument('--pi-pi-dist-cutoff', type=float, metavar='N', default='6.0',
-                        help="Distance cutoff between aromatic ring centers")
-    parser.add_argument('--pi-cation-dist-cutoff', type=float, metavar='N', default='6.0',
-                        help="Distance cutoff between aromatic ring centers and "
-                             "positively charged groups")
-    parser.add_argument('--sel', metavar='selection', default='all',
-                        help="Restrict the search to only those atoms")
+    parser = argparse.ArgumentParser(
+        prog=f"stanalyzer {ANALYSIS_NAME}"
+    )
+
+    sta.add_project_args(
+        parser,
+        "psf",
+        "traj",
+        "out",
+        "interval",
+    )
+
+    parser.add_argument(
+        "--pi-pi-dist-cutoff",
+        type=float,
+        metavar="N",
+        default=6.0,
+        help="Distance cutoff between aromatic ring centers.",
+    )
+
+    parser.add_argument(
+        "--pi-cation-dist-cutoff",
+        type=float,
+        metavar="N",
+        default=6.0,
+        help="Distance cutoff between aromatic rings and cations.",
+    )
+
+    parser.add_argument(
+        "--sel",
+        metavar="selection",
+        default="all",
+        help="Restrict the analysis to selected atoms.",
+    )
+
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Maximum workers; defaults to automatic runtime selection.",
+    )
+
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print per-frame event counts.",
+    )
 
     return parser
 
-
 def main(settings: dict | None = None) -> None:
     if settings is None:
-        settings = dict(sta.get_settings(ANALYSIS_NAME))
+        settings = dict(
+            sta.get_settings(ANALYSIS_NAME)
+        )
 
     write_pi_stacking(**settings)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
