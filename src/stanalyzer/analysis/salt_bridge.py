@@ -116,7 +116,7 @@ def write_salt_bridge(
     print(f"Basic atoms     : {len(basic)}")
     print(f"Distance cutoff : {dist_cutoff} Å")
     print(f"Interval        : {interval}")
-    context = RuntimeContext.detect_desktop()
+    context = RuntimeContext.detect()
     plan = RuntimeScheduler(context).create_plan(
         task_count=n_frames or None,
         n_workers=workers,

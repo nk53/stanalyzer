@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from stanalyzer.workers.executor import FrameExecutor
 from stanalyzer.runtime import (
@@ -106,11 +107,62 @@ class RuntimeSchedulerTest(unittest.TestCase):
 
         plan = RuntimeScheduler(context).create_plan(task_count=20)
 
-        self.assertEqual(plan.n_workers, 12)
+        self.assertEqual(plan.n_workers, 1)
         self.assertEqual(plan.backend, "sequential")
         self.assertEqual(plan.strategy, "sequential")
         self.assertIn("webassembly", context.capabilities)
         self.assertIn("shared-array-buffer", context.capabilities)
+
+    def test_auto_worker_count_is_conservative(self):
+        context = RuntimeContext(
+            environment="desktop",
+            platform="test",
+            logical_cpus=32,
+            capabilities=frozenset({"process", "sequential"}),
+            available_memory_bytes=64 * 1024 ** 3,
+        )
+
+        plan = RuntimeScheduler(context).create_plan(task_count=100)
+
+        self.assertEqual(plan.n_workers, 4)
+        self.assertEqual(plan.backend, "process")
+
+    def test_auto_worker_count_respects_available_memory(self):
+        context = RuntimeContext(
+            environment="desktop",
+            platform="test",
+            logical_cpus=16,
+            capabilities=frozenset({"process", "sequential"}),
+            available_memory_bytes=2 * 1024 ** 3,
+        )
+
+        plan = RuntimeScheduler(context).create_plan(task_count=100)
+
+        self.assertEqual(plan.n_workers, 2)
+
+    def test_explicit_worker_count_is_only_resource_bounded(self):
+        context = RuntimeContext(
+            environment="desktop",
+            platform="test",
+            logical_cpus=8,
+            capabilities=frozenset({"process", "sequential"}),
+            available_memory_bytes=1024 ** 3,
+        )
+
+        plan = RuntimeScheduler(context).create_plan(
+            task_count=100,
+            n_workers=6,
+        )
+
+        self.assertEqual(plan.n_workers, 6)
+
+    def test_detect_uses_browser_context_on_webassembly(self):
+        with patch("stanalyzer.runtime.context.sys.platform", "emscripten"):
+            with patch("stanalyzer.runtime.context.os.cpu_count", return_value=8):
+                context = RuntimeContext.detect()
+
+        self.assertEqual(context.environment, "browser")
+        self.assertNotIn("process", context.capabilities)
 
 
 class ChunkFramesTest(unittest.TestCase):

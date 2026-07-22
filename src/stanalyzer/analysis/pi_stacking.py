@@ -121,7 +121,7 @@ def write_pi_stacking(
     print(f"Pi-Pi cutoff      : {pi_pi_dist_cutoff}")
     print(f"Pi-cation cutoff  : {pi_cation_dist_cutoff}")
     print(f"Interval          : {interval}")
-    context = RuntimeContext.detect_desktop()
+    context = RuntimeContext.detect()
     plan = RuntimeScheduler(context).create_plan(
         task_count=n_frames or None,
         n_workers=workers,

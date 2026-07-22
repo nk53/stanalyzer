@@ -8,6 +8,58 @@ from typing import FrozenSet, Literal
 
 Environment = Literal["desktop", "browser"]
 
+_BROWSER_PLATFORMS = frozenset({"emscripten", "wasi"})
+_CPU_ALLOCATION_ENV_VARS = (
+    "SLURM_CPUS_PER_TASK",
+    "PBS_NP",
+    "NSLOTS",
+    "OMP_NUM_THREADS",
+)
+
+
+def _positive_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _allocated_cpus() -> int:
+    """Return the CPUs this process is actually allowed to use."""
+    limits = [os.cpu_count() or 1]
+
+    get_affinity = getattr(os, "sched_getaffinity", None)
+    if get_affinity is not None:
+        try:
+            limits.append(len(get_affinity(0)))
+        except (OSError, NotImplementedError):
+            pass
+
+    for variable in _CPU_ALLOCATION_ENV_VARS:
+        value = _positive_int(os.environ.get(variable))
+        if value is not None:
+            limits.append(value)
+
+    return max(1, min(limits))
+
+
+def _available_memory_bytes() -> int | None:
+    """Best-effort available-memory detection without extra dependencies."""
+    try:
+        pages = os.sysconf("SC_AVPHYS_PAGES")
+        page_size = os.sysconf("SC_PAGE_SIZE")
+    except (AttributeError, OSError, ValueError):
+        return None
+
+    if not isinstance(pages, int) or not isinstance(page_size, int):
+        return None
+    if pages < 1 or page_size < 1:
+        return None
+    return pages * page_size
+
 
 @dataclass(frozen=True)
 class RuntimeContext:
@@ -31,13 +83,23 @@ class RuntimeContext:
             raise ValueError("available_memory_bytes must be at least 1")
 
     @classmethod
+    def detect(cls) -> "RuntimeContext":
+        """Detect a safe runtime context for CPython or WebAssembly."""
+        if sys.platform in _BROWSER_PLATFORMS:
+            return cls.from_browser(
+                logical_cpus=os.cpu_count() or 1,
+            )
+        return cls.detect_desktop()
+
+    @classmethod
     def detect_desktop(cls) -> "RuntimeContext":
-        """Detect capabilities available to ordinary CPython."""
+        """Detect capabilities and resource limits for ordinary CPython."""
         return cls(
             environment="desktop",
             platform=sys.platform,
-            logical_cpus=os.cpu_count() or 1,
+            logical_cpus=_allocated_cpus(),
             capabilities=frozenset({"process", "sequential"}),
+            available_memory_bytes=_available_memory_bytes(),
         )
 
     @classmethod

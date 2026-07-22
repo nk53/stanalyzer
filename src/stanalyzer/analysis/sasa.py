@@ -104,7 +104,7 @@ def write_sasa(
     print(f"Algorithm    : {algorithm}")
     print(f"Probe radius : {probe_radius}")
     print(f"Interval     : {interval}")
-    context = RuntimeContext.detect_desktop()
+    context = RuntimeContext.detect()
     plan = RuntimeScheduler(context).create_plan(
         task_count=n_frames or None,
         n_workers=workers,

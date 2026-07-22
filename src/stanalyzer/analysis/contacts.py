@@ -66,7 +66,7 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
         raise ValueError(f"No residues found for selection: {sel}")
 
     n_frames = len(universe.trajectory)
-    context = RuntimeContext.detect_desktop()
+    context = RuntimeContext.detect()
     plan = RuntimeScheduler(context).create_plan(
         task_count=n_frames or None,
         n_workers=workers,
