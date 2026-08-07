@@ -23,8 +23,9 @@ from stanalyzer._typing import Any, StrDict, StrDictList
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-templates = Jinja2Templates(directory="templates",
-                            extensions=['jinja2.ext.do', 'jinja2.ext.debug'])
+# templates = Jinja2Templates(directory="templates",
+#                             extensions=['jinja2.ext.do', 'jinja2.ext.debug'])
+templates = Jinja2Templates(directory="templates")
 MENU = utils.read_yaml('static/menu.yml')
 PAGES = utils.read_yaml('static/pages.yml')
 ANALYSIS = utils.read_yaml('static/analysis.yml')

@@ -2,17 +2,21 @@ import argparse
 import typing as t
 
 import MDAnalysis as mda
-import numpy as np
-from MDAnalysis.lib.distances import self_capped_distance
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.validators import p_float
+from stanalyzer.workers.contacts_worker import contacts_worker
+from stanalyzer.runtime import (
+    RuntimeContext,
+    RuntimeExecutor,
+    RuntimeScheduler,
+    chunk_frames,
+)
 
 ANALYSIS_NAME = 'contacts'
 
 CPair: t.TypeAlias = tuple[str, int, str, int]
 CDict: t.TypeAlias = dict[CPair, int]
-
 
 def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> str:
     header_str = "Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Frequency"
@@ -25,10 +29,10 @@ def header(outfile: sta.FileLike | None = None, np_formatted: bool = False) -> s
 
     return header_str
 
-
 def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    out: sta.FileRef, contact_threshold: float = 5.0,
-                   interval: int = 1, debug: bool = False) -> None:
+                   interval: int = 1, debug: bool = False,
+                   workers: int | None = None) -> None:
     """
     Calculate residue-residue contact frequencies.
 
@@ -47,87 +51,68 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
             f"not '{contact_threshold}'"
         )
 
+    if interval < 1:
+        raise ValueError("interval must be at least 1")
+
+    if workers is not None and workers < 1:
+        raise ValueError("workers must be at least 1")
+
     universe = mda.Universe(psf, traj)
 
-    # Perform atom selection only once.
-    # Residue objects remain valid as trajectory frames advance.
     atoms = universe.select_atoms(sel)
     residues = atoms.residues
 
     if len(residues) == 0:
         raise ValueError(f"No residues found for selection: {sel}")
 
-    contact_frequency: CDict = {}
+    n_frames = len(universe.trajectory)
+    context = RuntimeContext.detect()
+    plan = RuntimeScheduler(context).create_plan(
+        task_count=n_frames or None,
+        n_workers=workers,
+    )
+    print(
+        "Runtime plan: "
+        f"strategy={plan.strategy}, "
+        f"backend={plan.backend}, workers={plan.n_workers}"
+    )
 
-    # Cache residue metadata once instead of repeatedly accessing
-    # res.resname and res.resid inside the frame loop.
-    residue_labels: list[tuple[str, int]] = [
-        (res.resname, res.resid) for res in residues
+    chunks = chunk_frames(
+        n_frames=n_frames,
+        n_workers=plan.n_workers,
+    )
+
+    tasks = [
+        (
+            psf,
+            traj,
+            sel,
+            contact_threshold,
+            interval,
+            debug,
+            start,
+            stop,
+        )
+        for start, stop in chunks
     ]
 
-    # Iterate through trajectory frames.
-    for step_num, ts in enumerate(universe.trajectory):
+    executor = RuntimeExecutor(plan=plan)
+    partial_frequencies = executor.run(
+        contacts_worker,
+        tasks,
+    )
 
-        if step_num % interval:
-            continue
-
-        # Compute each residue center-of-mass exactly once per frame.
-        # Old implementation recomputed COMs for every residue pair.
-        coms = np.asarray(
-            [res.atoms.center_of_mass() for res in residues],
-            dtype=np.float64,
-        )
-
-        # Use MDAnalysis spatial search to find only residue pairs
-        # within the contact cutoff.
-        #
-        # This replaces the nested:
-        #
-        #   for i:
-        #       for j:
-        #           distance(...)
-        #
-        # loop from the original implementation.
-        pairs, _ = self_capped_distance(
-            coms,
-            max_cutoff=contact_threshold,
-            box=ts.dimensions,
-            return_distances=True,
-        )
-
-        # Prevent duplicate counting within a frame.
-        frame_contacts: set[CPair] = set()
-
-        for i, j in pairs:
-
-            if i == j:
-                continue
-
-            # Ensure contact ordering is consistent.
-            if i > j:
-                i, j = j, i
-
-            res_i_name, res_i_id = residue_labels[i]
-            res_j_name, res_j_id = residue_labels[j]
-
-            frame_contacts.add(
-                (res_i_name, res_i_id,
-                 res_j_name, res_j_id)
-            )
-
-        if debug:
-            print(f"frame={step_num} contacts={len(frame_contacts)}")
-
-        # Increment contact frequency once per frame.
-        for contact in frame_contacts:
+    contact_frequency: CDict = {}
+    for partial in partial_frequencies:
+        for contact, freq in partial.items():
             contact_frequency[contact] = (
-                contact_frequency.get(contact, 0) + 1
+                contact_frequency.get(contact, 0) + freq
             )
 
     with sta.resolve_file(out, 'w') as outfile:
         header(outfile)
 
-        for contact, freq in contact_frequency.items():
+        for contact, freq in sorted(contact_frequency.items()):
             print(*contact, freq, file=outfile)
 
     print(f"Contact frequencies written to {out}")
@@ -140,6 +125,16 @@ def get_parser() -> argparse.ArgumentParser:
                         help="Atom selection for contact calculation")
     parser.add_argument('--contact-threshold', type=p_float, metavar='N', default='5.0',
                         help="Distance cutoff for calculating the contact frequency.")
+    parser.add_argument(
+        '--workers',
+        type=int,
+        metavar='N',
+        default=None,
+        help=(
+            "Maximum number of workers. "
+            "Defaults to automatic runtime selection."
+        ),
+    )
     return parser
 
 

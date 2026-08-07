@@ -1,12 +1,12 @@
 """Compare results vs. previous runs"""
 import io
 import re
+import shlex
+import subprocess
 import typing as t
 import unittest
 from collections.abc import Callable
 from pathlib import Path
-
-import invoke
 
 from stanalyzer.utils import write_settings
 from stanalyzer.validation import Project
@@ -102,7 +102,6 @@ class ManagedConfig:
 
 
 class AnalysisCase(unittest.TestCase):
-    ctx: invoke.Context
     config_path: Path
     config: Project
     manager: ManagedConfig
@@ -213,24 +212,25 @@ class AnalysisCase(unittest.TestCase):
         with out_path.open('w') as out_stream, err_path.open('w') as err_stream:
             print('args:', args, file=out_stream)
             out_stream.flush()
-
-            self.ctx.run(args, out_stream=out_stream, err_stream=err_stream)
-
+            subprocess.run(
+                shlex.split(args),
+                cwd=self.config.output_path,
+                stdin=subprocess.DEVNULL,
+                stdout=out_stream,
+                stderr=err_stream,
+                check=True,
+            )
         # Reopen files for reading/checking after command finishes.
         out_read = out_path.open('r')
         err_read = err_path.open('r')
-
         return out_read, err_read
 
     def run(self, result: unittest.TestResult | None = None) -> unittest.TestResult | None:
         if not getattr(self, '__unittest_skip__', False):
-            self.ctx = invoke.Context()
-
             assert self.manager is not None, "Missing project.json"
 
             self.manager.write()
-            with self.ctx.cd(self.config.output_path):
-                result = super().run(result)
+            result = super().run(result)
 
         return result
 
@@ -346,7 +346,6 @@ class WaterBridge(SoohyungCase):
 
 class Contacts(SoohyungCase):
     standard_args = '--sel "protein" --contact-threshold "5.0"'
-
 
 if __name__ == '__main__':
     unittest.main()
