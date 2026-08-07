@@ -212,14 +212,6 @@ class AnalysisCase(unittest.TestCase):
         with out_path.open('w') as out_stream, err_path.open('w') as err_stream:
             print('args:', args, file=out_stream)
             out_stream.flush()
-        with out_path.open('w') as out_stream, err_path.open('w') as err_stream:
-            print('args:', args, file=out_stream)
-            out_stream.flush()
-
-<<<<<<< HEAD
-            self.ctx.run(args, out_stream=out_stream, err_stream=err_stream)
-            self.ctx.run(args, out_stream=out_stream, err_stream=err_stream)
-=======
             subprocess.run(
                 shlex.split(args),
                 cwd=self.config.output_path,
@@ -228,17 +220,9 @@ class AnalysisCase(unittest.TestCase):
                 stderr=err_stream,
                 check=True,
             )
->>>>>>> 00f5271 (Refactor analysis modules for better and faster performance to use runtime scheduler)
-
         # Reopen files for reading/checking after command finishes.
         out_read = out_path.open('r')
         err_read = err_path.open('r')
-
-        return out_read, err_read
-        # Reopen files for reading/checking after command finishes.
-        out_read = out_path.open('r')
-        err_read = err_path.open('r')
-
         return out_read, err_read
 
     def run(self, result: unittest.TestResult | None = None) -> unittest.TestResult | None:
@@ -275,20 +259,8 @@ class SoohyungCase(AnalysisCase):
             finally:
                 out.close()
                 err.close()
-            try:
-                self.assertTrue(self.file_exists(dat, outfile))
-                self.assertFalse(self.file_empty(out, outfile))
-            finally:
-                out.close()
-                err.close()
         else:
             out, err = self.run_analysis(args, accepts_o=self.accepts_o)
-            try:
-                self.assertFalse(self.file_empty(out, outfile))
-            finally:
-                out.close()
-                err.close()
-
             try:
                 self.assertFalse(self.file_empty(out, outfile))
             finally:
