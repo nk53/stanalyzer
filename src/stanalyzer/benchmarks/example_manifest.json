@@ -1,0 +1,13 @@
+{
+  "common_args": ["--settings", "project.json"],
+  "analyses": [
+    {"name": "system_size", "args": ["--out", "system_size.dat"]},
+    {"name": "rmsd", "args": ["--sel", "protein and name CA", "--out", "rmsd.dat"]},
+    {"name": "rmsf", "args": ["--sel-align", "protein and name CA", "--sel-rmsf", "protein and name CA", "--out", "rmsf.dat"]},
+    {"name": "radius_of_gyration", "args": ["--sel-align", "protein and name CA", "--sel-rg", "protein", "--out", "radius_of_gyration.dat"]},
+    {"name": "contacts", "args": ["--sel", "protein", "--contact-threshold", "5.0", "--out", "contacts.dat"]},
+    {"name": "sasa", "args": ["--sel", "protein", "--out", "sasa.dat"]},
+    {"name": "salt_bridge", "args": ["--positive-sel", "protein", "--negative-sel", "protein", "--out", "salt_bridge.dat"]},
+    {"name": "pi_stacking", "args": ["--sel", "protein", "--out", "pi_stacking.dat"]}
+  ]
+}
