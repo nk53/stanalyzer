@@ -784,6 +784,33 @@ msd_membrane:
       label: Frame interval
       type: form.positive_integer
       value: 1
+    max_lag_frames:
+      label: Maximum lag in analyzed frames (blank means all)
+      type: form.integer
+      value:
+    msd_engine:
+      label: MSD calculation engine
+      type: form.select
+      options:
+        auto: Automatic (frame/lag aware)
+        direct: Direct (legacy-compatible)
+        fft: FFT (long trajectories)
+    fft_chunk_molecules:
+      label: FFT molecule chunk size
+      type: form.positive_integer
+      value: 256
+    fft_workers:
+      label: FFT worker threads
+      type: form.positive_integer
+      value: 1
+    com_cache:
+      label: Molecular COM cache directory (blank disables)
+      type: form.textarea
+      classes: [code]
+      value:
+    refresh_com_cache:
+      label: Refresh molecular COM cache
+      type: form.checkbox
 scd:
   label: SCD Order Paramter
   options:
