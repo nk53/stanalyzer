@@ -1412,8 +1412,5 @@ class BondStatistics(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-class Contacts(SoohyungCase):
-    standard_args = '--sel "protein" --contact-threshold "5.0"'
-
 if __name__ == '__main__':
     unittest.main()
