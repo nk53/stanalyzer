@@ -94,6 +94,24 @@ If you are testing recent development changes to static files such as `forms.js`
 3. Open the site in a new private browsing window
 4. If using Firefox with developer tools enabled, open the network tab and toggle the "Disable caching" option.
 
+### Testing
+
+To install the test suite:
+
+```bash
+# if stanalyzer is not already installed
+git clone https://github.com/nk53/stanalyzer
+
+git submodule update --init src/stanalyzer/tests/inputs
+```
+
+To run the test suite:
+
+```bash
+cd src/stanalyzer/tests
+./test.sh
+```
+
 # Usage
 
 Although there are plans for user accounts, remote connections, and job submission through schedulers. Those features are unfinished. The roadmap can be seen [here](https://charmm-gui.org/?doc=stanalyzer).
