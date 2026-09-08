@@ -1,0 +1,42 @@
+[workspace]
+name = "stanalyzer"
+description = "Command-line and web interface for common simulation trajectory analysis"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[dependencies]
+python = "3.12.*"
+mdanalysis = ">=2.7"
+invoke = ">=2.2"
+pyyaml = ">=6.0"
+fastapi = ">=0.115"
+uvicorn = ">=0.32"
+jinja2 = ">=3.1"
+sqlmodel = ">=0.0.22"
+email-validator = ">=2.2"
+python-multipart = ">=0.0.17"
+psutil = ">=7.0"
+bracex = ">=2.0"
+# numpy <2: sklearn_extra 0.3.0 needs numpy 1.x ABI; numpy 2.5.x eig returns complex128 (breaks helix_tilt)
+
+numpy = ">=1.26.4,<2"
+scikit-learn = "*"
+scipy = "*"
+matplotlib = "*"
+
+[pypi-dependencies]
+stanalyzer = { path = ".", editable = true }
+# scikit-learn-extra has no Python 3.12 build on conda-forge
+scikit-learn-extra = ">=0.3"
+
+[tasks]
+smoke = "stanalyzer -h && stanalyzer -l"
+test = { cmd = "bash test.sh", cwd = "src/stanalyzer/tests" }
+
+# Optional tools for analyses that require platform-specific binaries.
+# These are linux-64-only and disabled by default.
+# Enable when golden references exist: uncomment, then run `pixi lock`.
+# [target.linux-64.dependencies]
+# dssp = ">=4.4"
+# freesasa = ">=2.2"
+# hole2 = ">=2.3"
