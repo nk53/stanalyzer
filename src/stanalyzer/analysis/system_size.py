@@ -33,7 +33,7 @@ def write_system_size(psf: sta.FileRef, traj: sta.FileRefList,
 
     sim_time = time_step
 
-    pi = np.acos(-1.0)    # radian
+    pi = np.arccos(-1.0)    # radian
     rad_to_deg = 180.0/pi  # conversion factor from radian to degree
 
     with sta.resolve_file(out) as outfile:

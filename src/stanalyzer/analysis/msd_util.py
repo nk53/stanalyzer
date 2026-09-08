@@ -181,9 +181,9 @@ def calculate_com(pos: 'NDArray', mass: 'ArrayLike', tmass: float) -> 'NDArray':
     return com
 
 
-def init_unwrap_mol_com(pos: Sequence['NDArray'] | 'NDArray',
+def init_unwrap_mol_com(pos: 'Sequence[NDArray] | NDArray',
                         mass_mol: Sequence['ArrayLike'],
-                        tmass_mol: NDFloat64 | Sequence[float],
+                        tmass_mol: 'NDFloat64 | Sequence[float]',
                         pos_prev: Sequence['NDArray'],
                         pos_unwrap: Sequence['NDArray'],
                         com_unwrap: 'NDArray',
@@ -225,7 +225,7 @@ def init_unwrap_mol_com(pos: Sequence['NDArray'] | 'NDArray',
 def init_unwrap_sys_com(pos_sys: 'NDArray', mass_sys: 'ArrayLike',
                         tmass_sys: float, pos_sys_prev: 'NDArray',
                         com_sys_unwrap: 'NDArray',
-                        traj_com_sys_unwrap: 'NDArray' | Sequence['NDArray']) -> None:
+                        traj_com_sys_unwrap: 'NDArray | Sequence[NDArray]') -> None:
     """
     ----------
     Initialize unwrapped COM and associated trajectory for system

@@ -532,7 +532,7 @@ def update_shell_comp(ntype: int, max_shell: int,
 
 
 def normalize_raw_comp(array1: NDFloat64, array2: NDFloat64,
-                       array3: Sequence[float] | NDFloat64) \
+                       array3: 'Sequence[float] | NDFloat64') \
         -> tuple[NDFloat64, NDFloat64]:
     """
     ----------
