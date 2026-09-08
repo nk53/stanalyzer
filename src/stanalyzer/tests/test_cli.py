@@ -103,12 +103,19 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
 }
 
-# Availability of optional external tools. `hole2` is hardcoded to False
-# because it is not available on osx-arm64 (see GitHub issue #3).
+def _sklearn_extra_available() -> bool:
+    try:
+        from sklearn_extra.cluster import KMedoids  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+# Availability of optional external tools.
 TOOLS_AVAILABLE: dict[str, bool] = {
-    'dssp': shutil.which('dssp') is not None,
+    'dssp': shutil.which('mkdssp') is not None or shutil.which('dssp') is not None,
     'freesasa': shutil.which('freesasa') is not None,
-    'hole2': False,
+    'hole2': shutil.which('hole2') is not None,
 }
 
 
@@ -774,7 +781,7 @@ class ClusteringHca(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("scikit-learn-extra not installed")
+@unittest.skipUnless(_sklearn_extra_available(), "scikit-learn-extra not installed")
 class ClusteringKmedoid(SoohyungCase):
     standard_args = ''
 
@@ -1177,7 +1184,7 @@ class VoronoiShellComp(SoohyungCase):
 # (all skipped: the tools are not installed in the test environment)
 # ---------------------------------------------------------------------------
 
-@unittest.skip("requires mkdssp; not installed")
+@unittest.skipUnless(TOOLS_AVAILABLE['dssp'], "requires mkdssp; not installed")
 class SecondaryStructure(SoohyungCase):
     standard_args = '--sel "protein"'
 
@@ -1202,7 +1209,7 @@ class SecondaryStructure(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires freesasa; not installed")
+@unittest.skipUnless(TOOLS_AVAILABLE['freesasa'], "requires freesasa; not installed")
 class Sasa(SoohyungCase):
     analysis_name = 'sasa'
     standard_args = '--sel "protein"'
@@ -1228,7 +1235,7 @@ class Sasa(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires hole2; not available on osx-arm64")
+@unittest.skipUnless(TOOLS_AVAILABLE['hole2'], "requires hole2; not available on osx-arm64")
 class Hole(SoohyungCase):
     analysis_name = 'hole'
     accepts_o = False
