@@ -17,6 +17,11 @@ stanalyzer config                            # interactive project.json creator
 # Run tests
 ./src/stanalyzer/tests/test.sh               # python -m unittest -b
 
+# pixi workflow (official, recommended)
+pixi install                                 # create/update project environment
+pixi run test                                # run full test suite
+pixi run smoke                               # CLI smoke check (stanalyzer -h && stanalyzer -l)
+
 # Start dev web server (uvicorn, port 8000)
 sta-server -r                                # -r enables hot-reload
 ```
