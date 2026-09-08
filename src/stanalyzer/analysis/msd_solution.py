@@ -82,7 +82,7 @@ def write_sys_com(traj_com_sys_unwrap: NDFloat64,
     sta.write_to_outfile(f'{odir}/sys_com_{suffix}.dat', sout)
 
 
-def write_com_mol(traj_com_unwrap: NDFloat64 | list[NDFloat64], nmol: int,
+def write_com_mol(traj_com_unwrap: 'NDFloat64 | list[NDFloat64]', nmol: int,
                   framenum: int, interval: int, time_step: float,
                   odir: str, suffix: str) -> None:
     """
@@ -127,7 +127,7 @@ def write_msd(time_step: float,
 
 # Write MSD outputs
 def write_msd_outputs(time_step: float,
-                      msd: Sequence[NDFloat64] | NDFloat64, taus: list[int], ntype: int,
+                      msd: 'Sequence[NDFloat64] | NDFloat64', taus: list[int], ntype: int,
                       name_type: list[str], numb_type: list[int],
                       odir: str, suffix: str) -> None:
     for i in range(0, ntype):

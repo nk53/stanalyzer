@@ -105,7 +105,7 @@ def generate_histogram(ag_targ: list['AtomGroup'], ntarg: int,
 
 
 def write_individual_output(ntarg: int, array1: NDFloat64, array2: NDFloat64,
-                            axtlc: float, nbin: int, numb_targ: Sequence[int] | NDInt64,
+                            axtlc: float, nbin: int, numb_targ: 'Sequence[int] | NDInt64',
                             odir: str, names: list[str], suffix: str) -> None:
 
     bw = axtlc / float(nbin)
@@ -133,7 +133,7 @@ def write_individual_output(ntarg: int, array1: NDFloat64, array2: NDFloat64,
 
 
 def write_combined_output(ntarg: int, array1: NDFloat64, array2: NDFloat64,
-                          axtlc: float, nbin: int, numb_targ: Sequence[int] | NDInt64,
+                          axtlc: float, nbin: int, numb_targ: 'Sequence[int] | NDInt64',
                           odir: str, names: list[str], suffix: str) -> None:
 
     bw = axtlc / float(nbin)

@@ -83,7 +83,7 @@ def process_args(sel: str, split_to_mol: str = '') -> ProcessedArgs:
 
 def write_ave_std_leaflet(nside: int, sside: list[str],
                           ntype: int, name_type: list[str],
-                          SLnmol_type: List2D | NDInt64,
+                          SLnmol_type: 'List2D | NDInt64',
                           nshell: int, array1: NDFloat64, array2: NDFloat64,
                           odir: str, obstype: str, suffix: str) -> None:
     # sside: leaflet name
@@ -123,7 +123,7 @@ def write_ave_std_leaflet(nside: int, sside: list[str],
 
 
 def write_ave_std_bilayer(ntype: int, name_type: list[str],
-                          Snmol_type: list[int] | NDInt64,
+                          Snmol_type: 'list[int] | NDInt64',
                           nshell: int, array1: NDFloat64, array2: NDFloat64,
                           odir: str, obstype: str, suffix: str) -> None:
     # array1: average
@@ -162,7 +162,7 @@ def write_ave_std_bilayer(ntype: int, name_type: list[str],
 def write_time_series_leaflet(framenum: int, interval: int, time_step: float,
                               nside: int, sside: list[str],
                               ntype: int, name_type: list[str],
-                              SLnmol_type: List2D | NDInt64,
+                          SLnmol_type: 'List2D | NDInt64',
                               nshell: int, array: NDFloat64,
                               odir: str, obstype: str, suffix: str) -> None:
     # sside: leaflet name
@@ -211,7 +211,7 @@ def write_time_series_leaflet(framenum: int, interval: int, time_step: float,
 
 def write_time_series_bilayer(framenum: int, interval: int, time_step: float,
                               ntype: int, name_type: list[str],
-                              Snmol_type: list[int] | NDInt64,
+                              Snmol_type: 'list[int] | NDInt64',
                               nshell: int, array: NDFloat64,
                               odir: str, obstype: str, suffix: str) -> None:
     # array: time series
