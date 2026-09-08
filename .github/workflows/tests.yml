@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0dev0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Init test-inputs submodule over HTTPS
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule update --init --recursive src/stanalyzer/tests/inputs
+      - uses: prefix-dev/setup-pixi@v0
+        with:
+          pixi-version: v0.73.0
+          cache: true
+      - name: Smoke test
+        run: pixi run smoke
+      - name: Run test suite
+        run: pixi run test
+        timeout-minutes: 30
+      # Enable optional-tool analyses (dssp/freesasa/hole2):
+      # 1. Uncomment the [target.linux-64.dependencies] block in pixi.toml
+      # 2. Run `pixi lock` locally and commit the updated pixi.lock
+      # 3. Uncomment the step below
+      # - name: Enable optional tools
+      #   run: pixi install --locked
