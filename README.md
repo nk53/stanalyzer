@@ -112,6 +112,21 @@ cd src/stanalyzer/tests
 ./test.sh
 ```
 
+### Using pixi (project-managed environment)
+
+pixi is the recommended way to manage the development environment. The project
+manifests are `pixi.toml` and `pixi.lock` at the repository root.
+
+```bash
+pixi install          # create/update the project environment
+pixi run test         # run the full test suite
+pixi run smoke        # quick CLI smoke check (stanalyzer -h && stanalyzer -l)
+```
+
+Some analyses depend on external tools (dssp, freesasa, hole2) that are only
+available on linux-64. Those are disabled by default; see the commented-out
+`[target.linux-64.dependencies]` block in `pixi.toml` to opt in.
+
 # Usage
 
 Although there are plans for user accounts, remote connections, and job submission through schedulers. Those features are unfinished. The roadmap can be seen [here](https://charmm-gui.org/?doc=stanalyzer).
