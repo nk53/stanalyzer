@@ -17,9 +17,7 @@ import numpy as np
 from stanalyzer.utils import write_settings
 from stanalyzer.validation import Project
 
-# Force matplotlib to use the non-interactive Agg backend so analyses that
-# generate plots (e.g. cov_analysis heatmap) don't open GUI windows when run
-# as subprocesses during tests. Propagates to all spawned subprocesses.
+# force matplotlib to use the non-interactive backend
 os.environ.setdefault('MPLBACKEND', 'Agg')
 
 T = t.TypeVar('T')
@@ -99,10 +97,7 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'msd_solution': ['sys_com_*.dat', 'mol_com_*.dat', '*_*.dat', 'NA_*_*.dat', 'mol_info_*.dat'],
     'msd_membrane': ['*_sys_com_*.dat', '*_mol_com_*.dat', '*_*_*.dat', 'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
-    # eigenvectors.dat intentionally excluded: eigenvector bases decay into
-    # degenerate eigenspaces and are not portable across BLAS builds, so it
-    # cannot be golden-compared. It is validated instead by a rotation-
-    # invariant consistency check (see CovAnalysis.test_eigenvectors_*).
+    # eigenvectors.dat intentionally excluded: exact check breaks cross-platform
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
 }
@@ -882,6 +877,67 @@ class CovAnalysis(SoohyungCase):
             ref = ref_dir / actual.name
             assert_output_matches_reference(self, actual, ref)
 
+    def test_eigenvectors_consistent_with_eigenvalues(self) -> None:
+        """Checks C·v_i = lambda_i·v_i with recomputed C"""
+        args = self.standard_args
+        assert args is not None
+
+        if self.accepts_o:
+            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
+        else:
+            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
+
+        try:
+            output_dir = Path(self.config.output_path) / self.analysis_name
+            eigvals_path = output_dir / 'eigenvalues.dat'
+            eigvecs_path = output_dir / 'eigenvectors.dat'
+            if not (eigvals_path.exists() and eigvecs_path.exists()):
+                self.skipTest(f'{self.analysis_name} outputs not found')
+
+            eigenvalues = np.loadtxt(eigvals_path)
+            eigenvectors = np.loadtxt(eigvecs_path)
+
+            self.assertEqual(eigenvectors.ndim, 2)
+            self.assertEqual(eigenvectors.shape[0], eigenvalues.size)
+
+            import MDAnalysis as mda
+            from MDAnalysis.analysis import align
+            from stanalyzer.cli.stanalyzer import get_traj
+
+            input_path = Path(self.config.input_path)
+            sel = shlex.split(args)[shlex.split(args).index('--sel') + 1]
+
+            u = mda.Universe(input_path / self.config.psf,
+                             get_traj(str(input_path / self.config.traj)))
+            atoms = u.select_atoms(sel)
+            align.AlignTraj(u, atoms, select=sel, in_memory=True).run()
+
+            ts_positions: list[np.ndarray] = []
+            for _ts in u.trajectory:
+                ts_positions.append(atoms.positions.flatten())
+            positions = np.array(ts_positions)
+            positions = positions.reshape(len(u.trajectory), len(atoms), 3)
+            centered = positions - positions.mean(axis=0)
+            cov = np.cov(
+                centered.reshape(len(u.trajectory), len(atoms) * 3),
+                rowvar=False)
+
+            # C·v_i ~= lambda_i·v_i (loose: values printed at %.6f)
+            for i, (eigvec, eigval) in enumerate(
+                    zip(eigenvectors, eigenvalues)):
+                np.testing.assert_allclose(
+                    cov @ eigvec, eigval * eigvec, rtol=1e-3, atol=1e-3,
+                    err_msg=f'eigenvector {i} violates C·v = lambda·v')
+
+            # orthonormality: V·V^T ~= I
+            np.testing.assert_allclose(
+                eigenvectors @ eigenvectors.T,
+                np.eye(eigenvectors.shape[0]), rtol=1e-3, atol=1e-3,
+                err_msg='eigenvectors not orthonormal')
+        finally:
+            out.close()
+            err.close()
+
 
 @unittest.skip("analysis crashes with current test data")
 class MsdMembrane(SoohyungCase):
@@ -1319,9 +1375,8 @@ class CholTilt(SoohyungCase):
         ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
         for actual in actual_files:
             ref = ref_dir / actual.name
-            # rtol=1e-2: 2D-array folding arithmetic accumulates ~0.75% error
-            # on some platforms/BLAS builds (observed ubuntu-latest CI); the
-            # reference itself was generated on macOS.
+            # rtol=1e-2: 2D-array folding → ~0.75% error on some BLAS builds
+            # reference was generated on macos-arm64
             assert_output_matches_reference(self, actual, ref, rtol=1e-2)
 
 

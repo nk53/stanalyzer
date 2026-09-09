@@ -132,7 +132,7 @@ OUTPUT_PATTERNS = {
     'msd_membrane': ['*_sys_com_*.dat', '*_mol_com_*.dat', '*_*_*.dat',
                      'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
-    'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat', 'eigenvectors.dat'],
+    'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'clustering_kmedoid': ['*.dat'],
 }
 
