@@ -1418,6 +1418,5 @@ class BondStatistics(SoohyungCase):
             ref = ref_dir / actual.name
             assert_output_matches_reference(self, actual, ref)
 
-
 if __name__ == '__main__':
     unittest.main()

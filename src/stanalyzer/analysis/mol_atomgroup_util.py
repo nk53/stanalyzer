@@ -272,63 +272,61 @@ def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
           ag        : atom groups for individual molecules in individual leaflets
     """
 
-    name_type: list[str] = []  # names of unique molecule types
-    nmol_type: list[list[int]] = []  # numbers of individual molecule types
-    nmol: list[int] = []  # number of molecules
-    # molecule type indices of individual molecules
+    name_type: list[str] = []
+    nmol_type: list[list[int]] = []
+    nmol: list[int] = []
     id_type: list[list[int]] = []
 
-    # expand nmol_type and id_type for leaflets
-    for i in range(0, nside):
+    for _ in range(nside):
         nmol_type.append([])
         nmol.append(-1)
         id_type.append([])
 
-    # generate ordered atom groups for individual lipid types
-    # an empty atom group to which ag_type[] will be added
-    ag_tmp = u.atoms[[]]
-    for i in range(ntype):
-        ag_tmp += u.select_atoms(selection[i])
+    selected_groups = [
+        u.select_atoms(selection[molecule_type])
+        for molecule_type in range(ntype)
+    ]
+    selected_atoms = u.atoms[[]]
+    for group in selected_groups:
+        selected_atoms += group
 
-    # Assign leaflet at the beginning & use this for MSD
-    # Do not consider flip-flop! - It cannot be handled properly
+    # Preserve the original MSD definition and molecule ordering. Exact
+    # compatibility requires assigning the selected atoms to a leaflet first
+    # and then splitting each leaflet selection into molecules.
     if method == "zpos":
         print('# leaflet assignment based on z-position')
-        leaflet = myleaflet.assign_leaflet_zpos(u, ag_tmp)
+        leaflet = myleaflet.assign_leaflet_zpos(u, selected_atoms)
     elif method == "mda":
-        print('# leaflet assignemnt based on LeafletFinder with hydrid cutoff search')
-        leaflet = myleaflet.assign_leaflet(u, ag_tmp)
-    # print(leaflet)
-    # sys.exit(0)
+        print('# leaflet assignment based on LeafletFinder with hybrid cutoff search')
+        leaflet = myleaflet.assign_leaflet(u, selected_atoms)
+    else:
+        raise ValueError(f"Unsupported leaflet assignment method: {method}")
 
-    # now setup leaflet ag
-    ag: list['AtomGroup'] = []
-    for i in range(0, nside):
+    ag: list[list['AtomGroup']] = []
+    for side in range(nside):
         ag.append([])
-        imol = 0
+        molecule_index = 0
+        for molecule_type in range(ntype):
+            type_atoms = selected_groups[molecule_type].intersection(
+                leaflet[side]
+            )
+            type_name, molecules, molecule_count = generate_mol_type_ags(
+                type_atoms,
+                selection[molecule_type],
+                qsplit[molecule_type],
+            )
 
-        # loop over ntypes
-        for j in range(0, ntype):
-            # atom group for selection in leaflet[i]
-            ag_tmp = u.select_atoms(selection[j]).intersection(leaflet[i])
+            if side == 0:
+                name_type.append(type_name)
 
-            # split atom group into segid/resname/moleculetype (i.e., molecule level)
-            tname_type, sel_ag, sel_nmol = generate_mol_type_ags(
-                ag_tmp, selection[j], qsplit[j])
+            nmol_type[side].append(molecule_count)
+            for molecule in molecules:
+                ag[side].append(u.atoms[[]])
+                ag[side][molecule_index] += molecule
+                id_type[side].append(molecule_type)
+                molecule_index += 1
 
-            if i == 0:
-                name_type.append(tname_type)
-
-            nmol_type[i].append(sel_nmol)  # number of molecules of type, i
-            for k in range(0, sel_nmol):
-                # append atomgroup for individual molecule
-                ag[i].append(u.atoms[[]])
-                ag[i][imol] += sel_ag[k]     # update molecular atom group
-                id_type[i].append(j)         # update molecule type index
-                imol += 1                    # update molecule index counter
-
-        # total number of molecules in the leaflet, i
-        nmol[i] = np.sum(nmol_type[i])
+        nmol[side] = np.sum(nmol_type[side])
 
     # print system info
     sout = '# SYS. INFO\n'
@@ -442,8 +440,12 @@ def assign_leaflet_index_to_full_ag(ag_full: list['AtomGroup'],
     nmol = len(ag_full)
 
     tid_side = [-1] * nmol
-    flag = [0] * nmol  # before assignment
+    flag = [0] * nmol
     nside = len(leaflets)  # number of leaflets
+    if nside != 2:
+        raise ValueError(
+            f"expected two reference leaflets, got {nside}"
+        )
 
     # Loop over molecule
     for i in range(0, nmol):
@@ -491,22 +493,18 @@ def assign_full_ag_leaflet_from_ref_leaflet(u: 'Universe', ag_full: list['AtomGr
     for i in range(0, nside):
         full_leaflets.append(u.atoms[[]])
 
-    # Loop over molecule
-    for i in range(0, nmol):
-        tag_full_i = ag_full[i]
-        for j in range(0, nside):
-            if flag[i] == 0:
-                tag = leaflets[j].intersection(tag_full_i)
-                if len(tag) > 0:
-                    # print(tag)
-                    full_leaflets[j] += tag_full_i
-                    flag[i] = 1
+    for molecule_index, molecule in enumerate(ag_full):
+        for side in range(nside):
+            if flag[molecule_index] == 0:
+                overlap = leaflets[side].intersection(molecule)
+                if len(overlap) > 0:
+                    full_leaflets[side] += molecule
+                    flag[molecule_index] = 1
                     break
 
-    # check for unassigned lipid
-    for i in range(0, nmol):
-        if flag[i] == 0:
-            print(f'# unassigned lipid, {i}')
+    for molecule_index in range(nmol):
+        if flag[molecule_index] == 0:
+            print(f'# unassigned lipid, {molecule_index}')
             sys.exit(1)
 
-    return (full_leaflets)
+    return full_leaflets
