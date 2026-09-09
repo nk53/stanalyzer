@@ -5,7 +5,6 @@ import MDAnalysis as mda
 import numpy as np
 import matplotlib.pyplot as plt
 from MDAnalysis.analysis import align
-from sklearn.decomposition import PCA
 
 import stanalyzer.cli.stanalyzer as sta
 from stanalyzer.cli.stanalyzer import writable_outfile
@@ -32,8 +31,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
 
-    for traj_file in traj:
-        u = mda.Universe(psf, traj_file)
+    u = mda.Universe(psf, traj)
 
     atoms = u.select_atoms(sel)  # default 'name CA'
     ref = u.select_atoms(sel)
@@ -83,17 +81,6 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     plt.grid()
     plt.savefig('correlation_matrix_heatmap.png', format='png', dpi=300)
 
-    print("Running PCA")
-    pca = PCA()
-    pca.fit(covariance_matrix)
-
-    explained_variance_ratio = pca.explained_variance_ratio_
-    cumulative_variance_sum = np.cumsum(explained_variance_ratio)
-
-    # Find the number of components that explain at least threshold of the variance
-    threshold = 0.85
-    num_components = np.argmax(cumulative_variance_sum >= threshold) + 1
-
     print("Computing eigenvalues and eigenvectors")
     eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
 
@@ -101,6 +88,10 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     sorted_indices = np.argsort(eigenvalues)[::-1]
     eigenvalues = eigenvalues[sorted_indices]
     eigenvectors = eigenvectors[:, sorted_indices]
+
+    threshold = 0.85
+    cumulative_variance_sum = np.cumsum(eigenvalues) / eigenvalues.sum()
+    num_components = np.argmax(cumulative_variance_sum >= threshold) + 1
 
     # Save eigenvalues to file
     print("Saving eigenvalues and eigenvectors")
@@ -110,8 +101,8 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
 
     # Save eigenvectors to file
     with sta.resolve_file(eigenvectors_out, 'w') as outfile3:
-        np.savetxt(outfile3, eigenvectors[:num_components],
-                   fmt='%.6f', header='Top Eigenvalues')
+        np.savetxt(outfile3, eigenvectors[:, :num_components].T,
+                   fmt='%.6f', header='Top Eigenvectors')
 
 
 def get_parser() -> argparse.ArgumentParser:
