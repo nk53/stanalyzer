@@ -882,6 +882,77 @@ class CovAnalysis(SoohyungCase):
             ref = ref_dir / actual.name
             assert_output_matches_reference(self, actual, ref)
 
+    def test_eigenvectors_consistent_with_eigenvalues(self) -> None:
+        """Eigenvectors.dat must satisfy C·v_i = lambda_i·v_i for the
+        covariance matrix C recomputed from the input, and form an
+        orthonormal set.
+
+        Golden comparison is impossible for eigenvectors: within the
+        degenerate eigenspaces of a rank-deficient covariance matrix the
+        basis is arbitrary and BLAS-build-dependent. This check is
+        rotation-invariant and catches axis-selection bugs (e.g. saving
+        eigenvector matrix rows instead of columns), which a pure
+        orthonormality check would miss.
+        """
+        args = self.standard_args
+        assert args is not None
+
+        if self.accepts_o:
+            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
+        else:
+            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
+
+        try:
+            output_dir = Path(self.config.output_path) / self.analysis_name
+            eigvals_path = output_dir / 'eigenvalues.dat'
+            eigvecs_path = output_dir / 'eigenvectors.dat'
+            if not (eigvals_path.exists() and eigvecs_path.exists()):
+                self.skipTest(f'{self.analysis_name} outputs not found')
+
+            eigenvalues = np.loadtxt(eigvals_path)
+            eigenvectors = np.loadtxt(eigvecs_path)
+
+            self.assertEqual(eigenvectors.ndim, 2)
+            self.assertEqual(eigenvectors.shape[0], eigenvalues.size)
+
+            import MDAnalysis as mda
+            from MDAnalysis.analysis import align
+            from stanalyzer.cli.stanalyzer import get_traj
+
+            input_path = Path(self.config.input_path)
+            sel = shlex.split(args)[shlex.split(args).index('--sel') + 1]
+
+            u = mda.Universe(input_path / self.config.psf,
+                             get_traj(str(input_path / self.config.traj)))
+            atoms = u.select_atoms(sel)
+            align.AlignTraj(u, atoms, select=sel, in_memory=True).run()
+
+            ts_positions: list[np.ndarray] = []
+            for _ts in u.trajectory:
+                ts_positions.append(atoms.positions.flatten())
+            positions = np.array(ts_positions)
+            positions = positions.reshape(len(u.trajectory), len(atoms), 3)
+            centered = positions - positions.mean(axis=0)
+            cov = np.cov(
+                centered.reshape(len(u.trajectory), len(atoms) * 3),
+                rowvar=False)
+
+            # C·v_i ~= lambda_i·v_i (loose: values printed at %.6f)
+            for i, (eigvec, eigval) in enumerate(
+                    zip(eigenvectors, eigenvalues)):
+                np.testing.assert_allclose(
+                    cov @ eigvec, eigval * eigvec, rtol=1e-3, atol=1e-3,
+                    err_msg=f'eigenvector {i} violates C·v = lambda·v')
+
+            # orthonormality: V·V^T ~= I
+            np.testing.assert_allclose(
+                eigenvectors @ eigenvectors.T,
+                np.eye(eigenvectors.shape[0]), rtol=1e-3, atol=1e-3,
+                err_msg='eigenvectors not orthonormal')
+        finally:
+            out.close()
+            err.close()
+
 
 @unittest.skip("analysis crashes with current test data")
 class MsdMembrane(SoohyungCase):
