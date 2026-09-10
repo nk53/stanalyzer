@@ -40,7 +40,6 @@ CATEGORY_A = {
 }
 
 CATEGORY_B = {
-    'salt_bridge': None,  # No charged residues in soohyung_membrane
     'contacts': '--sel "protein and name CA" --contact-threshold "5.0"',
     'voronoi_shell_comp': ('--sel "resname DOPC and name P; resname DSPC and name P" '
                            '--sel-sys "segid MEMB and name P" --qa'),
@@ -54,7 +53,7 @@ CATEGORY_B = {
     'rdf': ('-sel1 "protein and name CA" -sel2 "resname DOPC and name P" '
             '-bin-size 0.1'),
     'msd_solution': '--sel "resname DOPC and name P"',
-    'msd_membrane': None,  # crashes silently with exit 1, no output
+    'msd_membrane': '--sel "resname DOPC" --sel-sys "resname DOPC DSPC"',
     'compressibility_modulus': '--temp 310',
     'radius_of_gyration': ('--sel-rg "protein and name CA" '
                            '--sel-align "protein and name CA"'),
@@ -77,6 +76,14 @@ CATEGORY_Y = {
     'water_bridge': ('--sel "protein" --sel2 "None" '
                      '--water-sel "resname TIP3" --d-a-cutoff "3.0" '
                      '--d-h-a-angle-cutoff "150.0"'),
+    'salt_bridge': ('--positive-sel "resname ARG LYS and name NZ NZ*" '
+                    '--negative-sel "resname ASP GLU and name OE* OD*" '
+                    '--positive-def "resname ARG LYS and name NZ NZ*" '
+                    '--negative-def "resname ASP GLU and name OE* OD*" '
+                    '--dist-cutoff "4.5"'),
+    'glycosidic-bond-between-sugars': '--sel "segid CARA"',
+    'helix_distance_crossing_angle': ('--helix1-start 1293 --helix1-end 1303 '
+                                      '--helix2-start 1356 --helix2-end 1366'),
 }
 
 # Systems to process: (categories, input_dirname, traj, psf)
@@ -118,6 +125,8 @@ OUTPUT_PATTERNS = {
     'compressibility_modulus': ['*.dat'],
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],
+    'glycosidic-bond-between-sugars': ['*.dat'],
+    'helix_distance_crossing_angle': ['*.dat'],
     'contacts': ['*.dat'],
     'secondary_structure': ['*.dat'],
     'sasa': ['*.dat'],
@@ -193,7 +202,7 @@ def has_out_arg(analysis_name: str) -> bool:
     import stanalyzer
     source = (Path(stanalyzer.__path__[0]) / 'analysis'
               / f'{analysis_name}.py').read_text()
-    return "'out'" in source and 'add_project_args' in source
+    return ("'out'" in source or '"out"' in source) and 'add_project_args' in source
 
 
 def discover_output_files(output_dir: Path,

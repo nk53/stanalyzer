@@ -90,6 +90,8 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'chol_tilt': ['*.dat'],
     'helix_analysis': ['*.dat'],
     'helix_tilt_rotation_angle': ['*.dat'],
+    'helix_distance_crossing_angle': ['*.dat'],
+    'glycosidic-bond-between-sugars': ['*.dat'],
     # Hardcoded/dynamic filenames (no --out)
     'density_z': ['*_nb*_*.dat', 'combined_nb*_*.dat', 'NA_*_nb*_*.dat'],
     'scd': ['ave_*_*.dat', 'time_*_*.dat', 'NA_*_*.dat'],
@@ -949,9 +951,9 @@ class CovAnalysis(SoohyungCase):
             err.close()
 
 
-@unittest.skip("analysis crashes with current test data")
 class MsdMembrane(SoohyungCase):
-    standard_args = ''
+    accepts_o = False
+    standard_args = '--sel "resname DOPC" --sel-sys "resname DOPC DSPC"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1120,8 +1122,7 @@ class Rmsd(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("no charged residues in soohyung_membrane")
-class SaltBridge(SoohyungCase):
+class SaltBridge(YiweiCase):
     standard_args = '--positive-sel "resname ARG LYS and name NZ NZ*" ' \
         '--negative-sel "resname ASP GLU and name OE* OD*" ' \
         '--positive-def "resname ARG LYS and name NZ NZ*" ' \
@@ -1332,11 +1333,9 @@ class Hole(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires PDB topology instead of PSF")
-class GlycosidicBondBetweenSugars(SoohyungCase):
+class GlycosidicBondBetweenSugars(YiweiCase):
     analysis_name = 'glycosidic-bond-between-sugars'
-    accepts_o = False
-    standard_args = ''
+    standard_args = '--sel "segid CARA"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1391,7 +1390,6 @@ class CholTilt(SoohyungCase):
             assert_output_matches_reference(self, actual, ref, rtol=1e-2)
 
 
-@unittest.skip("intermittent empty output under full-suite load (pre-existing invoke thread-join race)")
 class HelixAnalysis(SoohyungCase):
     standard_args = '--sel-align "segid PROA and name CA" ' \
         '--sel-helix "segid PROA and name CA" --align-out aligned.dcd'
@@ -1417,10 +1415,9 @@ class HelixAnalysis(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires two helices; only one in soohyung_membrane")
-class HelixDistanceCrossingAngle(SoohyungCase):
-    standard_args = '--helix1-start 1 --helix1-end 11 ' \
-        '--helix2-start 12 --helix2-end 23'
+class HelixDistanceCrossingAngle(YiweiCase):
+    standard_args = '--helix1-start 1293 --helix1-end 1303 ' \
+        '--helix2-start 1356 --helix2-end 1366'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
