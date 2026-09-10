@@ -127,6 +127,49 @@ Some analyses depend on external tools (dssp, freesasa, hole2) that are only
 available on linux-64. Those are disabled by default; see the commented-out
 `[target.linux-64.dependencies]` block in `pixi.toml` to opt in.
 
+### Dockerized linux-64 testing
+
+CI runs the test suite on `ubuntu-latest` in addition to macOS. Some tests are
+platform-sensitive and can pass locally on macOS but fail on the linux-64 CI
+runner (e.g. `CovAnalysis` eigenvector comparisons, whose bases depend on the
+BLAS build). To reproduce the linux-64 environment locally, use the two
+scripts in `src/stanalyzer/tests/` — `install_env.sh` (one-time environment
+build, run inside the container) and `run_test.sh` (the test suite, runnable
+with or without test-name arguments):
+
+```bash
+# from the repository root
+
+# one-time host setup: copy the repo into a gitignored workdir so the pixi
+# environment (which lives in the workdir, ~1.7 GB) stays out of the checkout.
+# Docker is the only host requirement.
+rsync -a --exclude .git --exclude .pixi --exclude .pixi-home ./ .docker-test/
+
+# build the linux-64 environment (also re-runnable after env changes; the
+# package cache persists in .docker-test/.pixi-home)
+docker run --rm --platform linux/amd64 \
+  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  bash /work/src/stanalyzer/tests/install_env.sh
+
+# run the full suite (identical to CI's `pixi run test`)
+docker run --rm --platform linux/amd64 \
+  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  bash /work/src/stanalyzer/tests/run_test.sh
+
+# run specific tests only
+docker run --rm --platform linux/amd64 \
+  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  bash /work/src/stanalyzer/tests/run_test.sh test_cli.CholTilt test_cli.CovAnalysis
+```
+
+Notes:
+
+- `--platform linux/amd64` is required on Apple Silicon to match the CI
+  runner's x86_64 BLAS build; it is a no-op on x86_64 hosts.
+- The scripts derive the repo root from their own location, so the mount
+  point (`/work`) can be anything. No host-specific paths are hardcoded.
+- Re-run the `rsync` line after editing the repo to refresh the workdir copy.
+
 # Usage
 
 Although there are plans for user accounts, remote connections, and job submission through schedulers. Those features are unfinished. The roadmap can be seen [here](https://charmm-gui.org/?doc=stanalyzer).
