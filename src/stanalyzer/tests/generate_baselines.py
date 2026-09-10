@@ -50,7 +50,7 @@ CATEGORY_B = {
                     '--sel-sys "segid MEMB and name P" --qa'),
     'scd': ('--sel "resname DOPC and (name C22 or name C32)" '
             '--sel-sys "segid MEMB and name P" --qa'),
-    'clustering_kmedoid': None,  # requires sklearn_extra
+    'clustering_kmedoid': '',
     'rdf': ('-sel1 "protein and name CA" -sel2 "resname DOPC and name P" '
             '-bin-size 0.1'),
     'msd_solution': '--sel "resname DOPC and name P"',
@@ -90,7 +90,6 @@ SYSTEMS = [
 TOOL_DEPS = {
     'secondary_structure': 'dssp',
     'sasa': 'freesasa',
-    'clustering_kmedoid': 'sklearn_extra',
 }
 
 # ---------------------------------------------------------------------------
@@ -133,7 +132,7 @@ OUTPUT_PATTERNS = {
                      'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
-    'clustering_kmedoid': ['*.dat'],
+    'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
 }
 
 # ---------------------------------------------------------------------------
@@ -166,12 +165,6 @@ def discover_tools() -> dict[str, bool]:
         'freesasa': shutil.which('freesasa') is not None,
         'hole2': False,
     }
-    try:
-        import importlib
-        importlib.import_module('sklearn_extra')
-        result['sklearn_extra'] = True
-    except ImportError:
-        result['sklearn_extra'] = False
     return result
 
 

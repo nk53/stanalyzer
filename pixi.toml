@@ -17,17 +17,15 @@ email-validator = ">=2.2"
 python-multipart = ">=0.0.17"
 psutil = ">=7.0"
 bracex = ">=2.0"
-# numpy <2: sklearn_extra 0.3.0 needs numpy 1.x ABI; numpy 2.5.x eig returns complex128 (breaks helix_tilt)
-
+# numpy <2: numpy 2.5.x eig returns complex128 (breaks helix_tilt)
 numpy = ">=1.26.4,<2"
-scikit-learn = "*"
 scipy = "*"
 matplotlib = "*"
 
 [pypi-dependencies]
 stanalyzer = { path = ".", editable = true }
-# scikit-learn-extra has no Python 3.12 build on conda-forge
-scikit-learn-extra = ">=0.3"
+# kmedoids (FasterPAM); sklearn_extra unmaintained, py3.12-broken (distutils)
+kmedoids = ">=0.5.5, <0.6"
 
 [tasks]
 smoke = "stanalyzer -h && stanalyzer -l"

@@ -1,6 +1,7 @@
 import argparse
 from typing import Optional
 
+import kmedoids
 import MDAnalysis as mda
 from MDAnalysis.analysis import diffusionmap
 
@@ -26,14 +27,23 @@ def header(outfile: sta.FileLike | None = None,
 
 def run_clustering(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
                    k: int) -> None:
-    # https://scikit-learn-extra.readthedocs.io/en/stable/generated/sklearn_extra.cluster.KMedoids.html
-    from sklearn_extra.cluster import KMedoids  # type: ignore[import-not-found]
     u = mda.Universe(psf, traj)
     matrix = diffusionmap.DistanceMatrix(u, select=sel).run()
     dist_matrix = matrix.results.dist_matrix
-    kmedoids = KMedoids(n_clusters=k, metric='precomputed').fit(dist_matrix)
-    print(kmedoids.labels_)  # Labels of each point
-    print(kmedoids.medoid_indices_)  # The indices of the medoid rows in X
+    # fixed random_state for byte-identical golden comparisons
+    result = kmedoids.fasterpam(dist_matrix, k, random_state=0)
+
+    # write_to_outfile resolves relpaths to <output_path>/<analysis_name>/
+    sout = ''.join(f'{i:8d} {c:8d}\n' for i, c in enumerate(result.labels))
+    sta.write_to_outfile('cluster.dat', sout)
+
+    frames = set(result.medoids.tolist())
+    protein = u.select_atoms("protein")
+    with mda.Writer(sta.writable_outfile('cluster_representative.pdb').name,
+                    multiframe=True) as pdb:
+        for ts in u.trajectory:
+            if ts.frame in frames:
+                pdb.write(protein)
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -42,7 +52,7 @@ def get_parser() -> argparse.ArgumentParser:
     # TODO: selection
     # parser.add_argument('--sel', metavar='selection',
     #                     help="Atom selection for RMSD calculation")
-    parser.add_argument('--k', type=float, help='#cluster')
+    parser.add_argument('--k', type=int, help='#cluster')
     return parser
 
 
@@ -51,7 +61,7 @@ def main(settings: Optional[dict] = None) -> None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
 
     sel = 'name CA'
-    k = 2
+    k = settings.get('k') or 2
     run_clustering(settings['psf'], settings['traj'], sel, k)
 
 

@@ -99,6 +99,7 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'msd_solution': ['sys_com_*.dat', 'mol_com_*.dat', '*_*.dat', 'NA_*_*.dat', 'mol_info_*.dat'],
     'msd_membrane': ['*_sys_com_*.dat', '*_mol_com_*.dat', '*_*_*.dat', 'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
+    'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
     # eigenvectors.dat intentionally excluded: eigenvector bases decay into
     # degenerate eigenspaces and are not portable across BLAS builds, so it
     # cannot be golden-compared. It is validated instead by a rotation-
@@ -106,14 +107,6 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
 }
-
-def _sklearn_extra_available() -> bool:
-    try:
-        from sklearn_extra.cluster import KMedoids  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
 
 # Availability of optional external tools.
 TOOLS_AVAILABLE: dict[str, bool] = {
@@ -455,7 +448,9 @@ class AnalysisCase(unittest.TestCase):
             assert self.manager is not None, "Missing project.json"
 
             self.manager.write()
-            result = super().run(result)
+
+        # always super().run(): unittest records skipped tests in run()
+        result = super().run(result)
 
         return result
 
@@ -785,8 +780,8 @@ class ClusteringHca(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skipUnless(_sklearn_extra_available(), "scikit-learn-extra not installed")
 class ClusteringKmedoid(SoohyungCase):
+    accepts_o = False
     standard_args = ''
 
     def test_standard_correctness(self) -> None:
