@@ -41,5 +41,8 @@ test = { cmd = "bash test.sh", cwd = "src/stanalyzer/tests" }
 # - mdahole2 is a pure-Python PyPI dep (hole analysis wrapper).
 # - hole2 is linux-64 only: no osx-arm64 build upstream (osmart/hole2#3),
 #   so hole tests skip on macOS by design.
+# - libmcfp <2.0.5: dssp 4.6.1 (linux-64) needs mcfp::config::get_last_option_ref,
+#   removed in libmcfp 2.0.5+ (mkdssp dies with "undefined symbol" otherwise).
 [target.linux-64.dependencies]
 hole2 = ">=2.3"
+libmcfp = ">=2.0.1,<2.0.5"

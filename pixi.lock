@@ -103,7 +103,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/liblapack-3.11.0-10_h47877c9_openblas.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libllvm23-23.1.0-h474f4eb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/liblzma-5.8.3-hb03c661_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libmcfp-2.1.1-h4dbf13b_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/libmcfp-2.0.4-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libnetcdf-4.10.1-nompi_he3e3c8e_201.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libnghttp2-1.68.1-h74cf4be_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libnsl-2.0.1-hb9d3cd8_1.conda
@@ -1860,20 +1860,20 @@ packages:
     - liblzma >=5.8.3,<6.0a0
   size: 112995
   timestamp: 1786348617826
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libmcfp-2.1.1-h4dbf13b_0.conda
-  sha256: f966452456ab3aa47df2223aec242a9261d42c16ae541101c437a6caf130dac4
-  md5: b9b893e265ca4407ee608cd6cedfc086
+- conda: https://conda.anaconda.org/conda-forge/linux-64/libmcfp-2.0.4-h171cf75_0.conda
+  sha256: 9941485473a81388da06cdda8beb8a76b8670f14cb5af1236b49f769143cbcd8
+  md5: 0bb156df4f604d4adca03b3d55bd9ad2
   depends:
+  - libstdcxx >=14
+  - libgcc >=14
   - __glibc >=2.17,<3.0.a0
-  - libstdcxx >=15
-  - libgcc >=15
   license: BSD-2-Clause AND MIT AND LicenseRef-CC0-1.0
   purls: []
   run_exports:
     weak:
-    - libmcfp >=2.1.1,<3.0a0
-  size: 2124452
-  timestamp: 1787228537226
+    - libmcfp >=2.0.4,<3.0a0
+  size: 52652
+  timestamp: 1786280571101
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libnetcdf-4.10.1-nompi_he3e3c8e_201.conda
   build_number: 101
   sha256: a75ac995ccb9fefae463b317727affc528ace00e9dbde786fb51867f36ee2d8e
