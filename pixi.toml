@@ -21,20 +21,25 @@ bracex = ">=2.0"
 numpy = ">=1.26.4,<2"
 scipy = "*"
 matplotlib = "*"
+# Optional analysis tools (secondary structure, SASA) — available on all platforms.
+dssp = ">=4.6"
+freesasa = ">=2.2.1"
 
 [pypi-dependencies]
 stanalyzer = { path = ".", editable = true }
 # kmedoids (FasterPAM); sklearn_extra unmaintained, py3.12-broken (distutils)
 kmedoids = ">=0.5.5, <0.6"
+# mdahole2: pure-Python HOLE wrapper (hole analysis)
+mdahole2 = ">=0.5.0"
 
 [tasks]
 smoke = "stanalyzer -h && stanalyzer -l"
 test = { cmd = "bash test.sh", cwd = "src/stanalyzer/tests" }
 
-# Optional tools for analyses that require platform-specific binaries.
-# These are linux-64-only and disabled by default.
-# Enable when golden references exist: uncomment, then run `pixi lock`.
-# [target.linux-64.dependencies]
-# dssp = ">=4.4"
-# freesasa = ">=2.2"
-# hole2 = ">=2.3"
+# Optional analysis tools:
+# - dssp + freesasa install on all pixi platforms (secondary structure, SASA).
+# - mdahole2 is a pure-Python PyPI dep (hole analysis wrapper).
+# - hole2 is linux-64 only: no osx-arm64 build upstream (osmart/hole2#3),
+#   so hole tests skip on macOS by design.
+[target.linux-64.dependencies]
+hole2 = ">=2.3"

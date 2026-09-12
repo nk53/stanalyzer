@@ -123,9 +123,10 @@ pixi run test         # run the full test suite
 pixi run smoke        # quick CLI smoke check (stanalyzer -h && stanalyzer -l)
 ```
 
-Some analyses depend on external tools (dssp, freesasa, hole2) that are only
-available on linux-64. Those are disabled by default; see the commented-out
-`[target.linux-64.dependencies]` block in `pixi.toml` to opt in.
+dssp and freesasa now install on all pixi platforms (secondary structure and
+SASA analyses). hole2 is linux-64 only, so `stanalyzer hole` tests skip on
+macOS (arm64 and x86) by design. CI ubuntu runs the full suite (all 6 gated
+tests); macos-14 runs 4 and skips the 2 hole tests.
 
 ### Dockerized linux-64 testing
 
