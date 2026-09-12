@@ -11,6 +11,10 @@ from stanalyzer.cli.validators import p_int
 
 ANALYSIS_NAME = 'Pore Profile'
 
+# Seed HOLE's Monte-Carlo run so results are reproducible (unseeded HOLE
+# seeds from the time of day).
+RANDOM_SEED = 42
+
 
 def header(outfile: sta.FileLike | None = None) -> str:
     """Returns a header string and, if optionally writes it to a file"""
@@ -30,20 +34,31 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     traj = [sta.resolve_file(t) for t in traj]
     u = mda.Universe(psf, traj)
 
-    breakpoint()
-
     with hole2.HoleAnalysis(u, select=sel, cpoint='center_of_geometry',
                             executable=hole_path) as ha:
-        ha.run()
-        means, edges = ha.histogram_radii(bins=bins, range=None, aggregator=np.mean)
+        # interval strides frames; seed HOLE's Monte-Carlo for reproducibility
+        ha.run(step=interval, random_seed=RANDOM_SEED)
 
-    midpoints = 0.5*(edges[1:]+edges[:-1])
+        # per-frame profiles: recarrays with fields rxn_coord, radius
+        profiles = ha.results.profiles
 
-    midpoints = midpoints[::interval]
-    means = midpoints[::interval]
-
+    # midpoints.dat: position along pore vs radius, one section per thinned frame
     with sta.resolve_file(midpoints_out, 'w') as outfile:
-        np.savetxt(outfile, midpoints)
+        for i, frame in enumerate(sorted(profiles)):
+            if i:
+                outfile.write('\n')
+            profile = profiles[frame]
+            np.savetxt(outfile, np.column_stack((profile['rxn_coord'],
+                                                 profile['radius'])))
+
+    # means.dat: per-position mean radius across the thinned frames
+    coords = np.concatenate([profiles[f]['rxn_coord'] for f in profiles])
+    radii = np.concatenate([profiles[f]['radius'] for f in profiles])
+    edges = np.linspace(coords.min(), coords.max(), bins + 1)
+    midpoints = 0.5 * (edges[1:] + edges[:-1])
+    counts, _ = np.histogram(coords, bins=edges)
+    sums, _ = np.histogram(coords, bins=edges, weights=radii)
+    means = np.divide(sums, counts, out=np.zeros(bins), where=counts > 0)
     with sta.resolve_file(means_out, 'w') as outfile:
         np.savetxt(outfile, means)
 
