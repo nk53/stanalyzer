@@ -1,5 +1,6 @@
 """Compare results vs. previous runs"""
 import dataclasses
+import importlib.util
 import io
 import os
 import re
@@ -87,6 +88,7 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'contacts': ['*.dat'],
     'secondary_structure': ['*.dat'],
     'sasa': ['*.dat'],
+    'hole': ['midpoints.dat', 'means.dat'],
     'chol_tilt': ['*.dat'],
     'helix_analysis': ['*.dat'],
     'helix_tilt_rotation_angle': ['*.dat'],
@@ -113,8 +115,10 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
 # Availability of optional external tools.
 TOOLS_AVAILABLE: dict[str, bool] = {
     'dssp': shutil.which('mkdssp') is not None or shutil.which('dssp') is not None,
-    'freesasa': shutil.which('freesasa') is not None,
-    'hole2': shutil.which('hole2') is not None,
+    'freesasa': importlib.util.find_spec('freesasa') is not None,
+    'hole2': (shutil.which('hole') is not None
+              and shutil.which('sos_triangle') is not None
+              and shutil.which('sph_process') is not None),
 }
 
 
@@ -547,6 +551,55 @@ class YiweiCase(AnalysisCase):
                 input_relpath=Path('inputs') / "yiwei_protein",
                 output_relpath=self.default_output, traj="step5_*.dcd",
                 psf="step3_input.psf")
+        super().__init__(methodName)
+
+
+class OmFCase(AnalysisCase):
+    """Shortcut for preparing project.json using 2omf_membrane as the template"""
+    default_output: t.ClassVar[str | Path] = 'test_case'
+    standard_args: t.ClassVar[str | None] = None
+    test_standard: Callable
+    accepts_o: t.ClassVar[bool] = True
+
+    # subclass should override if its name doesn't follow camel_to_snake scheme
+    analysis_name: t.ClassVar[str] = ''
+
+    def standard_test(self) -> None:
+        outfile = self.outfile
+        args = self.standard_args
+
+        assert args is not None
+
+        if self.accepts_o:
+            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
+            try:
+                self.assertTrue(self.file_exists(dat, outfile))
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
+        else:
+            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
+            try:
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
+
+    def __init_subclass__(cls, **kwargs):
+        if not cls.analysis_name:
+            cls.analysis_name = camel_to_snake(cls.__name__)
+        cls.default_output = Path('results') / "2omf_membrane"
+        cls.test_standard = skipUnlessAttrNotNone(cls, 'standard_args')(OmFCase.standard_test)
+
+        super().__init_subclass__(**kwargs)
+
+    def __init__(self, methodName='runTest'):
+        if not hasattr(self, 'manager'):
+            self.manager = ManagedConfig(
+                input_relpath=Path('inputs') / "2omf_membrane",
+                output_relpath=self.default_output, traj="equil.dcd",
+                psf="system.psf", time_step="5 ps")
         super().__init__(methodName)
 
 
@@ -1256,8 +1309,8 @@ class VoronoiShellComp(SoohyungCase):
 # ---------------------------------------------------------------------------
 
 @unittest.skipUnless(TOOLS_AVAILABLE['dssp'], "requires mkdssp; not installed")
-class SecondaryStructure(SoohyungCase):
-    standard_args = '--sel "protein"'
+class SecondaryStructure(OmFCase):
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1281,9 +1334,9 @@ class SecondaryStructure(SoohyungCase):
 
 
 @unittest.skipUnless(TOOLS_AVAILABLE['freesasa'], "requires freesasa; not installed")
-class Sasa(SoohyungCase):
+class Sasa(OmFCase):
     analysis_name = 'sasa'
-    standard_args = '--sel "protein"'
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1307,10 +1360,10 @@ class Sasa(SoohyungCase):
 
 
 @unittest.skipUnless(TOOLS_AVAILABLE['hole2'], "requires hole2; not available on osx-arm64")
-class Hole(SoohyungCase):
+class Hole(OmFCase):
     analysis_name = 'hole'
     accepts_o = False
-    standard_args = ''
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args

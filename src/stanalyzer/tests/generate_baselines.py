@@ -12,6 +12,7 @@ and the yiwei_protein system (Category Y). Use --only to regenerate a subset.
 """
 
 import argparse
+import importlib.util
 import json
 import shlex
 import shutil
@@ -86,17 +87,25 @@ CATEGORY_Y = {
                                       '--helix2-start 1356 --helix2-end 1366'),
 }
 
+CATEGORY_2OMF = {
+    'secondary_structure': '--sel "segid PROT_A"',  # needs dssp
+    'sasa': '--sel "segid PROT_A"',  # needs freesasa
+    'hole': '--sel "segid PROT_A"',  # needs hole2
+}
+
 # Systems to process: (categories, input_dirname, traj, psf)
 SYSTEMS = [
     ({**CATEGORY_A, **CATEGORY_B, **CATEGORY_C},
      'soohyung_membrane', 'step7_*.dcd', 'step5_input.psf'),
     (CATEGORY_Y, 'yiwei_protein', 'step5_*.dcd', 'step3_input.psf'),
+    (CATEGORY_2OMF, '2omf_membrane', 'equil.dcd', 'system.psf'),
 ]
 
 # Maps analysis -> external tool dependency
 TOOL_DEPS = {
     'secondary_structure': 'dssp',
     'sasa': 'freesasa',
+    'hole': 'hole2',
 }
 
 # ---------------------------------------------------------------------------
@@ -142,6 +151,7 @@ OUTPUT_PATTERNS = {
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
+    'hole': ['midpoints.dat', 'means.dat'],
 }
 
 # ---------------------------------------------------------------------------
@@ -170,9 +180,12 @@ def find_stanalyzer() -> str:
 def discover_tools() -> dict[str, bool]:
     """Detect availability of optional external tools and Python modules."""
     result: dict[str, bool] = {
-        'dssp': shutil.which('dssp') is not None,
-        'freesasa': shutil.which('freesasa') is not None,
-        'hole2': False,
+        'dssp': shutil.which('mkdssp') is not None
+                or shutil.which('dssp') is not None,
+        'freesasa': importlib.util.find_spec('freesasa') is not None,
+        'hole2': (shutil.which('hole') is not None
+                  and shutil.which('sos_triangle') is not None
+                  and shutil.which('sph_process') is not None),
     }
     return result
 
