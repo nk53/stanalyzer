@@ -6,8 +6,8 @@ import numpy as np
 from MDAnalysis.analysis import hole2
 
 import stanalyzer.cli.stanalyzer as sta
-from stanalyzer.cli.stanalyzer import writable_outfile
-from stanalyzer.cli.validators import p_int
+from stanalyzer.cli.stanalyzer import LazyFile, writable_outfile
+from stanalyzer.cli.validators import exec_name, p_int
 
 ANALYSIS_NAME = 'Pore Profile'
 
@@ -28,14 +28,24 @@ def header(outfile: sta.FileLike | None = None) -> str:
 def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.FileRef,
                       midpoints_out: sta.FileRef, means_out: sta.FileRef,
                       sel: str, bins: int = 100, interval: int = 1,
-                      hole_path: str = 'hole') -> None:
+                      hole_path: str | None = 'hole') -> None:
     """Writes pore radius to out files"""
 
-    traj = [sta.resolve_file(t) for t in traj]
-    u = mda.Universe(psf, traj)
+    if hole_path is None:
+        # add_exec_args leaves the CLI default as None when the executable
+        # is in PATH; resolve it here (raises a ValueError if not in PATH)
+        hole_path = exec_name('hole')
+    # mdahole2's HoleAnalysis joins universe/trajectory filenames as str
+    traj = [str(t) for t in traj]
+    u = mda.Universe(str(psf), traj)
 
+    # Search along the membrane normal (z). Without an explicit CVECT card
+    # HOLE chooses its own initial search direction and can lock onto a
+    # non-pore path (verified on 2omf_membrane: sub-Angstrom radii and
+    # inconsistent per-frame extents without it; clean barrel-spanning
+    # profiles with it).
     with hole2.HoleAnalysis(u, select=sel, cpoint='center_of_geometry',
-                            executable=hole_path) as ha:
+                            cvect=(0.0, 0.0, 1.0), executable=hole_path) as ha:
         # interval strides frames; seed HOLE's Monte-Carlo for reproducibility
         ha.run(step=interval, random_seed=RANDOM_SEED)
 
@@ -65,6 +75,10 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     plt.plot(midpoints, means)
     plt.ylabel(r"Mean HOLE radius $R$ ($\AA$)")
     plt.xlabel(r"Pore coordinate $\zeta$ ($\AA$)")
+    # writable_outfile produces a text-mode LazyFile, but PNG output is
+    # binary: hand matplotlib the underlying path so it opens the file itself
+    if isinstance(hist_out, LazyFile):
+        hist_out = hist_out.name
     plt.savefig(hist_out)
 
 
