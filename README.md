@@ -136,7 +136,9 @@ runner (e.g. `CovAnalysis` eigenvector comparisons, whose bases depend on the
 BLAS build). To reproduce the linux-64 environment locally, use the two
 scripts in `src/stanalyzer/tests/` — `install_env.sh` (one-time environment
 build, run inside the container) and `run_test.sh` (the test suite, runnable
-with or without test-name arguments):
+with or without test-name arguments). Both run inside the official pixi docker
+image (`ghcr.io/prefix-dev/pixi:latest`), which already provides the pixi
+binary:
 
 ```bash
 # from the repository root
@@ -149,17 +151,17 @@ rsync -a --exclude .git --exclude .pixi --exclude .pixi-home ./ .docker-test/
 # build the linux-64 environment (also re-runnable after env changes; the
 # package cache persists in .docker-test/.pixi-home)
 docker run --rm --platform linux/amd64 \
-  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  -v "$PWD/.docker-test:/work" ghcr.io/prefix-dev/pixi:latest \
   bash /work/src/stanalyzer/tests/install_env.sh
 
 # run the full suite (identical to CI's `pixi run test`)
 docker run --rm --platform linux/amd64 \
-  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  -v "$PWD/.docker-test:/work" ghcr.io/prefix-dev/pixi:latest \
   bash /work/src/stanalyzer/tests/run_test.sh
 
 # run specific tests only
 docker run --rm --platform linux/amd64 \
-  -v "$PWD/.docker-test:/work" ubuntu:24.04 \
+  -v "$PWD/.docker-test:/work" ghcr.io/prefix-dev/pixi:latest \
   bash /work/src/stanalyzer/tests/run_test.sh test_cli.CholTilt test_cli.CovAnalysis
 ```
 
@@ -167,6 +169,10 @@ Notes:
 
 - `--platform linux/amd64` is required on Apple Silicon to match the CI
   runner's x86_64 BLAS build; it is a no-op on x86_64 hosts.
+- pixi is preinstalled in the image, so `install_env.sh` no longer downloads
+  it. `run_test.sh` uses `pixi run`, which activates the environment — conda
+  activation scripts run, so tool data-dir env vars like `LIBCIFPP_DATA_DIR`
+  (needed by mkdssp) are set automatically.
 - The scripts derive the repo root from their own location, so the mount
   point (`/work`) can be anything. No host-specific paths are hardcoded.
 - Re-run the `rsync` line after editing the repo to refresh the workdir copy.

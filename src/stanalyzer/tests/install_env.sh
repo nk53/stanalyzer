@@ -1,22 +1,15 @@
 #!/usr/bin/env bash
-# One-time setup: install pixi and build the locked linux-64 environment.
+# One-time setup: build the locked linux-64 environment.
 #
-# Intended to run INSIDE a docker container with a copy of the repo mounted
-# somewhere (see README.md, "Dockerized linux-64 testing"). The script derives
-# the repo root from its own location, so the mount point does not matter.
+# Intended to run INSIDE the official pixi docker image
+# (ghcr.io/prefix-dev/pixi:latest), which already provides the pixi binary,
+# with a copy of the repo mounted somewhere (see README.md, "Dockerized
+# linux-64 testing"). The script derives the repo root from its own location,
+# so the mount point does not matter.
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"   # <root>/src/stanalyzer/tests
-
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq curl ca-certificates build-essential >/dev/null
-
-curl -fsSL -o /tmp/pixi.tar.gz \
-  https://github.com/prefix-dev/pixi/releases/download/v0.73.0/pixi-x86_64-unknown-linux-musl.tar.gz
-tar -xzf /tmp/pixi.tar.gz -C /usr/local/bin
-pixi --version
 
 cd "$REPO_ROOT"
 # Persist the pixi package cache inside the mounted workdir so the env does
