@@ -12,6 +12,7 @@ and the yiwei_protein system (Category Y). Use --only to regenerate a subset.
 """
 
 import argparse
+import fnmatch
 import importlib.util
 import json
 import shlex
@@ -135,6 +136,9 @@ OUTPUT_PATTERNS = {
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],
     'glycosidic-bond-between-sugars': ['*.dat'],
+    'chol_tilt': ['*.dat'],
+    'helix_analysis': ['*.dat'],
+    'helix_tilt_rotation_angle': ['*.dat'],
     'helix_distance_crossing_angle': ['*.dat'],
     'contacts': ['*.dat'],
     'secondary_structure': ['*.dat'],
@@ -150,6 +154,7 @@ OUTPUT_PATTERNS = {
                      'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
+    'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
     'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
     'hole': ['midpoints.dat', 'means.dat'],
 }
@@ -548,7 +553,13 @@ def main() -> int:
             ref_analysis_dir.mkdir(parents=True)
 
             copied = 0
+            patterns = OUTPUT_PATTERNS.get(name, ['*.dat'])
             for f in new_files:
+                if not any(fnmatch.fnmatch(f.name, pattern)
+                           for pattern in patterns):
+                    print(f'  Skipping {f.name}: not in OUTPUT_PATTERNS '
+                          f'for {name}')
+                    continue
                 dest = ref_analysis_dir / f.name
                 shutil.copy2(f, dest)
                 size = dest.stat().st_size
