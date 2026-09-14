@@ -34,7 +34,17 @@ mdahole2 = ">=0.5.0"
 
 [tasks]
 smoke = "stanalyzer -h && stanalyzer -l"
-test = { cmd = "bash test.sh", cwd = "src/stanalyzer/tests" }
+test = { cmd = "python -m unittest -b", cwd = "src/stanalyzer/tests" }
+
+# Dockerized linux-64 testing (mirrors CI's ubuntu runner).
+# One-time env build:  pixi run docker-install
+# Full linux-64 suite: pixi run docker-test
+# Narrow run:          pixi run docker-test test_cli.CholTilt test_cli.CovAnalysis
+docker-sync = "rsync -a --delete --exclude .git --exclude .pixi --exclude .pixi-home --exclude .docker-test ./ .docker-test/"
+
+docker-install = { cmd = "docker run --rm --platform linux/amd64 -v \"$(pwd)/.docker-test:/work\" ghcr.io/prefix-dev/pixi:latest bash /work/src/stanalyzer/tests/install_env.sh", depends-on = ["docker-sync"] }
+
+docker-test = { cmd = "docker run --rm --platform linux/amd64 -v \"$(pwd)/.docker-test:/work\" ghcr.io/prefix-dev/pixi:latest bash /work/src/stanalyzer/tests/run_test.sh", depends-on = ["docker-install"] }
 
 # Optional analysis tools:
 # - dssp + freesasa install on all pixi platforms (secondary structure, SASA).
