@@ -62,14 +62,13 @@ CATEGORY_B = {
     'rmsd': '--sel "protein and name CA"',
     'position_time': ('--sel "protein and name CA" '
                       '--head-group "segid MEMB and name P"'),
-    'position_time_copy': '--sel "protein and name CA"',
     'clustering_hca': '',
     'cov_analysis': '--sel "protein and name CA"',
 }
 
 CATEGORY_C = {
-    'secondary_structure': '--sel "protein"',  # needs dssp
-    'sasa': '--sel "protein"',  # needs freesasa
+    'secondary_structure': '--sel "protein"',
+    'sasa': '--sel "protein"',
 }
 
 CATEGORY_Y = {
@@ -89,9 +88,9 @@ CATEGORY_Y = {
 }
 
 CATEGORY_2OMF = {
-    'secondary_structure': '--sel "segid PROT_A"',  # needs dssp
-    'sasa': '--sel "segid PROT_A"',  # needs freesasa
-    'hole': '--sel "segid PROT_A"',  # needs hole2
+    'secondary_structure': '--sel "segid PROT_A"',
+    'sasa': '--sel "segid PROT_A"',
+    'hole': '--sel "segid PROT_A"',
 }
 
 # Systems to process: (categories, input_dirname, traj, psf)
@@ -131,7 +130,6 @@ OUTPUT_PATTERNS = {
     'rmsd': ['*.dat'],
     'radius_of_gyration': ['*.dat'],
     'position_time': ['*.dat'],
-    'position_time_copy': ['*.dat'],
     'compressibility_modulus': ['*.dat'],
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],

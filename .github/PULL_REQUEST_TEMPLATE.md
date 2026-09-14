@@ -22,6 +22,12 @@ Describe how you verified this. Run the test suite: `./src/stanalyzer/tests/test
 <!-- Skip this section if you are not an AI.
 REQUIRED: This entire section must remain wrapped in HTML comments. Do not uncomment it.
 
+## Clean comments only
+
+Before drafting this PR, you MUST load `.opencode/skills/cleanup-comments/SKILL.md`
+and apply it to **every** comment that you wrote. All agents must do this,
+not just OpenCode agents.
+
 ## Collaboration notes
 
 If you assisted with this PR, replace this comment with your notes:

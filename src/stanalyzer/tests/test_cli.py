@@ -18,9 +18,7 @@ import numpy as np
 from stanalyzer.utils import write_settings
 from stanalyzer.validation import Project
 
-# Force matplotlib to use the non-interactive Agg backend so analyses that
-# generate plots (e.g. cov_analysis heatmap) don't open GUI windows when run
-# as subprocesses during tests. Propagates to all spawned subprocesses.
+# Prevent matplotlib GUI windows in test subprocesses
 os.environ.setdefault('MPLBACKEND', 'Agg')
 
 T = t.TypeVar('T')
@@ -58,17 +56,8 @@ def skipUnlessAttrNotNone(obj: object, attr: str) -> TestFunction:
     return lambda func: func
 
 
-# Mapping of analysis name -> list of output glob patterns (relative to the
-# analysis's output directory). Used by `discover_output_files()` to locate
-# the files an analysis produces.
-#
-# Analyses that accept `--out` write a single file whose name is given by the
-# user (typically `<analysis_name>.dat`), so the pattern is `*.dat`.
-#
-# Analyses with hardcoded/dynamic filenames write one or more files with
-# predictable names (e.g. `density_z` writes `<sel>_nb<nbin>_<suffix>.dat`).
-#
-# Analyses that only write to stdout have no file output and are omitted.
+# analysis name → output glob patterns (relative to the analysis's output
+# dir); used by discover_output_files() to find post-run output files.
 OUTPUT_PATTERNS: dict[str, list[str]] = {
     # --out-based analyses (single output file)
     'contact_res_time': ['*.dat'],
@@ -81,7 +70,6 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'rmsd': ['*.dat'],
     'radius_of_gyration': ['*.dat'],
     'position_time': ['*.dat'],
-    'position_time_copy': ['*.dat'],
     'compressibility_modulus': ['*.dat'],
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],
@@ -104,10 +92,7 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'msd_membrane': ['*_sys_com_*.dat', '*_mol_com_*.dat', '*_*_*.dat', 'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
     'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
-    # eigenvectors.dat intentionally excluded: eigenvector bases decay into
-    # degenerate eigenspaces and are not portable across BLAS builds, so it
-    # cannot be golden-compared. It is validated instead by a rotation-
-    # invariant consistency check (see CovAnalysis.test_eigenvectors_*).
+    # eigenvectors excluded: BLAS-portable via rotation-invariant test in CovAnalysis
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
 }
@@ -246,6 +231,99 @@ def assert_output_matches_reference(test_case: unittest.TestCase,
     # Mixed text + numeric / pure text fallback
     _compare_lines(test_case, actual, reference,
                    actual_dat_path, reference_dat_path, rtol, atol)
+
+
+def _parse_helix_headers(raw_lines: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Parse the ``Global Axes`` and ``Global Tilts`` header blocks.
+
+    Returns ``(global_axes, global_tilts)`` as ``(3, 3)`` and ``(3,)`` float
+    arrays. Axes lines are ``mean: [a b c]``; tilts lines are ``mean: X``.
+    """
+    axes_start = raw_lines.index('Global Axes:')
+    axes = np.array([
+        [float(f) for f in line.split(':', 1)[1].strip(' []').split()]
+        for line in raw_lines[axes_start + 1:axes_start + 4]
+    ])
+    tilts_start = raw_lines.index('Global Tilts:')
+    tilts = np.array([
+        float(line.split(':', 1)[1].strip())
+        for line in raw_lines[tilts_start + 1:tilts_start + 4]
+    ])
+    return axes, tilts
+
+
+def _parse_helix_bends(raw_lines: list[str]) -> np.ndarray:
+    """Parse the ``All Bends`` frame blocks into a ``(20, 20)`` float array.
+
+    Each ``Frame N: [`` block spans 4 or 5 physical lines depending on numpy's
+    scientific-vs-fixed print format, so tokens are accumulated across lines
+    until the closing ``]``.
+    """
+    start = raw_lines.index('All Bends (shape: (20, 20, 20)):')
+    frames: list[list[float]] = []
+    idx = start + 1
+    while idx < len(raw_lines) and raw_lines[idx].startswith('Frame '):
+        _, _, rest = raw_lines[idx].partition('[')
+        tokens = rest.split()
+        idx += 1
+        while idx < len(raw_lines):
+            line_tokens = raw_lines[idx].split()
+            tokens.extend(line_tokens)
+            idx += 1
+            if any(']' in tok for tok in line_tokens):
+                break
+        tokens = [tok[:-1] if tok.endswith(']') else tok for tok in tokens
+                  if tok != ']']
+        frames.append([float(tok) for tok in tokens])
+    return np.array(frames)
+
+
+def assert_helix_output_matches_reference(test_case: unittest.TestCase,
+                                          actual_dat_path: Path,
+                                          reference_dat_path: Path) -> None:
+    """Assert helix_analysis output matches its golden reference.
+
+    Helix-specific because the generic line-count comparison is unstable
+    across platforms: numpy's scientific-vs-fixed print format flips when a
+    frame's first bend value rounds to exactly ``0.0`` (observed under Rosetta
+    amd64 emulation), changing a frame block's physical wrap count without
+    changing its values. Column 0 (terminal-residue bends) is additionally
+    compared only for near-zero because it sits at an ``arccos(dot ~ 1.0)``
+    precision floor (~0-0.03 deg) that drifts with the platform's BLAS. Other
+    analyses keep the strict generic comparator.
+    """
+    if not reference_dat_path.exists():
+        test_case.skipTest(f'Reference not found: {reference_dat_path}')
+
+    actual = load_reference(actual_dat_path)
+    reference = load_reference(reference_dat_path)
+
+    if actual.is_empty and reference.is_empty:
+        return
+
+    actual_axes, actual_tilts = _parse_helix_headers(actual.raw_lines)
+    ref_axes, ref_tilts = _parse_helix_headers(reference.raw_lines)
+    actual_bends = _parse_helix_bends(actual.raw_lines)
+    ref_bends = _parse_helix_bends(reference.raw_lines)
+
+    np.testing.assert_allclose(
+        actual_axes, ref_axes, rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (global axes)')
+    np.testing.assert_allclose(
+        actual_tilts, ref_tilts, rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (global tilts)')
+    np.testing.assert_allclose(
+        actual_bends[:, 1:], ref_bends[:, 1:], rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (bends cols 1-19)')
+    # col 0 = terminal bends per-frame, arccos(dot~1.0) precision floor: ~0-0.03deg, platform-dependent, compare near-zero
+    test_case.assertTrue(
+        np.all(np.abs(actual_bends[:, 0]) < 0.1),
+        f'{actual_dat_path}: col 0 terminal bends not near-zero '
+        f'(max abs {np.max(np.abs(actual_bends[:, 0]))})')
+    test_case.assertTrue(
+        np.all(np.abs(ref_bends[:, 0]) < 0.1),
+        f'{reference_dat_path}: col 0 terminal bends not near-zero '
+        f'(max abs {np.max(np.abs(ref_bends[:, 0]))})')
 
 
 def discover_output_files(output_dir: Path, analysis_name: str) -> list[Path]:
@@ -1078,31 +1156,6 @@ class PositionTime(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-class PositionTimeCopy(SoohyungCase):
-    analysis_name = 'position_time_copy'
-    standard_args = '--sel "protein and name CA"'
-
-    def test_standard_correctness(self) -> None:
-        args = self.standard_args
-        assert args is not None
-
-        if self.accepts_o:
-            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
-        else:
-            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
-
-        output_dir = Path(self.config.output_path) / self.analysis_name
-        actual_files = discover_output_files(output_dir, self.analysis_name)
-
-        if not actual_files:
-            self.skipTest(f'No output files found for {self.analysis_name}')
-
-        ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
-        for actual in actual_files:
-            ref = ref_dir / actual.name
-            assert_output_matches_reference(self, actual, ref)
-
-
 class Rdf(SoohyungCase):
     standard_args = '-sel1 "protein and name CA" -sel2 "resname DOPC and name P" -bin-size 0.1'
 
@@ -1437,9 +1490,7 @@ class CholTilt(SoohyungCase):
         ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
         for actual in actual_files:
             ref = ref_dir / actual.name
-            # rtol=1e-2: 2D-array folding arithmetic accumulates ~0.75% error
-            # on some platforms/BLAS builds (observed ubuntu-latest CI); the
-            # reference itself was generated on macOS.
+            # rtol=1e-2: folding arithmetic drifts across BLAS builds
             assert_output_matches_reference(self, actual, ref, rtol=1e-2)
 
 
@@ -1465,7 +1516,7 @@ class HelixAnalysis(SoohyungCase):
         ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
         for actual in actual_files:
             ref = ref_dir / actual.name
-            assert_output_matches_reference(self, actual, ref)
+            assert_helix_output_matches_reference(self, actual, ref)
 
 
 class HelixDistanceCrossingAngle(YiweiCase):

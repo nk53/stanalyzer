@@ -89,9 +89,7 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
     eigenvalues = eigenvalues[sorted_indices]
     eigenvectors = eigenvectors[:, sorted_indices]
 
-    # Number of components that explain at least `threshold` of the total
-    # variance, derived from the covariance eigenvalues themselves
-    # (fitting PCA on the covariance matrix was meaningless).
+    # threshold-based component selection (PCA on covariance was meaningless)
     threshold = 0.85
     cumulative_variance_sum = np.cumsum(eigenvalues) / eigenvalues.sum()
     num_components = np.argmax(cumulative_variance_sum >= threshold) + 1
@@ -102,8 +100,6 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
         np.savetxt(outfile2, eigenvalues[:num_components],
                    fmt='%.6f', header='Top Eigenvalues')
 
-    # Save eigenvectors to file: one eigenvector per row (columns of the
-    # eigenvector matrix)
     with sta.resolve_file(eigenvectors_out, 'w') as outfile3:
         np.savetxt(outfile3, eigenvectors[:, :num_components].T,
                    fmt='%.6f', header='Top Eigenvectors')

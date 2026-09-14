@@ -44,13 +44,10 @@ def write_contacts(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
     """
     u = mda.Universe(psf, traj)
 
-    # Atoms considered for glycosidic bonds: everything in `sel`. Oxygens
-    # in `sel` that are covalently bonded to a carbon in `sel`.
     sel_atoms = u.select_atoms(sel or 'all')
     sel_ids = set(sel_atoms.ix)
     oxygens = sel_atoms.select_atoms('name O* and bonded name C*')
 
-    # Unique inter-residue C-O bonds within the selection.
     bonds: dict[frozenset, tuple] = {}
     for o in oxygens:
         for c in o.bonded_atoms:

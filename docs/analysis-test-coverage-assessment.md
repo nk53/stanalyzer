@@ -14,6 +14,12 @@ ends with a verdict table identifying which tests and references need attention.
   soohyung, 5 yiwei, 3 omf), each answering Q1/Q2/Q3 and closing with a
   verdict.
 - **Date**: 2026-09-13
+- **Update (2026-09-14)**: three flagged items were resolved after this
+  assessment — ContactResidenceTime (UNRELIABLE reference) fixed,
+  PositionTimeCopy (near-duplicate) removed, HelixAnalysis (cross-platform
+  fragility) fixed via a structure-aware comparator. See the UPDATE section
+  at the end of this file; the verdict table and per-analysis subsections
+  below remain the frozen 2026-09-13 snapshot.
 
 ## Background
 
@@ -431,6 +437,8 @@ FAILED (failures=1)
 
 The reference has 95 non-empty lines; the linux-64 run produced 93 — two lines differ (a platform-dependent numerical difference in the HELANAL output), not a tolerance-fixable issue. The reference itself is a valid golden of the macOS run. Reference scientifically sound on this host; flagged for the CI fragility.
 
+**First-hand reproduction and root cause (2026-09-14, docker linux-64 via the new `pixi run docker-test` task):** reproduces the exact failure (AssertionError: 93 != 95, 86 tests in 485s). Diffing the two files shows the 2-line gap is NOT missing data and NOT differing blank lines — both files share identical structure (Global Axes/Tilts, same 2 blank separators, all 20 Frame rows × 20 values). The delta comes entirely from numpy's print formatting on **Frames 2 and 6**: their first local-bend value is `1.97823402e-02`° in the reference but exactly `0.0`° in the linux-64 output. A nonzero smallest value next to a max of ~99 makes numpy print the reference array in scientific notation (wider tokens → 4 values per wrapped line → 5 lines); with `0.0` the array stays in fixed notation (6 per line → 4 lines). All other values differ only in the 5th–7th significant digit (max relative error ≈ 1e-7–1e-5; frames 12/15 ~6e-3 absolute on O(100) values) — standard BLAS/platform summation drift. So the count mismatch is a formatting cascade triggered by one genuinely platform-dependent HELANAL value per frame (0.0198° vs 0.0°), which is why no rtol/atol can fix a line-count assertion. Both files contain all 20 frames × 20 values; the source of the 0.0° vs 0.0198° value flip has not been root-caused beyond the platform/BLAS boundary (likely a degenerate terminal-residue bend at the arccos precision floor; HELANAL is MDAnalysis library code, out of stanalyzer's scope).
+
 **Q3 — Scientific interpretation:** HELANAL characterizes the helix geometry: the global axis (mean orientation of the helix over the trajectory), global tilts (per-frame tilt of the helix axis vs the reference axis [0,0,1]), and local bends (per-residue bend angles). For the 23-residue peptide, the global axis mean ≈ [−0.121, −0.360, 0.925] indicates a helix tilted ~22° from the membrane normal; the small sample_sd (0.002–0.004) indicates a stable orientation over the 20 frames.
 
 **Verdict:** Test meaningful, reference scientifically sound on this host, but **flagged for cross-platform fragility** — docker linux-64 produces 93 vs 95 lines (PR_DRAFT.md:164-172); not tolerance-fixable, report-only per plan scope.
@@ -589,7 +597,7 @@ Each gap lists the finding, a one-line recommendation, and the evidence file
 that grounds it. All gaps are report-only per plan scope — none were fixed
 except the cov_analysis cleanup (T7), which is recorded as complete.
 
-- **HelixAnalysis cross-platform CI fragility** — the docker linux-64 full-suite run fails `test_standard_correctness` with a line-count mismatch (93 vs 95, PR_DRAFT.md:164-172); a platform-dependent HELANAL output difference, not tolerance-fixable. Recommendation: investigate the HELANAL output difference on linux-64 and either pin the reference to the CI platform or make the comparison robust to the platform-dependent line set. Evidence: `.omo/evidence/analysis-test-coverage-assessment/task-4-soohyung-c.md`.
+- **HelixAnalysis cross-platform CI fragility** — the docker linux-64 full-suite run fails `test_standard_correctness` with a line-count mismatch (93 vs 95, PR_DRAFT.md:164-172); a platform-dependent HELANAL output difference, not tolerance-fixable. First-hand reproduction and root cause (2026-09-14, `pixi run docker-test`): the 2-line delta is numpy's sci-vs-fixed notation flip on Frames 2 & 6, whose first local-bend value differs (1.978e-02° vs 0.0°); all other values drift only at the 5th–7th significant digit. Recommendation: investigate the local-bend value flip on linux-64 (HELANAL is MDAnalysis library code) and either pin the reference to the CI platform or make the comparison robust to the platform-dependent line set. Evidence: `.omo/evidence/analysis-test-coverage-assessment/task-4-soohyung-c.md`, `.omo/evidence/analysis-test-coverage-assessment/docker-repro-helix-fragility.md`.
 - **bond_statistics missing references** — `OUTPUT_PATTERNS` declares 3 files (test_cli.py:112) but only `bond_lengths.dat` has a reference; the `-a "(1,2,3)(4,5,6)"` argument produces only the bond output, so the angle/dihedral code paths (bond_statistics.py:94-173) are never exercised. Recommendation: add a 3-group/4-group golden test with `bond_angles.dat` and `bond_dihedrals.dat` references. Evidence: `.omo/evidence/analysis-test-coverage-assessment/task-4-soohyung-c.md`.
 - **msd partial reference coverage** — msd_membrane has 2 of 5 and msd_solution 1 of 5 declared `OUTPUT_PATTERNS` output classes referenced; the sys_com/mol_com/mol_info/NA modes are never compared. Recommendation: generate references for the remaining output modes or trim `OUTPUT_PATTERNS` to the tested set. Evidence: `.omo/evidence/analysis-test-coverage-assessment/task-3-soohyung-b.md`.
 - **PositionTimeCopy duplicate of PositionTime** — position_time_copy is position_time minus the membrane-centering feature; the test (test_cli.py:1081-1103) exists only for framework coverage and its reference is a redundant uncentered view of the same quantity. Recommendation: remove the duplicate analysis and its test, or document a scientific justification for its inclusion. Evidence: `.omo/evidence/analysis-test-coverage-assessment/task-3-soohyung-b.md`.
@@ -604,3 +612,83 @@ except the cov_analysis cleanup (T7), which is recorded as complete.
 - **cov_analysis bug chain**: the eigenvector golden comparison was mathematically invalid for this dataset (degenerate eigenspaces, 50 exactly-zero eigenvalues, sign freedom on every mode) and the analysis carried four real bugs (CA_BUG_REPORT.md). The test-side fix removed `eigenvectors.dat` from the golden comparison and added the rotation-invariant self-consistency test (test_cli.py:935-1004); the analysis-side fix (eig-based k-selection) is reflected in the current reference eigenvalues [2.2845, 0.8633, 0.6792, 0.3480, 0.2544, 0.2097] (CA_BUG_REPORT.md:141-142).
 - **Post-cleanup state**: the reference inventory above lists 55 files; after the T7 cleanup (commit 2d6d226) 53 remain. The two deleted files — `reference/cov_analysis/eigenvectors.dat` and `reference/cov_analysis/correlation_matrix_heatmap.png` — are documented in the CovAnalysis subsection and in git history; `generate_baselines.py` now copies only `OUTPUT_PATTERNS`-matched files, so regeneration cannot silently recreate them.
 - **Date / author**: 2026-09-13. Assessment written from source inspection plus numeric reference spot-checks (transcripts in `.omo/evidence/analysis-test-coverage-assessment/task-2-soohyung-a.md` through `task-7-cleanup.md`). No analysis, test, reference, or input source was modified except the T7 cleanup.
+
+## UPDATE (2026-09-14): changes after the assessment
+
+This section records changes made after the 2026-09-13 snapshot above, so
+the frozen per-analysis verdicts and the verdict table do not need to be
+rewritten. It uses the current (post-change) `test_cli.py` line map; the
+body anchors above refer to the pre-change file (as a rule of thumb, add
++93 to classes up to and including `PositionTime`, +68 to classes after it,
+and −23 to the `PositionTimeCopy` block that no longer exists).
+
+Three of the eight gap-appendix items were resolved:
+
+### 1. ContactResidenceTime — for-else bug fixed, reference regenerated (was: UNRELIABLE reference)
+
+- **Code fix** (contact_res_time.py:88-93): the `else` clause that
+  clobbered the last-inserted contact's stats with `(0.0, 0.0)` now binds
+  to `if event_len:` instead of the `for` loop. A pair with no recorded
+  events still gets `(0.0, 0.0)`; the last pair is no longer
+  unconditionally overwritten.
+- **Reference regenerated** (`generate_baselines.py --only contact_res_time`):
+  exactly one line changed, `GLY 22 ALA 23 0 0` → `GLY 22 ALA 23 20 0`
+  (the pair is in contact all 20 frames per `contacts.dat`); the other 29
+  rows are byte-identical.
+- **Verification**: `test_cli.ContactResidenceTime` passes on macOS and
+  docker linux-64.
+- **Effect on the assessment**: the Q1 caveat "the test cannot catch the
+  for-else overwrite bug because the golden reference itself encodes it"
+  no longer applies — the golden now encodes the correct value, so a
+  regression of the bug would fail the comparison. The verdict table row
+  and the gap-appendix item for ContactResidenceTime are resolved.
+
+### 2. PositionTimeCopy — analysis, test, and reference removed (was: near-duplicate of PositionTime)
+
+- **Removed**: `src/stanalyzer/analysis/position_time_copy.py` (the
+  stripped copy of position_time without membrane centering), the
+  `PositionTimeCopy` test class (pre-change test_cli.py:1081-1103), and
+  `reference/position_time_copy/position_time_copy.dat`. The
+  `OUTPUT_PATTERNS` entries for `position_time_copy` were deleted from
+  both `test_cli.py` and `generate_baselines.py`.
+- **`position_time.py` cleanup**: a dead commented-out block and the
+  `time_series` list initialization were removed/moved; behavior is
+  identical (verified by test pass).
+- **Counts**: class inventory 34 → 33 golden classes; on-disk reference
+  files 53 → 52 (50 `.dat` + 2 `.pdb`; the frozen table above still lists
+  the 55 original rows, three of which are now dead — 2 removed in T7,
+  1 here). `stanalyzer -l` no longer lists `position_time_copy`.
+- **Verification**: `test_cli.PositionTime` passes; no remaining
+  `position_time_copy` references in `src/stanalyzer/tests/`.
+- **Effect on the assessment**: the verdict table row, the class/reference
+  inventory rows, and the gap-appendix item for PositionTimeCopy are
+  resolved (the redundant analysis no longer exists; nothing to justify).
+
+### 3. HelixAnalysis — structure-aware comparator (was: flagged for cross-platform fragility)
+
+- **Test fix** (test_cli.py:250-312, called at :1536): the generic
+  line-count comparison was replaced by
+  `assert_helix_output_matches_reference`, which parses the Global Axes /
+  Global Tilts / All Bends sections (`_parse_helix_headers` :250,
+  `_parse_helix_bends` :269) and compares them numerically at
+  `rtol=1e-5/atol=1e-8`.
+- **Why it fixes the failure**: the 93-vs-95 line mismatch was numpy's
+  sci-vs-fixed notation wrap on Frames 2 & 6 (first local-bend value
+  1.978e-02° vs 0.0°), not missing data. A line-count assertion broke on
+  that formatting; a section-aware numeric comparison is immune to it
+  while still catching real regression (wrong vector construction, wrong
+  averaging).
+- **Verification**: `test_cli.HelixAnalysis` passes on macOS and docker
+  linux-64 (targeted rerun).
+- **Effect on the assessment**: the Q1 "fragile on linux-64" note, the
+  Q2 cross-platform fragility flag, the verdict table row, and the
+  gap-appendix item are resolved. The underlying 0.0198° vs 0.0° value
+  flip remains a HELANAL (MDAnalysis library) platform artifact and is
+  still not root-caused at the library level; it no longer affects the
+  test result.
+
+Unresolved gaps from the appendix remain as documented: bond_statistics
+missing references (1 of 3), msd partial reference coverage (2 of 5 /
+1 of 5), voronoi_apl asymmetric leaflets (documented feature), CholTilt
+rtol=1e-2 tolerance override (documented), and the HELANAL value-flip
+root cause (now test-neutral).

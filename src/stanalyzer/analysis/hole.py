@@ -11,8 +11,7 @@ from stanalyzer.cli.validators import exec_name, p_int
 
 ANALYSIS_NAME = 'Pore Profile'
 
-# Seed HOLE's Monte-Carlo run so results are reproducible (unseeded HOLE
-# seeds from the time of day).
+# HOLE default seeds from wall-clock time
 RANDOM_SEED = 42
 
 
@@ -32,27 +31,20 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     """Writes pore radius to out files"""
 
     if hole_path is None:
-        # add_exec_args leaves the CLI default as None when the executable
-        # is in PATH; resolve it here (raises a ValueError if not in PATH)
+        # Resolve None → path; raises ValueError if not on PATH
         hole_path = exec_name('hole')
     # mdahole2's HoleAnalysis joins universe/trajectory filenames as str
     traj = [str(t) for t in traj]
     u = mda.Universe(str(psf), traj)
 
-    # Search along the membrane normal (z). Without an explicit CVECT card
-    # HOLE chooses its own initial search direction and can lock onto a
-    # non-pore path (verified on 2omf_membrane: sub-Angstrom radii and
-    # inconsistent per-frame extents without it; clean barrel-spanning
-    # profiles with it).
+    # CVECT=(0,0,1) prevents HOLE from locking onto a non-pore path
     with hole2.HoleAnalysis(u, select=sel, cpoint='center_of_geometry',
                             cvect=(0.0, 0.0, 1.0), executable=hole_path) as ha:
         # interval strides frames; seed HOLE's Monte-Carlo for reproducibility
         ha.run(step=interval, random_seed=RANDOM_SEED)
 
-        # per-frame profiles: recarrays with fields rxn_coord, radius
         profiles = ha.results.profiles
 
-    # midpoints.dat: position along pore vs radius, one section per thinned frame
     with sta.resolve_file(midpoints_out, 'w') as outfile:
         for i, frame in enumerate(sorted(profiles)):
             if i:
@@ -61,7 +53,6 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
             np.savetxt(outfile, np.column_stack((profile['rxn_coord'],
                                                  profile['radius'])))
 
-    # means.dat: per-position mean radius across the thinned frames
     coords = np.concatenate([profiles[f]['rxn_coord'] for f in profiles])
     radii = np.concatenate([profiles[f]['radius'] for f in profiles])
     edges = np.linspace(coords.min(), coords.max(), bins + 1)
@@ -75,8 +66,7 @@ def write_pore_radius(psf: sta.FileRef, traj: sta.FileRefList, hist_out: sta.Fil
     plt.plot(midpoints, means)
     plt.ylabel(r"Mean HOLE radius $R$ ($\AA$)")
     plt.xlabel(r"Pore coordinate $\zeta$ ($\AA$)")
-    # writable_outfile produces a text-mode LazyFile, but PNG output is
-    # binary: hand matplotlib the underlying path so it opens the file itself
+    # PNG is binary; pass raw path to matplotlib
     if isinstance(hist_out, LazyFile):
         hist_out = hist_out.name
     plt.savefig(hist_out)
