@@ -1011,17 +1011,7 @@ class CovAnalysis(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
     def test_eigenvectors_consistent_with_eigenvalues(self) -> None:
-        """Eigenvectors.dat must satisfy C·v_i = lambda_i·v_i for the
-        covariance matrix C recomputed from the input, and form an
-        orthonormal set.
-
-        Golden comparison is impossible for eigenvectors: within the
-        degenerate eigenspaces of a rank-deficient covariance matrix the
-        basis is arbitrary and BLAS-build-dependent. This check is
-        rotation-invariant and catches axis-selection bugs (e.g. saving
-        eigenvector matrix rows instead of columns), which a pure
-        orthonormality check would miss.
-        """
+        """Checks C·v_i = lambda_i·v_i with recomputed C"""
         args = self.standard_args
         assert args is not None
 

@@ -8,7 +8,7 @@ help, you are not ready to submit it.
 
 ## Testing
 
-Describe how you verified this. Run the test suite: `./src/stanalyzer/tests/test.sh` and paste the final output.
+Describe how you verified this. Run the test suite: (`./src/stanalyzer/tests/test.sh` or `pixi run test` and `pixi run test-docker`) and paste the final output.
 
 ## Checklist
 
