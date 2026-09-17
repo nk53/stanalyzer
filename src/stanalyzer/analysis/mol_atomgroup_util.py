@@ -442,9 +442,9 @@ def assign_leaflet_index_to_full_ag(ag_full: list['AtomGroup'],
     tid_side = [-1] * nmol
     flag = [0] * nmol
     nside = len(leaflets)  # number of leaflets
-    if nside != 2:
+    if nside < 2:
         raise ValueError(
-            f"expected two reference leaflets, got {nside}"
+            f"expected at least two reference leaflets, got {nside}"
         )
 
     # Loop over molecule

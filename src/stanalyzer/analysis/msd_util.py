@@ -56,8 +56,8 @@ class PackedMoleculeData(t.NamedTuple):
 def minimum_image_displacement(
         displacement: NDFloat64,
         box: NDFloat64,
-        out: NDFloat64 | None = None,
-        scratch: NDFloat64 | None = None) -> NDFloat64:
+        out: 'NDFloat64 | None' = None,
+        scratch: 'NDFloat64 | None' = None) -> NDFloat64:
     """Apply minimum-image PBC for orthorhombic or triclinic boxes."""
     box_array = np.asarray(box, dtype=float)
     if box_array.shape not in {(3,), (6,)}:
@@ -652,7 +652,7 @@ def _calculate_msd_tau(
         interval: int,
         type_indices: Sequence[NDIntp],
         traj_com_unwrap: NDFloat64,
-        scratch: NDFloat64 | None = None) -> NDFloat64:
+        scratch: 'NDFloat64 | None' = None) -> NDFloat64:
     """Calculate one lag-time MSD using vectorized time origins."""
     frame_lag = int(tau / interval)
     stop = framenum - frame_lag
