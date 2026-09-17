@@ -513,6 +513,10 @@ def run_msd_membrane(
         raise ValueError("fft_chunk_molecules must be positive")
     if fft_workers < 1:
         raise ValueError("fft_workers must be positive")
+    if re.fullmatch(r'[\w.-]+', suffix) is None:
+        raise ValueError(
+            f"invalid suffix {suffix!r}: must match ^[\\w.-]+$"
+        )
 
     # process arguments
     selection, ntype, qsplit = process_args(sel, split)
