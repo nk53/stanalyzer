@@ -1,5 +1,6 @@
 """Compare results vs. previous runs"""
 import dataclasses
+import importlib.util
 import io
 import os
 import re
@@ -17,7 +18,7 @@ import numpy as np
 from stanalyzer.utils import write_settings
 from stanalyzer.validation import Project
 
-# force matplotlib to use the non-interactive backend
+# Prevent matplotlib GUI windows in test subprocesses
 os.environ.setdefault('MPLBACKEND', 'Agg')
 
 T = t.TypeVar('T')
@@ -55,17 +56,8 @@ def skipUnlessAttrNotNone(obj: object, attr: str) -> TestFunction:
     return lambda func: func
 
 
-# Mapping of analysis name -> list of output glob patterns (relative to the
-# analysis's output directory). Used by `discover_output_files()` to locate
-# the files an analysis produces.
-#
-# Analyses that accept `--out` write a single file whose name is given by the
-# user (typically `<analysis_name>.dat`), so the pattern is `*.dat`.
-#
-# Analyses with hardcoded/dynamic filenames write one or more files with
-# predictable names (e.g. `density_z` writes `<sel>_nb<nbin>_<suffix>.dat`).
-#
-# Analyses that only write to stdout have no file output and are omitted.
+# analysis name → output glob patterns (relative to the analysis's output
+# dir); used by discover_output_files() to find post-run output files.
 OUTPUT_PATTERNS: dict[str, list[str]] = {
     # --out-based analyses (single output file)
     'contact_res_time': ['*.dat'],
@@ -78,16 +70,18 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'rmsd': ['*.dat'],
     'radius_of_gyration': ['*.dat'],
     'position_time': ['*.dat'],
-    'position_time_copy': ['*.dat'],
     'compressibility_modulus': ['*.dat'],
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],
     'contacts': ['*.dat'],
     'secondary_structure': ['*.dat'],
     'sasa': ['*.dat'],
+    'hole': ['midpoints.dat', 'means.dat'],
     'chol_tilt': ['*.dat'],
     'helix_analysis': ['*.dat'],
     'helix_tilt_rotation_angle': ['*.dat'],
+    'helix_distance_crossing_angle': ['*.dat'],
+    'glycosidic-bond-between-sugars': ['*.dat'],
     # Hardcoded/dynamic filenames (no --out)
     'density_z': ['*_nb*_*.dat', 'combined_nb*_*.dat', 'NA_*_nb*_*.dat'],
     'scd': ['ave_*_*.dat', 'time_*_*.dat', 'NA_*_*.dat'],
@@ -97,24 +91,19 @@ OUTPUT_PATTERNS: dict[str, list[str]] = {
     'msd_solution': ['sys_com_*.dat', 'mol_com_*.dat', '*_*.dat', 'NA_*_*.dat', 'mol_info_*.dat'],
     'msd_membrane': ['*_sys_com_*.dat', '*_mol_com_*.dat', '*_*_*.dat', 'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
-    # eigenvectors.dat intentionally excluded: exact check breaks cross-platform
+    'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
+    # eigenvectors excluded: BLAS-portable via rotation-invariant test in CovAnalysis
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
     'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
 }
 
-def _sklearn_extra_available() -> bool:
-    try:
-        from sklearn_extra.cluster import KMedoids  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-
 # Availability of optional external tools.
 TOOLS_AVAILABLE: dict[str, bool] = {
     'dssp': shutil.which('mkdssp') is not None or shutil.which('dssp') is not None,
-    'freesasa': shutil.which('freesasa') is not None,
-    'hole2': shutil.which('hole2') is not None,
+    'freesasa': importlib.util.find_spec('freesasa') is not None,
+    'hole2': (shutil.which('hole') is not None
+              and shutil.which('sos_triangle') is not None
+              and shutil.which('sph_process') is not None),
 }
 
 
@@ -242,6 +231,99 @@ def assert_output_matches_reference(test_case: unittest.TestCase,
     # Mixed text + numeric / pure text fallback
     _compare_lines(test_case, actual, reference,
                    actual_dat_path, reference_dat_path, rtol, atol)
+
+
+def _parse_helix_headers(raw_lines: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Parse the ``Global Axes`` and ``Global Tilts`` header blocks.
+
+    Returns ``(global_axes, global_tilts)`` as ``(3, 3)`` and ``(3,)`` float
+    arrays. Axes lines are ``mean: [a b c]``; tilts lines are ``mean: X``.
+    """
+    axes_start = raw_lines.index('Global Axes:')
+    axes = np.array([
+        [float(f) for f in line.split(':', 1)[1].strip(' []').split()]
+        for line in raw_lines[axes_start + 1:axes_start + 4]
+    ])
+    tilts_start = raw_lines.index('Global Tilts:')
+    tilts = np.array([
+        float(line.split(':', 1)[1].strip())
+        for line in raw_lines[tilts_start + 1:tilts_start + 4]
+    ])
+    return axes, tilts
+
+
+def _parse_helix_bends(raw_lines: list[str]) -> np.ndarray:
+    """Parse the ``All Bends`` frame blocks into a ``(20, 20)`` float array.
+
+    Each ``Frame N: [`` block spans 4 or 5 physical lines depending on numpy's
+    scientific-vs-fixed print format, so tokens are accumulated across lines
+    until the closing ``]``.
+    """
+    start = raw_lines.index('All Bends (shape: (20, 20, 20)):')
+    frames: list[list[float]] = []
+    idx = start + 1
+    while idx < len(raw_lines) and raw_lines[idx].startswith('Frame '):
+        _, _, rest = raw_lines[idx].partition('[')
+        tokens = rest.split()
+        idx += 1
+        while idx < len(raw_lines):
+            line_tokens = raw_lines[idx].split()
+            tokens.extend(line_tokens)
+            idx += 1
+            if any(']' in tok for tok in line_tokens):
+                break
+        tokens = [tok[:-1] if tok.endswith(']') else tok for tok in tokens
+                  if tok != ']']
+        frames.append([float(tok) for tok in tokens])
+    return np.array(frames)
+
+
+def assert_helix_output_matches_reference(test_case: unittest.TestCase,
+                                          actual_dat_path: Path,
+                                          reference_dat_path: Path) -> None:
+    """Assert helix_analysis output matches its golden reference.
+
+    Helix-specific because the generic line-count comparison is unstable
+    across platforms: numpy's scientific-vs-fixed print format flips when a
+    frame's first bend value rounds to exactly ``0.0`` (observed under Rosetta
+    amd64 emulation), changing a frame block's physical wrap count without
+    changing its values. Column 0 (terminal-residue bends) is additionally
+    compared only for near-zero because it sits at an ``arccos(dot ~ 1.0)``
+    precision floor (~0-0.03 deg) that drifts with the platform's BLAS. Other
+    analyses keep the strict generic comparator.
+    """
+    if not reference_dat_path.exists():
+        test_case.skipTest(f'Reference not found: {reference_dat_path}')
+
+    actual = load_reference(actual_dat_path)
+    reference = load_reference(reference_dat_path)
+
+    if actual.is_empty and reference.is_empty:
+        return
+
+    actual_axes, actual_tilts = _parse_helix_headers(actual.raw_lines)
+    ref_axes, ref_tilts = _parse_helix_headers(reference.raw_lines)
+    actual_bends = _parse_helix_bends(actual.raw_lines)
+    ref_bends = _parse_helix_bends(reference.raw_lines)
+
+    np.testing.assert_allclose(
+        actual_axes, ref_axes, rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (global axes)')
+    np.testing.assert_allclose(
+        actual_tilts, ref_tilts, rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (global tilts)')
+    np.testing.assert_allclose(
+        actual_bends[:, 1:], ref_bends[:, 1:], rtol=1e-3, atol=5e-3,
+        err_msg=f'{actual_dat_path} != {reference_dat_path} (bends cols 1-19)')
+    # col 0 = terminal bends per-frame, arccos(dot~1.0) precision floor: ~0-0.03deg, platform-dependent, compare near-zero
+    test_case.assertTrue(
+        np.all(np.abs(actual_bends[:, 0]) < 0.1),
+        f'{actual_dat_path}: col 0 terminal bends not near-zero '
+        f'(max abs {np.max(np.abs(actual_bends[:, 0]))})')
+    test_case.assertTrue(
+        np.all(np.abs(ref_bends[:, 0]) < 0.1),
+        f'{reference_dat_path}: col 0 terminal bends not near-zero '
+        f'(max abs {np.max(np.abs(ref_bends[:, 0]))})')
 
 
 def discover_output_files(output_dir: Path, analysis_name: str) -> list[Path]:
@@ -450,7 +532,9 @@ class AnalysisCase(unittest.TestCase):
             assert self.manager is not None, "Missing project.json"
 
             self.manager.write()
-            result = super().run(result)
+
+        # always super().run(): unittest records skipped tests in run()
+        result = super().run(result)
 
         return result
 
@@ -545,6 +629,55 @@ class YiweiCase(AnalysisCase):
                 input_relpath=Path('inputs') / "yiwei_protein",
                 output_relpath=self.default_output, traj="step5_*.dcd",
                 psf="step3_input.psf")
+        super().__init__(methodName)
+
+
+class OmFCase(AnalysisCase):
+    """Shortcut for preparing project.json using 2omf_membrane as the template"""
+    default_output: t.ClassVar[str | Path] = 'test_case'
+    standard_args: t.ClassVar[str | None] = None
+    test_standard: Callable
+    accepts_o: t.ClassVar[bool] = True
+
+    # subclass should override if its name doesn't follow camel_to_snake scheme
+    analysis_name: t.ClassVar[str] = ''
+
+    def standard_test(self) -> None:
+        outfile = self.outfile
+        args = self.standard_args
+
+        assert args is not None
+
+        if self.accepts_o:
+            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
+            try:
+                self.assertTrue(self.file_exists(dat, outfile))
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
+        else:
+            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
+            try:
+                self.assertFalse(self.file_empty(out, outfile))
+            finally:
+                out.close()
+                err.close()
+
+    def __init_subclass__(cls, **kwargs):
+        if not cls.analysis_name:
+            cls.analysis_name = camel_to_snake(cls.__name__)
+        cls.default_output = Path('results') / "2omf_membrane"
+        cls.test_standard = skipUnlessAttrNotNone(cls, 'standard_args')(OmFCase.standard_test)
+
+        super().__init_subclass__(**kwargs)
+
+    def __init__(self, methodName='runTest'):
+        if not hasattr(self, 'manager'):
+            self.manager = ManagedConfig(
+                input_relpath=Path('inputs') / "2omf_membrane",
+                output_relpath=self.default_output, traj="equil.dcd",
+                psf="system.psf", time_step="5 ps")
         super().__init__(methodName)
 
 
@@ -780,8 +913,8 @@ class ClusteringHca(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skipUnless(_sklearn_extra_available(), "scikit-learn-extra not installed")
 class ClusteringKmedoid(SoohyungCase):
+    accepts_o = False
     standard_args = ''
 
     def test_standard_correctness(self) -> None:
@@ -939,9 +1072,9 @@ class CovAnalysis(SoohyungCase):
             err.close()
 
 
-@unittest.skip("analysis crashes with current test data")
 class MsdMembrane(SoohyungCase):
-    standard_args = ''
+    accepts_o = False
+    standard_args = '--sel "resname DOPC" --sel-sys "resname DOPC DSPC"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -991,31 +1124,6 @@ class MsdSolution(SoohyungCase):
 
 class PositionTime(SoohyungCase):
     standard_args = '--sel "protein and name CA" --head-group "segid MEMB and name P"'
-
-    def test_standard_correctness(self) -> None:
-        args = self.standard_args
-        assert args is not None
-
-        if self.accepts_o:
-            out, err, dat = self.run_analysis(args, accepts_o=self.accepts_o)
-        else:
-            out, err = self.run_analysis(args, accepts_o=self.accepts_o)
-
-        output_dir = Path(self.config.output_path) / self.analysis_name
-        actual_files = discover_output_files(output_dir, self.analysis_name)
-
-        if not actual_files:
-            self.skipTest(f'No output files found for {self.analysis_name}')
-
-        ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
-        for actual in actual_files:
-            ref = ref_dir / actual.name
-            assert_output_matches_reference(self, actual, ref)
-
-
-class PositionTimeCopy(SoohyungCase):
-    analysis_name = 'position_time_copy'
-    standard_args = '--sel "protein and name CA"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1110,8 +1218,7 @@ class Rmsd(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("no charged residues in soohyung_membrane")
-class SaltBridge(SoohyungCase):
+class SaltBridge(YiweiCase):
     standard_args = '--positive-sel "resname ARG LYS and name NZ NZ*" ' \
         '--negative-sel "resname ASP GLU and name OE* OD*" ' \
         '--positive-def "resname ARG LYS and name NZ NZ*" ' \
@@ -1245,8 +1352,8 @@ class VoronoiShellComp(SoohyungCase):
 # ---------------------------------------------------------------------------
 
 @unittest.skipUnless(TOOLS_AVAILABLE['dssp'], "requires mkdssp; not installed")
-class SecondaryStructure(SoohyungCase):
-    standard_args = '--sel "protein"'
+class SecondaryStructure(OmFCase):
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1270,9 +1377,9 @@ class SecondaryStructure(SoohyungCase):
 
 
 @unittest.skipUnless(TOOLS_AVAILABLE['freesasa'], "requires freesasa; not installed")
-class Sasa(SoohyungCase):
+class Sasa(OmFCase):
     analysis_name = 'sasa'
-    standard_args = '--sel "protein"'
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1296,10 +1403,10 @@ class Sasa(SoohyungCase):
 
 
 @unittest.skipUnless(TOOLS_AVAILABLE['hole2'], "requires hole2; not available on osx-arm64")
-class Hole(SoohyungCase):
+class Hole(OmFCase):
     analysis_name = 'hole'
     accepts_o = False
-    standard_args = ''
+    standard_args = '--sel "segid PROT_A"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1322,11 +1429,9 @@ class Hole(SoohyungCase):
             assert_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires PDB topology instead of PSF")
-class GlycosidicBondBetweenSugars(SoohyungCase):
+class GlycosidicBondBetweenSugars(YiweiCase):
     analysis_name = 'glycosidic-bond-between-sugars'
-    accepts_o = False
-    standard_args = ''
+    standard_args = '--sel "segid CARA"'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args
@@ -1375,12 +1480,10 @@ class CholTilt(SoohyungCase):
         ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
         for actual in actual_files:
             ref = ref_dir / actual.name
-            # rtol=1e-2: 2D-array folding → ~0.75% error on some BLAS builds
-            # reference was generated on macos-arm64
+            # rtol=1e-2: folding arithmetic drifts across BLAS builds
             assert_output_matches_reference(self, actual, ref, rtol=1e-2)
 
 
-@unittest.skip("intermittent empty output under full-suite load (pre-existing invoke thread-join race)")
 class HelixAnalysis(SoohyungCase):
     standard_args = '--sel-align "segid PROA and name CA" ' \
         '--sel-helix "segid PROA and name CA" --align-out aligned.dcd'
@@ -1403,13 +1506,12 @@ class HelixAnalysis(SoohyungCase):
         ref_dir = Path(__file__).parent / 'reference' / self.analysis_name
         for actual in actual_files:
             ref = ref_dir / actual.name
-            assert_output_matches_reference(self, actual, ref)
+            assert_helix_output_matches_reference(self, actual, ref)
 
 
-@unittest.skip("requires two helices; only one in soohyung_membrane")
-class HelixDistanceCrossingAngle(SoohyungCase):
-    standard_args = '--helix1-start 1 --helix1-end 11 ' \
-        '--helix2-start 12 --helix2-end 23'
+class HelixDistanceCrossingAngle(YiweiCase):
+    standard_args = '--helix1-start 1293 --helix1-end 1303 ' \
+        '--helix2-start 1356 --helix2-end 1366'
 
     def test_standard_correctness(self) -> None:
         args = self.standard_args

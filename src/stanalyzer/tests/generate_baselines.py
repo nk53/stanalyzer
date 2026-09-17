@@ -12,6 +12,8 @@ and the yiwei_protein system (Category Y). Use --only to regenerate a subset.
 """
 
 import argparse
+import fnmatch
+import importlib.util
 import json
 import shlex
 import shutil
@@ -40,7 +42,6 @@ CATEGORY_A = {
 }
 
 CATEGORY_B = {
-    'salt_bridge': None,  # No charged residues in soohyung_membrane
     'contacts': '--sel "protein and name CA" --contact-threshold "5.0"',
     'voronoi_shell_comp': ('--sel "resname DOPC and name P; resname DSPC and name P" '
                            '--sel-sys "segid MEMB and name P" --qa'),
@@ -50,25 +51,24 @@ CATEGORY_B = {
                     '--sel-sys "segid MEMB and name P" --qa'),
     'scd': ('--sel "resname DOPC and (name C22 or name C32)" '
             '--sel-sys "segid MEMB and name P" --qa'),
-    'clustering_kmedoid': None,  # requires sklearn_extra
+    'clustering_kmedoid': '',
     'rdf': ('-sel1 "protein and name CA" -sel2 "resname DOPC and name P" '
             '-bin-size 0.1'),
     'msd_solution': '--sel "resname DOPC and name P"',
-    'msd_membrane': None,  # crashes silently with exit 1, no output
+    'msd_membrane': '--sel "resname DOPC" --sel-sys "resname DOPC DSPC"',
     'compressibility_modulus': '--temp 310',
     'radius_of_gyration': ('--sel-rg "protein and name CA" '
                            '--sel-align "protein and name CA"'),
     'rmsd': '--sel "protein and name CA"',
     'position_time': ('--sel "protein and name CA" '
                       '--head-group "segid MEMB and name P"'),
-    'position_time_copy': '--sel "protein and name CA"',
     'clustering_hca': '',
     'cov_analysis': '--sel "protein and name CA"',
 }
 
 CATEGORY_C = {
-    'secondary_structure': '--sel "protein"',  # needs dssp
-    'sasa': '--sel "protein"',  # needs freesasa
+    'secondary_structure': '--sel "protein"',
+    'sasa': '--sel "protein"',
 }
 
 CATEGORY_Y = {
@@ -77,6 +77,20 @@ CATEGORY_Y = {
     'water_bridge': ('--sel "protein" --sel2 "None" '
                      '--water-sel "resname TIP3" --d-a-cutoff "3.0" '
                      '--d-h-a-angle-cutoff "150.0"'),
+    'salt_bridge': ('--positive-sel "resname ARG LYS and name NZ NZ*" '
+                    '--negative-sel "resname ASP GLU and name OE* OD*" '
+                    '--positive-def "resname ARG LYS and name NZ NZ*" '
+                    '--negative-def "resname ASP GLU and name OE* OD*" '
+                    '--dist-cutoff "4.5"'),
+    'glycosidic-bond-between-sugars': '--sel "segid CARA"',
+    'helix_distance_crossing_angle': ('--helix1-start 1293 --helix1-end 1303 '
+                                      '--helix2-start 1356 --helix2-end 1366'),
+}
+
+CATEGORY_2OMF = {
+    'secondary_structure': '--sel "segid PROT_A"',
+    'sasa': '--sel "segid PROT_A"',
+    'hole': '--sel "segid PROT_A"',
 }
 
 # Systems to process: (categories, input_dirname, traj, psf)
@@ -84,13 +98,14 @@ SYSTEMS = [
     ({**CATEGORY_A, **CATEGORY_B, **CATEGORY_C},
      'soohyung_membrane', 'step7_*.dcd', 'step5_input.psf'),
     (CATEGORY_Y, 'yiwei_protein', 'step5_*.dcd', 'step3_input.psf'),
+    (CATEGORY_2OMF, '2omf_membrane', 'equil.dcd', 'system.psf'),
 ]
 
 # Maps analysis -> external tool dependency
 TOOL_DEPS = {
     'secondary_structure': 'dssp',
     'sasa': 'freesasa',
-    'clustering_kmedoid': 'sklearn_extra',
+    'hole': 'hole2',
 }
 
 # ---------------------------------------------------------------------------
@@ -115,10 +130,14 @@ OUTPUT_PATTERNS = {
     'rmsd': ['*.dat'],
     'radius_of_gyration': ['*.dat'],
     'position_time': ['*.dat'],
-    'position_time_copy': ['*.dat'],
     'compressibility_modulus': ['*.dat'],
     'rdf': ['*.dat'],
     'salt_bridge': ['*.dat'],
+    'glycosidic-bond-between-sugars': ['*.dat'],
+    'chol_tilt': ['*.dat'],
+    'helix_analysis': ['*.dat'],
+    'helix_tilt_rotation_angle': ['*.dat'],
+    'helix_distance_crossing_angle': ['*.dat'],
     'contacts': ['*.dat'],
     'secondary_structure': ['*.dat'],
     'sasa': ['*.dat'],
@@ -133,7 +152,9 @@ OUTPUT_PATTERNS = {
                      'NA_*_*_*.dat', '*_mol_info_*.dat'],
     'clustering_hca': ['cluster.dat', 'cluster_representative.pdb'],
     'cov_analysis': ['corr_matrix.dat', 'eigenvalues.dat'],
-    'clustering_kmedoid': ['*.dat'],
+    'bond_statistics': ['bond_lengths.dat', 'bond_angles.dat', 'bond_dihedrals.dat'],
+    'clustering_kmedoid': ['cluster.dat', 'cluster_representative.pdb'],
+    'hole': ['midpoints.dat', 'means.dat'],
 }
 
 # ---------------------------------------------------------------------------
@@ -162,16 +183,13 @@ def find_stanalyzer() -> str:
 def discover_tools() -> dict[str, bool]:
     """Detect availability of optional external tools and Python modules."""
     result: dict[str, bool] = {
-        'dssp': shutil.which('dssp') is not None,
-        'freesasa': shutil.which('freesasa') is not None,
-        'hole2': False,
+        'dssp': shutil.which('mkdssp') is not None
+                or shutil.which('dssp') is not None,
+        'freesasa': importlib.util.find_spec('freesasa') is not None,
+        'hole2': (shutil.which('hole') is not None
+                  and shutil.which('sos_triangle') is not None
+                  and shutil.which('sph_process') is not None),
     }
-    try:
-        import importlib
-        importlib.import_module('sklearn_extra')
-        result['sklearn_extra'] = True
-    except ImportError:
-        result['sklearn_extra'] = False
     return result
 
 
@@ -200,7 +218,7 @@ def has_out_arg(analysis_name: str) -> bool:
     import stanalyzer
     source = (Path(stanalyzer.__path__[0]) / 'analysis'
               / f'{analysis_name}.py').read_text()
-    return "'out'" in source and 'add_project_args' in source
+    return ("'out'" in source or '"out"' in source) and 'add_project_args' in source
 
 
 def discover_output_files(output_dir: Path,
@@ -533,7 +551,13 @@ def main() -> int:
             ref_analysis_dir.mkdir(parents=True)
 
             copied = 0
+            patterns = OUTPUT_PATTERNS.get(name, ['*.dat'])
             for f in new_files:
+                if not any(fnmatch.fnmatch(f.name, pattern)
+                           for pattern in patterns):
+                    print(f'  Skipping {f.name}: not in OUTPUT_PATTERNS '
+                          f'for {name}')
+                    continue
                 dest = ref_analysis_dir / f.name
                 shutil.copy2(f, dest)
                 size = dest.stat().st_size

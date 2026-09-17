@@ -36,9 +36,11 @@ jobs:
       - name: Run test suite
         run: pixi run test
         timeout-minutes: 30
-      # Enable optional-tool analyses (dssp/freesasa/hole2):
-      # 1. Uncomment the [target.linux-64.dependencies] block in pixi.toml
-      # 2. Run `pixi lock` locally and commit the updated pixi.lock
-      # 3. Uncomment the step below
-      # - name: Enable optional tools
-      #   run: pixi install --locked
+      # Optional analysis tools (dssp/freesasa/hole2):
+      # - dssp + freesasa install on all pixi platforms (secondary structure, SASA).
+      # - mdahole2 is a pure-Python PyPI dep (hole analysis wrapper).
+      # - hole2 is linux-64 only: no osx-arm64 build upstream (osmart/hole2#3),
+      #   so on macos-14 the hole tests skip; on ubuntu all 6 run.
+      # The deps are already locked in pixi.lock; this step just installs them.
+      - name: Enable optional tools
+        run: pixi install --locked

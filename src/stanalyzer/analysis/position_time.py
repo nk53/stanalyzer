@@ -34,15 +34,13 @@ def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
     selected_atoms = u.select_atoms(sel)
     selected_head_group = u.select_atoms(head_group)
 
-    # Prepare time series list
-    time_series = []
-
     # Mapping axis (x, y, or z) to the appropriate index for coordinates
     axis = axis
     axis_map = {'x': 0, 'y': 1, 'z': 2}
     axis_index = axis_map[axis]  # Use axis parameter from arguments
 
     # Iterate through each frame in the trajectory
+    time_series = []
     for ts in u.trajectory:
         # Center the membrane
         ts = center_in_box(selected_head_group, point=(0, 0, 0))(ts)
@@ -55,24 +53,6 @@ def write_position_time(psf: sta.FileRef, traj: sta.FileRefList,
 
         # Append time and selected axis position of the ligand's centroid to the time series
         time_series.append([u.trajectory.time, centroid[axis_index]])
-
-    # u = mda.Universe(psf, traj)
-    # selected_atoms = u.select_atoms(sel)
-    # time_series = []
-
-    # axis_map = {'x': 0, 'y': 1, 'z': 2}
-    # axis_index = axis_map[axis]  # Use axis parameter from arguments
-
-    # for ts in u.trajectory:
-    #     if method == 'com':
-    #         centroid = selected_atoms.center_of_mass()
-    #     else:
-    #         centroid = selected_atoms.center_of_geometry()
-
-    #     time_series.append([u.trajectory.time, centroid[axis_index]])
-
-    # print("printing", axis_index, "position")
-    # print(time_series)
 
     # Save to output file
     with sta.resolve_file(out, 'w') as outfile:

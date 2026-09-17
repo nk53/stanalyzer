@@ -99,7 +99,6 @@ def write_correlation_matrix(psf: sta.FileRef, traj: sta.FileRefList,
         np.savetxt(outfile2, eigenvalues[:num_components],
                    fmt='%.6f', header='Top Eigenvalues')
 
-    # Save eigenvectors to file
     with sta.resolve_file(eigenvectors_out, 'w') as outfile3:
         np.savetxt(outfile3, eigenvectors[:, :num_components].T,
                    fmt='%.6f', header='Top Eigenvectors')

@@ -57,15 +57,15 @@ def run_clustering(psf: sta.FileRef, traj: sta.FileRefList,
         represent[i] = target.pop(0)[0]
 
     # write output
+    # write_to_outfile resolves relpaths to <output_path>/<analysis_name>/
     if write_file:
-        f = open('cluster.dat', 'w')
-        for i, c in enumerate(clus):
-            f.write("%8d %8d\n" % (i, c))  # index, cluster
-        f.close()
+        sout = ''.join(f'{i:8d} {c:8d}\n' for i, c in enumerate(clus))
+        sta.write_to_outfile('cluster.dat', sout)
     if write_file_represent:
         frames = represent.values()
         protein = u.select_atoms("protein")
-        with mda.Writer("cluster_representative.pdb", multiframe=True) as pdb:
+        repfile = sta.writable_outfile('cluster_representative.pdb')
+        with mda.Writer(repfile.name, multiframe=True) as pdb:
             for ts in u.trajectory:
                 if ts.frame in frames:
                     pdb.write(protein)
