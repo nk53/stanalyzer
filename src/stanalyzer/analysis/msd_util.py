@@ -35,7 +35,7 @@ class MassPosDisplTup0(t.NamedTuple):
 
 
 class PackedMoleculeData(t.NamedTuple):
-    """Precomputed metadata and flat working arrays for one leaflet."""
+    """Molecule indices, masses, and flat arrays shared by the packed per-frame MSD pipeline."""
 
     atom_indices: NDIntp
     molecule_starts: NDIntp
@@ -171,7 +171,10 @@ def read_packed_coordinates(
 
 
 def calculate_packed_com(data: PackedMoleculeData) -> NDFloat64:
-    """Calculate packed molecule COMs in the original summation order."""
+    """Calculate packed molecule COMs in legacy summation order.
+
+    Returns a view of data.com_unwrap.
+    """
     if not len(data.molecule_starts):
         return np.empty((0, 3), dtype=float)
 
@@ -235,10 +238,8 @@ def update_packed_molecule_com(
 
 
 def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplTup1:
-    """
-    ----------
-    Set mass, positions, and displacements of atoms in a atom group, ag.
-    ----------
+    """Allocate per-molecule mass, position, displacement, and unwrap arrays.
+
     input
           nmol      : number of molecules
           ag        : atom group arrays for individual molecules
@@ -254,16 +255,13 @@ def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplT
 
     mass_mol: list[NDFloat64] = []
     tmass_mol: list[float] = []
-    pos: list[NDFloat64] = []        # positions of each atom in each molecule
-    # previous position of each atom in each molecule
+    pos: list[NDFloat64] = []
     pos_prev: list[NDFloat64] = []
-    # displacement array of each atoms in each molecule
     displ: list[NDFloat64] = []
-    pos_unwrap: list[NDFloat64] = []  # unwrapped positions
+    pos_unwrap: list[NDFloat64] = []
 
     for i in range(0, nmol):
         natom = len(ag[i])
-        # print(f'nmol = {nmol} imol={i} natom= {natom}');
         mass_mol.append(np.array([j.mass for j in ag[i]], dtype=float))
         tmass_mol.append(ag[i].total_mass(compound='group'))
         pos.append(np.zeros([natom, 3], dtype=float))
@@ -275,10 +273,8 @@ def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplT
 
 
 def setup_sys_mass_pos_displ_arrays(ag_sys: 'AtomGroup') -> MassPosDisplTup0:
-    """
-    ----------
-    Setup systes mass,positions, and displacements and COM displacement
-    ----------
+    """Allocate system-wide mass, position, displacement, and COM-displacement 
+arrays.
 
     input
           ag_sys       : atom groups of system
@@ -302,12 +298,8 @@ def setup_sys_mass_pos_displ_arrays(ag_sys: 'AtomGroup') -> MassPosDisplTup0:
     return MassPosDisplTup0(mass_sys, tmass_sys, pos_sys, pos_sys_prev, displ_sys, displ_sys_com)
 
 
-# Read coordinates of molecules
 def read_coor(nmol: int, pos: list['NDArray'], ag: 'AtomGroup') -> None:
-    """
-    ----------
-    Read positions of atom groups
-    ----------
+    """Copy per-molecule atom positions into preallocated arrays.
 
     input
           nmol: total number of molecules
@@ -324,10 +316,7 @@ def read_coor(nmol: int, pos: list['NDArray'], ag: 'AtomGroup') -> None:
 
 
 def setup_unwrapped_com_traj_array(framenum: int) -> tuple[NDFloat64, NDFloat64]:
-    """
-    ----------
-    Setup arrays for unwrapped COM and trajectories
-    ----------
+    """Allocate system COM and per-frame COM trajectory arrays.
 
     input
           framenum: number of frames in input trajectories
@@ -343,10 +332,7 @@ def setup_unwrapped_com_traj_array(framenum: int) -> tuple[NDFloat64, NDFloat64]
 
 def setup_unwrapped_mol_com_traj_array(
         ag: list['AtomGroup'], framenum: int) -> tuple[NDFloat64, NDFloat64]:
-    """
-    ----------
-    Setup arrays for unwrapped positions and their trajectories
-    ----------
+    """Allocate per-molecule COM and per-frame COM-trajectory arrays.
 
     input
           ag      : atom groups
@@ -364,10 +350,7 @@ def setup_unwrapped_mol_com_traj_array(
 
 
 def calculate_com(pos: 'NDArray', mass: 'ArrayLike', tmass: float) -> 'NDArray':
-    """
-    ----------
-    Calculate COM of positions
-    ----------
+    """Weighted center-of-mass from positions, masses, and total mass.
 
     input
           pos : positions
@@ -378,7 +361,7 @@ def calculate_com(pos: 'NDArray', mass: 'ArrayLike', tmass: float) -> 'NDArray':
           com : COM
     """
 
-    tcom: 'NDArray' = (pos.T * mass).T   # numerator (vectors to be summed)
+    tcom: 'NDArray' = (pos.T * mass).T
     com: 'NDArray' = np.sum(tcom, axis=0)/tmass
 
     return com
@@ -391,10 +374,7 @@ def init_unwrap_mol_com(pos: 'Sequence[NDArray] | NDArray',
                         pos_unwrap: Sequence['NDArray'],
                         com_unwrap: 'NDArray',
                         traj_com_unwrap: 'NDArray') -> None:
-    """
-    ----------
-    Initialize unwrapped COMs and associated trajectories for individual molecules
-    ----------
+    """Seed per-molecule unwrapped positions, COMs, and trajectory at frame 0.
 
     input
           pos            : positions of atoms in individual molecules
@@ -404,36 +384,26 @@ def init_unwrap_mol_com(pos: 'Sequence[NDArray] | NDArray',
     input/output
           pos_prev       : previous positions of atoms in the system
           pos_unwrap     : unwrapped positions
-          com_unwrap     : unwrapped system COM
-          traj_com_unwrap: trajectory of unwrapped system COM
+          com_unwrap     : unwrapped COM of individual molecules
+          traj_com_unwrap: trajectory of unwrapped COMs of individual molecules
     """
 
     nmol = len(pos)
     for i in range(0, nmol):
-        # initialize previous positions
         np.copyto(pos_prev[i], pos[i])
         np.copyto(pos_unwrap[i], pos[i])
 
-        # calculate mol COM
         tcom = calculate_com(pos_unwrap[i], mass_mol[i], tmass_mol[i])
-        # print(tcom)
 
-        # initialize current unwrapped mol com & its trajectory at frame = 0
         np.copyto(com_unwrap[i, :], tcom)
         np.copyto(traj_com_unwrap[0, i, :], com_unwrap[i])
-
-    # print(f'unwrapped frame 0: molid {nmol-1}',com_unwrap[-1])
 
 
 def init_unwrap_sys_com(pos_sys: 'NDArray', mass_sys: 'ArrayLike',
                         tmass_sys: float, pos_sys_prev: 'NDArray',
                         com_sys_unwrap: 'NDArray',
                         traj_com_sys_unwrap: 'NDArray | Sequence[NDArray]') -> None:
-    """
-    ----------
-    Initialize unwrapped COM and associated trajectory for system
-    ----------
-
+    """Seed system unwrapped COM and trajectory at frame 0.
 
     input
           pos_sys            : positions of atoms in the system
@@ -446,14 +416,8 @@ def init_unwrap_sys_com(pos_sys: 'NDArray', mass_sys: 'ArrayLike',
           traj_com_sys_unwrap: trajectory of unwrapped system COM
     """
 
-    # natom = len(pos_sys)  # for debugging?
-    # initialize previous system pos
     np.copyto(pos_sys_prev, pos_sys)
-
-    # calculate sys COM
     tcom = calculate_com(pos_sys, mass_sys, tmass_sys)
-
-    # initialize current unwrapped sys com & associated trajectory at frame = 0
     np.copyto(com_sys_unwrap, tcom)
     np.copyto(traj_com_sys_unwrap[0], com_sys_unwrap)
 
@@ -462,10 +426,7 @@ def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
                             pos_sys_prev: 'NDArray', mass_sys: 'NDArray',
                             tmass_sys: float, displ_sys_com: 'NDArray',
                             scratch: 'NDArray | None' = None) -> None:
-    """
-    ----------
-    Calculate COM displacement of the system
-    ----------
+    """Compute mass-weighted system COM displacement for one frame.
 
     input
           iframe       : the current frame index
@@ -479,47 +440,27 @@ def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
           displ_sys_com: displacement of system COM
     """
 
-    # natom = len(pos_sys)
     if scratch is None:
         displ_sys = pos_sys - pos_sys_prev
     else:
         displ_sys = scratch
         np.subtract(pos_sys, pos_sys_prev, out=displ_sys)
-    # tmpdispl = displ_sys; print(tmpdispl)
     displ_sys = minimum_image_displacement(
         displ_sys,
         box,
         out=displ_sys,
     )
-    # tmpdispl = displ_sys; print(tmpdispl)
 
-    # # DEBUG
-    # maxdispl = np.max(np.absolute(displ_sys))  # max. displacement
-    # if maxdispl > 10.0:
-    #     print(f'frame {iframe}: max. displacement {maxdispl:10.5f} box:', box)
-    #     # print(f'displacement:',displ)
-    # # DEBUG
-
-    # calculation of displacement of system COM
     np.multiply(displ_sys, mass_sys[:, np.newaxis], out=displ_sys)
-    # print(displ_sys)
     tdispl_com = np.sum(displ_sys, axis=0)/tmass_sys
     np.copyto(displ_sys_com, tdispl_com)
-    # print(displ_sys_com)
-
-    # update previous positions
     np.copyto(pos_sys_prev, pos_sys)
 
 
 def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
                              pos_prev: list['NDArray'], pos_unwrap: list['NDArray'],
                              displ_sys_com: 'NDArray') -> None:
-    """
-    ----------
-    Update unwrapped positions of individual molecules
-    ----------
-    NOTE: COM drift (displ_sys_com) is corrected
-
+    """Advance per-molecule unwrapped positions, correcting for system COM drift.
 
     input
           iframe       : the current frame index
@@ -539,23 +480,12 @@ def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
             box,
         )
 
-        # # DEBUG
-        # maxdispl = np.max(np.absolute(displ))
-        # if maxdispl > 10.0:
-        #     print(
-        #         f'# frame {iframe}: imol= {i} max. displ. {maxdispl:10.5f} box:', box)
-        #     print(displ)
-        # # DEBUG
-
         # Apply the three-component COM drift to every atom at once.
         displ -= displ_sys_com
         tpos_unwrap = pos_unwrap[i] + displ
         np.copyto(pos_unwrap[i], tpos_unwrap)
 
-        # update previous position
         np.copyto(pos_prev[i], pos[i])
-
-    # print(f'# displ:',displ)
 
 
 def update_unwrapped_mol_com_traj(iframe: int,
@@ -564,10 +494,7 @@ def update_unwrapped_mol_com_traj(iframe: int,
                                   tmass_mol: list[float],
                                   com_unwrap: 'NDArray',
                                   traj_com_unwrap: 'NDArray') -> None:
-    """
-    ----------
-    Update unwrapped COMs of individual molecules
-    ----------
+    """Recompute per-molecule COMs from unwrapped positions and record trajectory.
 
     input
           iframe          : the current frame index
@@ -581,21 +508,15 @@ def update_unwrapped_mol_com_traj(iframe: int,
     """
 
     nmol = len(pos_unwrap)
-    # calculate COM of individual molecules
     for i in range(0, nmol):
         tcom = calculate_com(pos_unwrap[i], mass_mol[i], tmass_mol[i])
         np.copyto(com_unwrap[i], tcom)
-    # print(f'unwrapped frame {iframe}: molid {nmol-1}',com_unwrap[-1])
 
-    # update unwrapped trajectory & previous positions
     np.copyto(traj_com_unwrap[iframe, :, :], com_unwrap)
 
 
 def setup_msd_arrays(ntype: int, ntau: int) -> NDFloat64:
-    """
-    ----------
-    Setup MSD arrays for individual molecule types
-    ----------
+    """Allocate per-type, per-lag x/y/z MSD array.
 
     input
           ntype: number of molecule types
@@ -605,7 +526,7 @@ def setup_msd_arrays(ntype: int, ntau: int) -> NDFloat64:
           msd  : time series of x,y,& z components of MSD for individual molecule types
     """
 
-    msd = np.zeros([ntype, ntau, 3], dtype=float)  # msd[type,tau,x/y/z]
+    msd = np.zeros([ntype, ntau, 3], dtype=float)
 
     return msd
 
@@ -615,10 +536,7 @@ def calculate_msd_tau(tau: int,
                       ntype: int,
                       id_type: Sequence[int],
                       traj_com_unwrap: NDFloat64) -> NDFloat64:
-    """
-    ----------
-    Calculate MSD at a given lag time, tau
-    ----------
+    """Compute per-type MSD at one lag time from unwrapped COM trajectories.
 
     input
           tau            : lag time
@@ -684,10 +602,7 @@ def _calculate_msd_tau(
 def calculate_msd(taus: list[int], framenum: int, interval: int,
                   traj_com_unwrap: NDFloat64, id_type: Sequence[int],
                   msd: NDFloat64) -> None:
-    """
-    ----------
-    Calculate MSD for given set of delay times
-    ----------
+    """Fill per-type MSD for every requested lag using the direct engine.
 
     input
           taus: delay times
@@ -715,8 +630,7 @@ def calculate_msd(taus: list[int], framenum: int, interval: int,
         np.flatnonzero(type_ids == molecule_type)
         for molecule_type in range(ntype)
     ]
-    # Reuse one full-sized work array for every lag. Previously each lag
-    # allocated both displacement and squared-displacement arrays.
+    # Reuse one full-sized work array across all lags instead of allocating per lag.
     scratch = np.empty_like(traj_com_unwrap)
 
     for i in range(0, ntau):
@@ -729,7 +643,6 @@ def calculate_msd(taus: list[int], framenum: int, interval: int,
             msd[:, i, :] = 0.0
             continue
 
-        # Calculate MSD(tau)
         tmsd = _calculate_msd_tau(
             tau=tau,
             framenum=framenum,
@@ -739,7 +652,6 @@ def calculate_msd(taus: list[int], framenum: int, interval: int,
             scratch=scratch,
         )
 
-        # update MSD
         np.copyto(msd[:, i, :], tmsd)
 
 
@@ -760,8 +672,7 @@ def select_msd_engine(
     if np.any(lags < 0) or np.any(lags >= framenum):
         raise ValueError("frame_lags contain a lag outside the trajectory")
 
-    # Direct work follows the number of displacement samples actually reduced.
-    # FFT work covers the complete padded trajectory regardless of lag count.
+    # Direct work scales with displacement samples; FFT work covers the full padded trajectory.
     direct_samples = int(np.sum(framenum - lags, dtype=np.int64))
     fft_length = _next_fast_fft_length(2 * framenum - 1)
     fft_work = fft_length * np.log2(fft_length)
@@ -774,12 +685,7 @@ def calculate_msd_fft(
         msd: NDFloat64,
         chunk_size: int | None = None,
         workers: int = 1) -> None:
-    """Calculate all requested MSD lags using FFT autocorrelation.
-
-    This is asymptotically faster for long trajectories, but floating-point
-    reduction order differs from :func:`calculate_msd`, so callers that need
-    byte-for-byte legacy output should continue to use the direct engine.
-    """
+    """FFT autocorrelation MSD; faster for long trajectories but float-reduction order differs from the direct engine."""
     ntype = len(msd)
     type_ids = np.asarray(id_type, dtype=np.intp)
     if traj_com_unwrap.shape != (framenum, len(type_ids), 3):
@@ -797,9 +703,7 @@ def calculate_msd_fft(
     if workers < 1:
         raise ValueError("workers must be positive")
 
-    # Linear autocorrelation of N samples needs at least 2N - 1 points. Use a
-    # compact mixed-radix length instead of forcing a power of two; SciPy
-    # selects efficient real-transform sizes for its FFT backend.
+    # Linear autocorrelation of N samples needs 2N-1 points; use a compact mixed-radix FFT length.
     minimum_fft_length = 2 * framenum - 1
     fft_length = _next_fast_fft_length(minimum_fft_length)
     for molecule_type in range(ntype):
@@ -827,8 +731,7 @@ def calculate_msd_fft(
                 workers=workers,
             )
 
-            # Convert F to |F|^2 in place. This avoids allocating a second
-            # complex FFT-sized array for spectrum.conjugate() * spectrum.
+            # Convert F to |F|^2 in place to avoid a second complex FFT-sized array.
             np.square(spectrum.real, out=spectrum.real)
             np.square(spectrum.imag, out=spectrum.imag)
             spectrum.real += spectrum.imag
@@ -863,70 +766,11 @@ def calculate_msd_fft(
 
     msd[:, 0, :] = 0.0
 
-# FFT-based MSD formulation
-#
-# The direct all-time-origin MSD for a trajectory r(t) is
-#
-#                1
-# MSD(tau) = ----------- * sum_t |r(t + tau) - r(t)|^2
-#             N - tau
-#
-# where N is the number of frames and tau is the frame lag.
-#
-# Expanding the squared displacement,
-#
-# |r(t + tau) - r(t)|^2
-#     = |r(t + tau)|^2
-#       + |r(t)|^2
-#       - 2 r(t + tau) . r(t)
-#
-# therefore,
-#
-#                 A(tau) + B(tau) - 2 C(tau)
-# MSD(tau) = ---------------------------------------
-#                           N - tau
-#
-# where
-#
-# A(tau) = sum_t |r(t + tau)|^2
-# B(tau) = sum_t |r(t)|^2
-# C(tau) = sum_t r(t + tau) . r(t)
-#
-# C(tau) is the (unnormalized) position autocorrelation. Computing
-# C(tau) independently for every lag requires O(N^2) work. Using the
-# Fourier correlation theorem, all lags can instead be obtained as
-#
-# C = IFFT(conj(FFT(r)) * FFT(r))
-#
-# in O(N log N) time per coordinate trajectory.
-#
-# The trajectory is zero-padded before the FFT so that the FFT's
-# circular correlation corresponds to the required linear
-# autocorrelation and does not wrap the end of the trajectory back
-# onto its beginning.
-#
-# A(tau) and B(tau) are obtained separately from squared-coordinate
-# sums. Combining them with C(tau) recovers the same all-time-origin
-# MSD definition as the direct implementation.
-#
-# For M molecules, the approximate scaling therefore changes from
-#
-#     direct: O(M * N^2)
-#     FFT:    O(M * N log N)
-#
-# up to constant factors and the additional O(M * N) work required
-# for the squared-coordinate terms.
-#
-# NOTE: The FFT and direct formulations are mathematically equivalent,
-# but floating-point operation ordering differs. Small roundoff-level
-# differences from the direct implementation are therefore expected.
+# FFT MSD: all lags via C = IFFT(|FFT(r)|^2) (Fourier correlation theorem), O(N log N) vs O(N^2); zero-pad for linear autocorrelation; float roundoff differs from direct.
 
 def calculate_msd_bilayer(msd: Sequence[NDFloat64], nside: int, ntype: int,
                           ntaus: int, nmol_type: Sequence[Sequence[int]]) -> NDFloat64:
-    """
-    ----------
-    Calculate bilayer msd from leaflet msd
-    ----------
+    """Combine leaflet MSDs into a molecule-count-weighted bilayer MSD.
 
     input
           msd      : leaflet MSD, [nside][ntype,ntaus,3]

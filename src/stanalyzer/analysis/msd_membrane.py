@@ -30,7 +30,7 @@ MSDEngine: t.TypeAlias = t.Literal['auto', 'direct', 'fft']
 NDFloat64: t.TypeAlias = 'npt.NDArray[np.float64]'
 COM_CACHE_VERSION = 1
 
-# --- The following are hard set for membrane analysis
+# hard-set constants — leaflet count and names
 nside = 2     # up/dn
 sside = ["up", "dn"]
 
@@ -156,13 +156,7 @@ def _load_com_cache(
 
 
 def _atomic_write(path: Path, write: t.Callable[[t.BinaryIO], None]) -> None:
-    """Write via a uniquely-named temp file, then atomically rename in place.
-
-    mkstemp names the temp file unpredictably and creates it exclusively, so
-    concurrent writers cannot collide on a shared name and no pre-placed
-    symlink at a fixed .tmp path can be followed. os.replace makes the
-    destination swap atomic.
-    """
+    """Atomic write via temp file + rename to prevent corruption from concurrent writers."""
     fd, temporary = tempfile.mkstemp(
         dir=path.parent, prefix=f'.{path.name}.', suffix='.tmp')
     try:
@@ -226,12 +220,6 @@ def assign_leaflet_zpos_fast(atomgroup):
 
 
 def process_args(sel: str, split_to_mol: str | None) -> ProcessedArgs:
-    """
-    ----------
-    Process arguments
-    ----------
-    """
-
     selection = re.split(';|,', f'{sel:s}')
     ntype = len(selection)
     for i in range(0, ntype):
@@ -239,10 +227,8 @@ def process_args(sel: str, split_to_mol: str | None) -> ProcessedArgs:
     if any(not item for item in selection):
         raise ValueError("sel contains an empty molecule selection")
 
-    # in case split_to_mol is None
     if not split_to_mol:
         nsplit = 0
-    # normal process of split_to_mol
     else:
         split = re.split(';|,', f'{split_to_mol:s}')
         nsplit = len(split)
@@ -250,15 +236,15 @@ def process_args(sel: str, split_to_mol: str | None) -> ProcessedArgs:
             split[i] = split[i].strip()
 
     qsplit = []
-    if nsplit < ntype:  # add more qsplit options
+    if nsplit < ntype:
         for i in range(0, nsplit):
             if split[i].lower() == "y":
                 qsplit.append(True)
             else:
                 qsplit.append(False)
         for i in range(nsplit, ntype):
-            qsplit.append(True)  # default values
-    else:  # get split up to ntype
+            qsplit.append(True)
+    else:
         qsplit = []
         for i in range(0, ntype):
             if split[i].lower() == "y":
@@ -281,9 +267,8 @@ def process_arg_sys(sel: str) -> ProcessedArgSys:
     for i in range(0, ntype):
         qsplit.append(True)
 
-    # Process selection strings to extract information
-    sel_type: list[str] = []        # selection type
-    name_type: list[str] = []       # name of molecule type
+    sel_type: list[str] = []
+    name_type: list[str] = []
     for i in range(0, ntype):
         tmps = selection[i].split()
         if len(tmps) < 2:
@@ -297,7 +282,6 @@ def process_arg_sys(sel: str) -> ProcessedArgSys:
     return ProcessedArgSys(selection, ntype, qsplit, sel_type, name_type)
 
 
-# Write leaflet COM
 def write_leaflet_com(traj_com_sys_unwrap: list[NDFloat64],
                       framenum: int, interval: int, time_step: float,
                       nside: int, sside: list[str],
@@ -319,7 +303,6 @@ def write_leaflet_com(traj_com_sys_unwrap: list[NDFloat64],
             stream.close()
 
 
-# Write unwrapped COMs of individual molecule in each leaflet
 def write_mol_com(traj_com_unwrap: list[NDFloat64],
                   framenum: int, interval: int, time_step: float,
                   nside: int, sside: list[str], nmol: list[int],
@@ -348,7 +331,6 @@ def write_mol_com(traj_com_unwrap: list[NDFloat64],
             stream.close()
 
 
-# Write x,y,z-components of MSD for given molecule type in a given leaflet
 def write_msd(time_step: float,
               msd: NDFloat64, taus: list[int], fout: str) -> None:
     header = f'#{"tau":10s} {"MSDX":10s} {"MSDY":10s} {"MSDZ":10s}\n'
@@ -365,7 +347,6 @@ def write_msd(time_step: float,
         stream.close()
 
 
-# Write MSD outputs for leaflets
 def write_msd_outputs_leaflet(time_step: float,
                               msd: Sequence[NDFloat64], taus: list[int],
                               nside: int, sside: list[str],
@@ -389,7 +370,6 @@ def write_msd_outputs_leaflet(time_step: float,
                           msd[i][j], taus, fout)
 
 
-# Write MSD outputs for bilayer
 def write_msd_outputs_bilayer(time_step: float,
                               bmsd: NDFloat64, taus: list[int],
                               ntype: int, name_type: list[str], numb_type: list[int],
@@ -412,13 +392,11 @@ def write_msd_outputs_bilayer(time_step: float,
 def write_mol_info(nside: int, sside: list[str], name_type: list[str],
                    nmol: list[int], id_type: list[list[int]],
                    odir: str, suffix: str) -> None:
-    # write molecule info: molecule number name
     for i in range(0, nside):
         side = sside[i]
         sout = '# mol.index     name\n'
-        # loop over molecules
         for j in range(0, nmol[i]):
-            jtype = id_type[i][j]  # molecule type index of molecule, j
+            jtype = id_type[i][j]
             sout += f" {j:10d} {name_type[jtype].strip('*')}\n"
         fout = f'{odir}/{side}_mol_info_{suffix}.dat'
         sta.write_to_outfile(fout, sout)
@@ -491,14 +469,7 @@ def run_msd_membrane(
         fft_workers: int = 1,
         com_cache: str | None = None,
         refresh_com_cache: bool = False) -> None:
-    """
-    ----------
-    Calculate Mean Square Displacement of COMs of selected molecule types
-
-    MSDs are calculated separately for individual leaflets.
-    Results will be obtained for leaflets or bilayer (weighted average of leaflet MSDs).
-    ----------
-    """
+    """Per-molecule COM MSD, computed separately per leaflet (or bilayer average)."""
     if not sel.strip():
         raise ValueError("sel must contain at least one molecule selection")
     if not sel_sys.strip():
@@ -518,21 +489,18 @@ def run_msd_membrane(
             f"invalid suffix {suffix!r}: must match ^[\\w.-]+$"
         )
 
-    # process arguments
     selection, ntype, qsplit = process_args(sel, split)
-    # process sys arguments - To generate full atom groups for individual molecules
+    # parse system selections for full molecule groups
     selection_sys, ntype_sys, qsplit_sys, sel_type_sys, name_type_sys \
         = process_arg_sys(sel_sys)
 
-    # method=lam
-    method: t.Literal['zpos', 'mda'] = 'zpos'  # use this option for plana bilayers
+    method: t.Literal['zpos', 'mda'] = 'zpos'  # zpos: fast path for planar bilayers
     outtype = otype
     if isinstance(time_step, str):
         time_step = float(time_step.split()[0])
     if not np.isfinite(time_step) or time_step <= 0:
         raise ValueError("time_step must be finite and positive")
 
-    # print summary of arguments
     for i in range(0, ntype):
         print(f'#Split "{selection[i]}" into molecule level', qsplit[i])
     print('Suffix to output files', suffix)
@@ -549,17 +517,13 @@ def run_msd_membrane(
     print('FFT worker threads:', fft_workers)
     print('COM cache:', com_cache if com_cache else 'disabled')
 
-    # This is handled by ST-analyzer
-    # output dir
     odir = "./"
 
-    # READ topology and trajectory
-    u = mda.Universe(psf, traj)  # MDA universe
+    u = mda.Universe(psf, traj)
     n_trajectory_frames = u.trajectory.n_frames
     if n_trajectory_frames < 1:
         raise ValueError("trajectory contains no frames")
-    # Preserve the original sampling contract: analyze exactly
-    # floor(n_frames / interval) frames and drop a trailing remainder.
+    # truncate trailing frames to preserve original sampling contract
     framenum = int(n_trajectory_frames / interval)
     frame_indices = [
         interval * frame
@@ -570,11 +534,8 @@ def run_msd_membrane(
             "interval is larger than the number of trajectory frames"
         )
 
-    # bilayer recentering - should be done before any assignments
-    # - center in the box (an atom)
-    # - center in the box (atom group for system)
-    # - unwrap to get connectd molecules
-    origin = 0, 0, 0  # np.zeros([3],dtype=float) ; it did not work
+    # recenter bilayer before leaflet assignment
+    origin = 0, 0, 0
     # ag_cent = u.select_atoms(sel_sys)
     ag_cent = u.atoms[[]]
     for itype in range(0, ntype_sys):
@@ -585,9 +546,7 @@ def run_msd_membrane(
         )
 
     print('### Generation of full atom groups for membrane molecules: START')
-    # Generate complete membrane molecules before installing the trajectory
-    # transformations. The centering selection may contain only reference
-    # atoms, but unwrapping requires complete bonded molecules.
+    # generate full molecules before transformations — unwrapping needs bonded groups
     nmol_type_sys, nmol_sys, id_type_sys, ag_full_sys = \
         mymol.generate_full_mol_groups(
             u, ntype_sys, sel_type_sys, name_type_sys, qsplit_sys)
@@ -604,10 +563,7 @@ def run_msd_membrane(
         bonded_topology = False
 
     if not bonded_topology:
-        # Coordinate-only topologies such as PDB do not necessarily contain
-        # bonds. Guess bonds only for the membrane so MDAnalysis can unwrap
-        # its molecules without imposing guessed connectivity on the rest of
-        # the system.
+        # PDB-like topologies lack bonds — guess membrane bonds only for unwrapping
         print(
             "Topology has no bonds; guessing membrane bonds for unwrapping"
         )
@@ -619,9 +575,7 @@ def run_msd_membrane(
                 point=origin,
             ),
             transformations.center_in_box(ag_cent, point=origin),
-            # Only membrane coordinates contribute to this analysis. Limiting
-            # unwrapping to them avoids fragment and box work for solvent,
-            # ions, and other unrelated atoms.
+            # unwrap membrane only — avoids unnecessary solvent/ion overhead
             transformations.unwrap(ag_membrane),
         ]
         u.trajectory.add_transformations(*workflow)
@@ -637,7 +591,6 @@ def run_msd_membrane(
 
         u.trajectory.add_transformations(prepare_membrane_frame)
 
-    # Generate ref groups for leaflet assignemnt
     if method == "zpos":
         if bonded_topology:
             ag_leaflet = myleaflet.assign_leaflet_zpos(u, ag_cent)
@@ -647,7 +600,6 @@ def run_msd_membrane(
         ag_leaflet = myleaflet.assign_leaflet(u, ag_cent)
 
     print('### Leaflet assignment for membrane molecules: START')
-    # Assign molecules to leaflet
     # id_side_sys = mymol.assign_leaflet_index(ag_full, ag_leaflet) # don't need to use
     ag_full_sys_leaflet = \
         mymol.assign_full_ag_leaflet_from_ref_leaflet(
@@ -658,13 +610,11 @@ def run_msd_membrane(
 
     # LEAFLETs are assigned in this stage and will not be altered.
     print('### Leaflet assignment for molecule types subject to MSD calculation: START')
-    # Generate molecule groups in leaflets
     name_type, nmol_type, nmol, id_type, ag =\
         mymol.generate_mol_groups_memb(
             u, nside, ntype, selection, qsplit, sside, method)
     print('### Leaflet assignment for molecule types subject to MSD calculation: DONE')
 
-    # get bilayer nmol_type
     nmol_type0 = np.sum(nmol_type, axis=0)
 
     cache_dir = Path(com_cache).expanduser() if com_cache else None
@@ -687,8 +637,6 @@ def run_msd_membrane(
     else:
         print('# COM cache hit; reusing molecular COM trajectories')
 
-    # Set arrays in use
-    # For leaflets
     # smpd_arrays = [mymsd.setup_sys_mass_pos_displ_arrays(ag_leaflet[i])
     #                for i in range(nside)]
     smpd_arrays = [mymsd.setup_sys_mass_pos_displ_arrays(ag_full_sys_leaflet[i])
@@ -714,12 +662,10 @@ def run_msd_membrane(
         for indices in sys_atom_indices
     ]
 
-    com_sys_unwrap = [tuct[0] for tuct in suct_arrays]  # unwrappped leaflet COMs
-    # traj. of unwrapped leaflet COMS
+    com_sys_unwrap = [tuct[0] for tuct in suct_arrays]  # unwrapped leaflet COMs
     traj_com_sys_unwrap = [tuct[1] for tuct in suct_arrays]
 
-    # Precompute molecule indices, masses, boundaries, and contiguous working
-    # arrays once. Frame processing then gathers coordinates once per leaflet.
+    # precompute indices/masses/boundaries to avoid per-frame overhead
     packed_molecules = [
         mymsd.setup_packed_molecule_data(
             ag[i],
@@ -732,7 +678,6 @@ def run_msd_membrane(
         for data in packed_molecules
     ]
 
-    # UNWRAPPING
     print('# UNWRAP trajectories')
     # sys.exit(0)
     progress_stride = max(1, framenum // 100)
@@ -758,7 +703,6 @@ def run_msd_membrane(
                 f'# processing frame {frame_index + 1}/'
                 f'{n_trajectory_frames}'
             )
-        # do frame-wise bilayer recentering
         if bonded_topology:
             Lag_ref = myleaflet.assign_leaflet_zpos(u, ag_cent)
         else:
@@ -766,13 +710,10 @@ def run_msd_membrane(
         zref = np.zeros([2], dtype=float)
         for iside in range(0, nside):
             zref[iside] = np.mean(Lag_ref[iside].positions[:, 2])
-        # The installed trajectory transformation has already unwrapped the
-        # membrane. Apply the frame-specific z recentering directly so the
-        # complete transformation stack is not constructed and run twice.
+        # skip full transformation stack — already unwrapped, apply z-shift only
         ts.positions[:, 2] -= np.mean(zref)
 
-        # Retain all six unit-cell values so triclinic boxes can use the
-        # correct minimum-image convention.
+        # keep all 6 box dimensions for triclinic minimum-image
         box = np.asarray(ts.dimensions, dtype=float)
         if (
             box.shape != (6,)
@@ -783,7 +724,6 @@ def run_msd_membrane(
                 f"Invalid periodic box dimensions at frame {frame_index}"
             )
 
-        # read cooridnates
         for j in range(0, nside):
             mymsd.read_packed_coordinates(
                 ts.positions,
@@ -798,20 +738,16 @@ def run_msd_membrane(
             np.copyto(pos_sys[j], sys_coordinate_buffers[j])
 
             if i == 0:
-                # Initialization
-                # pos, unwrapped COM, and traj. of unwrapped COM for the leaflet
                 mymsd.init_unwrap_sys_com(
                     pos_sys[j], mass_sys[j], tmass_sys[j], pos_sys_prev[j],
                     com_sys_unwrap[j], traj_com_sys_unwrap[j])
 
-                # pos., unwrapped COM, and traj. of unwraped COM for ind. mol.
                 mymsd.init_packed_molecule_com(
                     packed_molecules[j]
                 )
                 # print(f'# leaflet {sside[j]}: init unwrapped com/traj done')
             else:
-                # get leaflet COM displ. and update pos. (in pos_sys_prev)
-                # Current pos. of leaflet is obtained inside the function
+                # leaflet COM displ. — reads current pos internally, updates prev
                 mymsd.calculate_displ_sys_com(
                     i, box, pos_sys[j], pos_sys_prev[j],
                     mass_sys[j], tmass_sys[j], displ_sys_com[j],
@@ -819,13 +755,10 @@ def run_msd_membrane(
                 )
                 # print(f'# leafelt {sside[j]}: leaflet COM displ.:',displ_sys_com[j])
 
-                # update unwrapped leaflet COM
                 com_sys_unwrap[j] = com_sys_unwrap[j] + displ_sys_com[j]
                 if qcomsys:
-                    # update the optional unwrapped leaflet COM trajectory
                     np.copyto(traj_com_sys_unwrap[j][i], com_sys_unwrap[j])
 
-                # update unwrapped mol. pos.
                 mymsd.update_packed_molecule_com(
                     i,
                     box,
@@ -866,12 +799,11 @@ def run_msd_membrane(
         write_mol_info(nside, sside, name_type, nmol, id_type, odir, suffix)
 
     print('# MSD calculations')
-    # Loop over delay times with given interval
     maximum_lag = framenum - 1
     if max_lag_frames is not None:
         maximum_lag = min(maximum_lag, max_lag_frames)
     taus = [interval*i for i in range(0, maximum_lag + 1)]
-    ntau = len(taus)  # number of data points along the delay time
+    ntau = len(taus)
     selected_engine: t.Literal['direct', 'fft']
     if msd_engine == 'auto':
         selected_engine = mymsd.select_msd_engine(
@@ -882,13 +814,11 @@ def run_msd_membrane(
         selected_engine = msd_engine
     print('Selected MSD calculation engine:', selected_engine)
 
-    # Setup msd for individual molecule types
     msd: list[NDFloat64] = []
     for i in range(0, nside):
         tmsd = mymsd.setup_msd_arrays(ntype, ntau)
         msd.append(tmsd)
 
-    # Calculate MSD for delay times, tau in {taus}
     for i in range(0, nside):
         print(f'# leaflet {sside[i]}')
         if selected_engine == 'direct':
@@ -927,9 +857,7 @@ def run_msd_membrane(
                     f"{name_type[molecule_type]} in the {sside[i]} leaflet"
                 )
 
-    # Write MSD outputs
     if outtype == 'outb':
-        # calculate MSD over bilayers
         bmsd = mymsd.calculate_msd_bilayer(msd, nside, ntype, ntau, nmol_type)
         write_msd_outputs_bilayer(time_step,
                                   bmsd, taus, ntype, name_type, nmol_type0, odir, suffix)
@@ -942,7 +870,6 @@ def run_msd_membrane(
 def main(settings: dict | None = None) -> None:
     if settings is None:
         settings = dict(sta.get_settings(ANALYSIS_NAME))
-    # non-system arguments will be handled at the beginnig of this function
     run_msd_membrane(**settings)
 
 

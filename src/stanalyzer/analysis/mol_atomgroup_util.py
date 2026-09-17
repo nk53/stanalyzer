@@ -41,11 +41,7 @@ class MolGroupsFull(t.NamedTuple):
 
 
 def generate_mol_type_ags(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolTypeAGs:
-    """
-    ----------
-    Generate atom groups for the given selection of a molecule type
-    ----------
-    NOTE: Get atom group & split into molecules based on selection & qsplit.
+    """Split a molecule-type selection into per-molecule atom groups.
 
     input
           ag       : atomgroup
@@ -57,17 +53,11 @@ def generate_mol_type_ags(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolT
           sel_ag   : atom groups for individual molecules
     """
 
-    # seq. segment -> residue
     tmps = selection.strip("(").strip(")").split()
-    # selection starts with either segid, resname, or moleculetype
-    # moleculetype is a specific feature for GROMACS
-    # u.atoms.select("moleculetype 'moleculename'")
-    #  -> molnums => molecule id, mol type => molecule names
+    # selection: "<segid|resname|moltype> <name>"; moltype is GROMACS-only
+    sel_type = tmps[0]
+    sel_name = tmps[1]
 
-    sel_type = tmps[0]  # segid/resname/moleculetype
-    sel_name = tmps[1]  # PRO*/DSPC/DOPC/ ...
-
-    # handle 0 atom case:
     if len(ag) == 0:
         print(f'# {sel_name}: no atom to split')
         sel_ag = []
@@ -75,12 +65,10 @@ def generate_mol_type_ags(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolT
         sel_nmol = 0
         return MolTypeAGs(sel_name, sel_ag, sel_nmol)
 
-    # split based on qsplit...
-    if not qsplit:  # no split
+    if not qsplit:
         print(f'# {sel_name}: no split')
         sel_ag = []
         sel_ag.append(ag)
-    # split segment/residue/molecule
     else:
         if sel_type == 'segid':
             tsel_ag = ag.split('segment')
@@ -127,11 +115,7 @@ def generate_mol_type_ags(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolT
 
 
 def generate_mol_type_ags_old(ag: 'AtomGroup', selection: str, qsplit: bool) -> MolTypeAGs:
-    """
-    ----------
-    Generate atom groups for the given selection of a molecule type
-    ----------
-    NOTE: Get atom group & split into molecules based on selection & qsplit.
+    """Legacy variant of generate_mol_type_ags (kept for compatibility).
 
     input
           ag       : atomgroup
@@ -144,22 +128,16 @@ def generate_mol_type_ags_old(ag: 'AtomGroup', selection: str, qsplit: bool) -> 
     """
 
     tmps = selection.split()
-    # selection starts with either segid, resname, or moleculetype
-    # moleculetype is a specific feature for GROMACS
-    # u.atoms.select("moleculetype 'moleculename'")
-    #  -> molnums => molecule id, mol type => molecule names
-
-    sel_type = tmps[0]  # segid/resname/moleculetype
-    sel_name = tmps[1]  # PRO*/DSPC/DOPC/ ...
+    # selection: "<segid|resname|moltype> <name>"; moltype is GROMACS-only
+    sel_type = tmps[0]
+    sel_name = tmps[1]
 
     if sel_type == "segid":
         if qsplit:
             sel_ag = ag.split('segment')
-        else:  # if qsplit is False: # no split
+        else:
             sel_ag = []
             sel_ag.append(ag)
-        # for i in range(0,len(sel_ag)):
-        #   print(sel_ag[i][0].segid,sel_ag[i][0].resid,sel_ag[i][0].resname)
     elif sel_type == "resname":
         if qsplit:
             sel_ag = ag.split('residue')
@@ -184,10 +162,7 @@ def generate_mol_type_ags_old(ag: 'AtomGroup', selection: str, qsplit: bool) -> 
 
 def generate_mol_groups(u: 'Universe', ntype: int, selection: list[str],
                         qsplit: list[bool]) -> MolGroups:
-    """
-    ----------
-    Generate atom groups for individual molecules.
-    ----------
+    """Build per-molecule atom groups for all molecule types.
 
     input
           u         : MDA Universe
@@ -203,11 +178,10 @@ def generate_mol_groups(u: 'Universe', ntype: int, selection: list[str],
           ag        : atom groups for individual molecules
     """
 
-    name_type: list[str] = []  # names of unique molecule types
-    nmol_type: list[int] = []  # numbers of individual molecule types
-    id_type: list[int] = []  # molecule type indices of individual molecules
+    name_type: list[str] = []
+    nmol_type: list[int] = []
+    id_type: list[int] = []
 
-    # generate atom groups for individual molecules
     imol = 0
     ag: list['AtomGroup'] = []
     for i in range(0, ntype):
@@ -216,17 +190,15 @@ def generate_mol_groups(u: 'Universe', ntype: int, selection: list[str],
             ag_tmp, selection[i], qsplit[i])
         name_type.append(nt)
 
-        nmol_type.append(sel_nmol)  # number of molecules of type, i
+        nmol_type.append(sel_nmol)
         for j in range(0, sel_nmol):
-            # append atom group for individual molecule
             ag.append(u.atoms[[]])
-            ag[imol] += sel_ag[j]     # update molecular atom group
-            id_type.append(i)         # update molecule type index
-            imol += 1                 # update molecule index counter
+            ag[imol] += sel_ag[j]
+            id_type.append(i)
+            imol += 1
 
-    nmol: int = np.sum(nmol_type)      # total number of molecules
+    nmol: int = np.sum(nmol_type)
 
-    # print system info
     sout = '# SYS. INFO\n'
     sout += '# number of molecule types = {ntype}\n'
     sout += '# type  :'
@@ -250,10 +222,8 @@ def generate_mol_groups(u: 'Universe', ntype: int, selection: list[str],
 def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
                              selection: list[str], qsplit: list[bool], sside: list[str],
                              method: LeafletAssignmentMethod = "mda") -> MolGroupsMemb:
-    """
-    ----------
-    Generate atom groups for individual molecules in individual leaflets.
-    ----------
+    """Build per-molecule atom groups per leaflet.
+
     input
           u         : MDA Universe
           nside     : number of leaflets (=2)
@@ -290,9 +260,7 @@ def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
     for group in selected_groups:
         selected_atoms += group
 
-    # Preserve the original MSD definition and molecule ordering. Exact
-    # compatibility requires assigning the selected atoms to a leaflet first
-    # and then splitting each leaflet selection into molecules.
+    # assign leaflet first, then split per leaflet: preserves MSD definition & molecule ordering
     if method == "zpos":
         print('# leaflet assignment based on z-position')
         leaflet = myleaflet.assign_leaflet_zpos(u, selected_atoms)
@@ -328,7 +296,6 @@ def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
 
         nmol[side] = np.sum(nmol_type[side])
 
-    # print system info
     sout = '# SYS. INFO\n'
     sout += f'# number of molecule types = {ntype}\n'
     sout += '# type  :'
@@ -354,11 +321,7 @@ def generate_mol_groups_memb(u: 'Universe', nside: int, ntype: int,
 
 def generate_full_mol_groups(u: 'Universe', ntype: int, sel_type: list[str],
                              name_type: list[str], qsplit: list[bool]) -> MolGroupsFull:
-    """
-    ----------
-    Generate reference atomgroups for individual molecules with full atoms.
-    ----------
-    NOTE: It can be used to molecule identification by intersectioning other atom groups.
+    """Build full-atom per-molecule reference groups for intersection-based identification
 
     input
           u        : MDA Universe
@@ -374,29 +337,26 @@ def generate_full_mol_groups(u: 'Universe', ntype: int, sel_type: list[str],
           ag_full  : atom groups of individual molecules with full atoms
     """
 
-    nmol_type = []  # numbers of individual molecule types
-    id_type = []  # molecule type indices of individual molecules
+    nmol_type = []
+    id_type = []
 
-    # generate atom groups for individual molecules
     imol, ag_full = 0, []
     for i in range(0, ntype):
         selection = f'{sel_type[i]} {name_type[i]}'
-        ag_tmp = u.select_atoms(selection)  # single atom selection
+        ag_tmp = u.select_atoms(selection)
 
         tname_type, sel_ag, sel_nmol = generate_mol_type_ags(
             ag_tmp, selection, qsplit[i])
 
-        nmol_type.append(sel_nmol)  # number of molecules of type, i
+        nmol_type.append(sel_nmol)
         for j in range(0, sel_nmol):
-            # append atom group for individual molecule
             ag_full.append(u.atoms[[]])
-            ag_full[imol] += sel_ag[j]     # update molecular atom group
-            id_type.append(i)         # update molecule type index
-            imol += 1                 # update molecule index counter
+            ag_full[imol] += sel_ag[j]
+            id_type.append(i)
+            imol += 1
 
-    nmol = np.sum(nmol_type)      # total number of molecules
+    nmol = np.sum(nmol_type)
 
-    # print system info
     sout = '# SYS. INFO\n'
     sout += f'# number of molecule types = {ntype}\n'
     sout += '# type  :'
@@ -417,15 +377,10 @@ def generate_full_mol_groups(u: 'Universe', ntype: int, sel_type: list[str],
     return MolGroupsFull(nmol_type, nmol, id_type, ag_full)
 
 
-#
-# It was in scd_util.py before
-#
+# moved here from scd_util.py
 def assign_leaflet_index_to_full_ag(ag_full: list['AtomGroup'],
                                     leaflets: list['AtomGroup']) -> list[int]:
-    """
-    ----------
-    Assign leaflet index to individual lipids (for a given frame)
-    ----------
+    """Assign each molecule's leaflet index from reference leaflets (must cover all molecules).
 
     input
           ag_full : list of atomgroup for individual molecules
@@ -433,32 +388,27 @@ def assign_leaflet_index_to_full_ag(ag_full: list['AtomGroup'],
 
     output
           id_side : list array of leaflet index of individual lipids
-
-    NOTE: leaflets should include atoms from all molecules in ag_full
     """
 
     nmol = len(ag_full)
 
     tid_side = [-1] * nmol
     flag = [0] * nmol
-    nside = len(leaflets)  # number of leaflets
+    nside = len(leaflets)
     if nside < 2:
         raise ValueError(
             f"expected at least two reference leaflets, got {nside}"
         )
 
-    # Loop over molecule
     for i in range(0, nmol):
         for j in range(0, nside):
             if flag[i] == 0:
                 tag = leaflets[j].intersection(ag_full[i])
                 if len(tag) > 0:
-                    # print(tag)
                     tid_side[i] = j
                     flag[i] = 1
                     break
 
-    # check for unassigned lipid
     for i in range(0, nmol):
         if flag[i] == 0:
             print(f'# unassigned lipid, {i}')
@@ -469,10 +419,7 @@ def assign_leaflet_index_to_full_ag(ag_full: list['AtomGroup'],
 
 def assign_full_ag_leaflet_from_ref_leaflet(u: 'Universe', ag_full: list['AtomGroup'],
                                             leaflets: list['AtomGroup']) -> list['AtomGroup']:
-    """
-    ----------
-    Assign leaflet index to individual lipids (for a given frame)
-    ----------
+    """Rebuild full-atom leaflets from molecule groups (leaflets must cover all molecules).
 
     input
           ag_full : list of atomgroup for individual molecules
@@ -480,14 +427,12 @@ def assign_full_ag_leaflet_from_ref_leaflet(u: 'Universe', ag_full: list['AtomGr
 
     output
           full_leaflets : list array of leaflets from ag_full
-
-    NOTE: leaflets should include atoms from all molecules in ag_full
     """
 
     nmol = len(ag_full)
 
-    flag = [0] * nmol  # before assignment
-    nside = len(leaflets)  # number of leaflets
+    flag = [0] * nmol
+    nside = len(leaflets)
 
     full_leaflets: list['AtomGroup'] = []
     for i in range(0, nside):
