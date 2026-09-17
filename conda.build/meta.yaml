@@ -40,6 +40,7 @@ requirements:
     - psutil >=7.0
     - bracex >=2.0
     - numpy
+    - scipy
   run_constrained:
     - hole2 >=2.3
     - freesasa >=2.2

@@ -3,6 +3,8 @@ from collections.abc import Sequence
 import typing as t
 
 import numpy as np
+from MDAnalysis.lib.distances import minimize_vectors
+from scipy import fft as scipy_fft
 
 if t.TYPE_CHECKING:
     from numpy.typing import ArrayLike, NDArray
@@ -11,6 +13,7 @@ if t.TYPE_CHECKING:
 T = t.TypeVar('T')
 Tup2: t.TypeAlias = tuple[T, T]
 NDFloat64: t.TypeAlias = 'NDArray[np.float64]'
+NDIntp: t.TypeAlias = 'NDArray[np.intp]'
 
 
 class MassPosDisplTup1(t.NamedTuple):
@@ -29,6 +32,206 @@ class MassPosDisplTup0(t.NamedTuple):
     pos_sys_prev:   NDFloat64
     displ_sys:      NDFloat64
     displ_sys_com:  NDFloat64
+
+
+class PackedMoleculeData(t.NamedTuple):
+    """Precomputed metadata and flat working arrays for one leaflet."""
+
+    atom_indices: NDIntp
+    molecule_starts: NDIntp
+    atom_masses: NDFloat64
+    molecule_masses: NDFloat64
+    coordinate_buffer: NDFloat64
+    pos: NDFloat64
+    pos_prev: NDFloat64
+    pos_unwrap: NDFloat64
+    displacement: NDFloat64
+    minimum_image_scratch: NDFloat64
+    weighted_pos: NDFloat64
+    mass_sums: NDFloat64
+    com_unwrap: NDFloat64
+    traj_com_unwrap: NDFloat64
+
+
+def minimum_image_displacement(
+        displacement: NDFloat64,
+        box: NDFloat64,
+        out: NDFloat64 | None = None,
+        scratch: NDFloat64 | None = None) -> NDFloat64:
+    """Apply minimum-image PBC for orthorhombic or triclinic boxes."""
+    box_array = np.asarray(box, dtype=float)
+    if box_array.shape not in {(3,), (6,)}:
+        raise ValueError(
+            "box must contain either three lengths or six unit-cell values"
+        )
+    if not np.isfinite(box_array).all() or np.any(box_array[:3] <= 0):
+        raise ValueError("box dimensions must be finite and positive")
+
+    if (
+        len(box_array) == 6
+        and not np.allclose(box_array[3:], 90.0)
+    ):
+        minimized = minimize_vectors(displacement, box_array)
+        if out is None:
+            return t.cast(NDFloat64, minimized)
+        np.copyto(out, minimized)
+        return out
+
+    lengths = box_array[:3]
+    if out is None:
+        out = np.array(displacement, dtype=float, copy=True)
+    elif out is not displacement:
+        np.copyto(out, displacement)
+    if scratch is None:
+        scratch = np.empty_like(out)
+    np.divide(out, lengths / 2.0, out=scratch)
+    np.trunc(scratch, out=scratch)
+    np.sign(scratch, out=scratch)
+    np.multiply(scratch, lengths, out=scratch)
+    np.subtract(out, scratch, out=out)
+    return out
+
+
+def setup_packed_molecule_data(
+        ag: list['AtomGroup'],
+        framenum: int) -> PackedMoleculeData:
+    """Precompute molecule indices and allocate contiguous working arrays."""
+    molecule_sizes = np.asarray(
+        [len(molecule) for molecule in ag],
+        dtype=np.intp,
+    )
+    molecule_starts = np.empty(len(ag), dtype=np.intp)
+    if len(ag):
+        molecule_starts[0] = 0
+        if len(ag) > 1:
+            np.cumsum(
+                molecule_sizes[:-1],
+                out=molecule_starts[1:],
+            )
+        atom_indices = np.concatenate(
+            [molecule.indices for molecule in ag]
+        ).astype(np.intp, copy=False)
+        atom_masses = np.concatenate(
+            [np.asarray(molecule.masses, dtype=float) for molecule in ag]
+        )
+        molecule_masses = np.asarray(
+            [
+                molecule.total_mass(compound='group')
+                for molecule in ag
+            ],
+            dtype=float,
+        )
+        if (
+            not np.isfinite(atom_masses).all()
+            or np.any(atom_masses <= 0)
+            or not np.isfinite(molecule_masses).all()
+            or np.any(molecule_masses <= 0)
+        ):
+            raise ValueError(
+                "All analyzed atoms and molecules require finite, "
+                "positive masses"
+            )
+    else:
+        atom_indices = np.empty(0, dtype=np.intp)
+        atom_masses = np.empty(0, dtype=float)
+        molecule_masses = np.empty(0, dtype=float)
+
+    natoms = len(atom_indices)
+    nmol = len(ag)
+    coordinate_dtype = ag[0].positions.dtype if len(ag) else float
+    return PackedMoleculeData(
+        atom_indices=atom_indices,
+        molecule_starts=molecule_starts,
+        atom_masses=atom_masses,
+        molecule_masses=molecule_masses,
+        coordinate_buffer=np.empty((natoms, 3), dtype=coordinate_dtype),
+        pos=np.empty((natoms, 3), dtype=float),
+        pos_prev=np.empty((natoms, 3), dtype=float),
+        pos_unwrap=np.empty((natoms, 3), dtype=float),
+        displacement=np.empty((natoms, 3), dtype=float),
+        minimum_image_scratch=np.empty((natoms, 3), dtype=float),
+        weighted_pos=np.empty((natoms, 3), dtype=float),
+        mass_sums=np.empty((nmol, 3), dtype=float),
+        com_unwrap=np.empty((nmol, 3), dtype=float),
+        traj_com_unwrap=np.empty((framenum, nmol, 3), dtype=float),
+    )
+
+
+def read_packed_coordinates(
+        frame_positions: NDFloat64,
+        data: PackedMoleculeData) -> None:
+    """Gather all selected molecule coordinates with one indexed operation."""
+    np.take(
+        frame_positions,
+        data.atom_indices,
+        axis=0,
+        out=data.coordinate_buffer,
+    )
+    np.copyto(data.pos, data.coordinate_buffer)
+
+
+def calculate_packed_com(data: PackedMoleculeData) -> NDFloat64:
+    """Calculate packed molecule COMs in the original summation order."""
+    if not len(data.molecule_starts):
+        return np.empty((0, 3), dtype=float)
+
+    np.multiply(
+        data.pos_unwrap,
+        data.atom_masses[:, np.newaxis],
+        out=data.weighted_pos,
+    )
+    np.add.reduceat(
+        data.weighted_pos,
+        data.molecule_starts,
+        axis=0,
+        out=data.mass_sums,
+    )
+    np.divide(
+        data.mass_sums,
+        data.molecule_masses[:, np.newaxis],
+        out=data.com_unwrap,
+    )
+    return data.com_unwrap
+
+
+def init_packed_molecule_com(data: PackedMoleculeData) -> None:
+    """Initialize packed unwrapped coordinates and first-frame COMs."""
+    np.copyto(data.pos_prev, data.pos)
+    np.copyto(data.pos_unwrap, data.pos)
+    np.copyto(data.com_unwrap, calculate_packed_com(data))
+    np.copyto(data.traj_com_unwrap[0], data.com_unwrap)
+
+
+def update_packed_molecule_com(
+        iframe: int,
+        box: NDFloat64,
+        data: PackedMoleculeData,
+        displ_sys_com: NDFloat64) -> None:
+    """Update all unwrapped molecule positions and COMs for one frame."""
+    np.subtract(data.pos, data.pos_prev, out=data.displacement)
+    minimum_image_displacement(
+        data.displacement,
+        box,
+        out=data.displacement,
+        scratch=data.minimum_image_scratch,
+    )
+    np.subtract(
+        data.displacement,
+        displ_sys_com,
+        out=data.displacement,
+    )
+
+    np.add(
+        data.pos_unwrap,
+        data.displacement,
+        out=data.pos_unwrap,
+    )
+    np.copyto(data.pos_prev, data.pos)
+    np.copyto(data.com_unwrap, calculate_packed_com(data))
+    np.copyto(
+        data.traj_com_unwrap[iframe],
+        data.com_unwrap,
+    )
 
 
 def set_mass_pos_displ_arrays(nmol: int, ag: list['AtomGroup']) -> MassPosDisplTup1:
@@ -257,7 +460,8 @@ def init_unwrap_sys_com(pos_sys: 'NDArray', mass_sys: 'ArrayLike',
 
 def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
                             pos_sys_prev: 'NDArray', mass_sys: 'NDArray',
-                            tmass_sys: float, displ_sys_com: 'NDArray') -> None:
+                            tmass_sys: float, displ_sys_com: 'NDArray',
+                            scratch: 'NDArray | None' = None) -> None:
     """
     ----------
     Calculate COM displacement of the system
@@ -276,9 +480,17 @@ def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
     """
 
     # natom = len(pos_sys)
-    displ_sys = pos_sys - pos_sys_prev
+    if scratch is None:
+        displ_sys = pos_sys - pos_sys_prev
+    else:
+        displ_sys = scratch
+        np.subtract(pos_sys, pos_sys_prev, out=displ_sys)
     # tmpdispl = displ_sys; print(tmpdispl)
-    displ_sys = displ_sys - np.sign(np.trunc(displ_sys/(box/2.0))) * box
+    displ_sys = minimum_image_displacement(
+        displ_sys,
+        box,
+        out=displ_sys,
+    )
     # tmpdispl = displ_sys; print(tmpdispl)
 
     # # DEBUG
@@ -289,7 +501,7 @@ def calculate_displ_sys_com(iframe: int, box: 'NDArray', pos_sys: 'NDArray',
     # # DEBUG
 
     # calculation of displacement of system COM
-    displ_sys = (displ_sys.T * mass_sys).T  # numerator of disp_sys_com
+    np.multiply(displ_sys, mass_sys[:, np.newaxis], out=displ_sys)
     # print(displ_sys)
     tdispl_com = np.sum(displ_sys, axis=0)/tmass_sys
     np.copyto(displ_sys_com, tdispl_com)
@@ -322,8 +534,10 @@ def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
 
     nmol = len(pos)
     for i in range(0, nmol):
-        displ = pos[i] - pos_prev[i]
-        displ = displ - np.sign(np.trunc(displ/(box/2))) * box
+        displ = minimum_image_displacement(
+            pos[i] - pos_prev[i],
+            box,
+        )
 
         # # DEBUG
         # maxdispl = np.max(np.absolute(displ))
@@ -333,9 +547,8 @@ def update_unwrapped_mol_pos(iframe: int, box: 'NDArray', pos: list['NDArray'],
         #     print(displ)
         # # DEBUG
 
-        # COM drift correction
-        for j in range(0, len(displ)):
-            displ[j] = displ[j] - displ_sys_com
+        # Apply the three-component COM drift to every atom at once.
+        displ -= displ_sys_com
         tpos_unwrap = pos_unwrap[i] + displ
         np.copyto(pos_unwrap[i], tpos_unwrap)
 
@@ -419,36 +632,51 @@ def calculate_msd_tau(tau: int,
           tmsd           : x,y, & z-components of MSD at tau for individual molecule types
     """
 
-    # set msd array
-    tmsd = np.zeros([ntype, 3], dtype=float)
+    type_ids = np.asarray(id_type, dtype=np.intp)
+    type_indices = [
+        np.flatnonzero(type_ids == molecule_type)
+        for molecule_type in range(ntype)
+    ]
+    return _calculate_msd_tau(
+        tau=tau,
+        framenum=framenum,
+        interval=interval,
+        type_indices=type_indices,
+        traj_com_unwrap=traj_com_unwrap,
+    )
 
-    nmol = len(id_type)
 
-    # set square displacement arrays
-    sd_arr: list[list[list[NDFloat64]]] = []
-    for i in range(0, ntype):
-        sd_arr.append([])
-        for j in range(0, 3):
-            sd_arr[i].append([])
+def _calculate_msd_tau(
+        tau: int,
+        framenum: int,
+        interval: int,
+        type_indices: Sequence[NDIntp],
+        traj_com_unwrap: NDFloat64,
+        scratch: NDFloat64 | None = None) -> NDFloat64:
+    """Calculate one lag-time MSD using vectorized time origins."""
+    frame_lag = int(tau / interval)
+    stop = framenum - frame_lag
 
-    # calculate square displacement of individual molecules
-    # & update square displacement array
-    ttau = int(tau/interval)
-    for i in range(0, framenum - ttau):
-        dis: NDFloat64 = traj_com_unwrap[i +
-                                         ttau, :, :] - traj_com_unwrap[i, :, :]
-        dis = np.square(dis)
-        # loop over lipids & get msd for individual lipid type
-        for j in range(0, nmol):
-            k = id_type[j]  # molecule type index
-            tsd: NDFloat64 = dis[j]
-            for m in range(0, 3):
-                sd_arr[k][m].append(tsd[m])
+    if scratch is None:
+        squared_displacement = (
+            traj_com_unwrap[frame_lag:framenum]
+            - traj_com_unwrap[:stop]
+        )
+    else:
+        squared_displacement = scratch[:stop]
+        np.subtract(
+            traj_com_unwrap[frame_lag:framenum],
+            traj_com_unwrap[:stop],
+            out=squared_displacement,
+        )
+    np.square(squared_displacement, out=squared_displacement)
 
-    # get MSD for individual molecule types
-    for i in range(0, ntype):
-        for j in range(0, 3):
-            tmsd[i][j] = np.mean(sd_arr[i][j])
+    tmsd = np.empty((len(type_indices), 3), dtype=float)
+    for molecule_type, indices in enumerate(type_indices):
+        tmsd[molecule_type] = np.mean(
+            squared_displacement[:, indices, :],
+            axis=(0, 1),
+        )
 
     return tmsd
 
@@ -474,20 +702,224 @@ def calculate_msd(taus: list[int], framenum: int, interval: int,
 
     ntau = len(taus)
     ntype = len(msd)
+    type_ids = np.asarray(id_type, dtype=np.intp)
+    if traj_com_unwrap.shape[1] != len(type_ids):
+        raise ValueError(
+            "id_type length must match the molecule dimension of "
+            "traj_com_unwrap"
+        )
+    if np.any(type_ids < 0) or np.any(type_ids >= ntype):
+        raise ValueError("id_type contains an invalid molecule type index")
+
+    type_indices = [
+        np.flatnonzero(type_ids == molecule_type)
+        for molecule_type in range(ntype)
+    ]
+    # Reuse one full-sized work array for every lag. Previously each lag
+    # allocated both displacement and squared-displacement arrays.
+    scratch = np.empty_like(traj_com_unwrap)
+
     for i in range(0, ntau):
         tau = taus[i]
         if int(tau/interval) > framenum - 1:
             break
         if tau % 100 == 0:
             print(f'MSD progress {tau}/{taus[-1]}')
+        if tau == 0:
+            msd[:, i, :] = 0.0
+            continue
 
         # Calculate MSD(tau)
-        tmsd = calculate_msd_tau(tau, framenum, interval, ntype,
-                                 id_type, traj_com_unwrap)
+        tmsd = _calculate_msd_tau(
+            tau=tau,
+            framenum=framenum,
+            interval=interval,
+            type_indices=type_indices,
+            traj_com_unwrap=traj_com_unwrap,
+            scratch=scratch,
+        )
 
         # update MSD
         np.copyto(msd[:, i, :], tmsd)
 
+
+def _next_fast_fft_length(minimum_length: int) -> int:
+    """Return an efficient real-FFT length at least ``minimum_length``."""
+    if minimum_length < 1:
+        raise ValueError("minimum_length must be positive")
+    return int(scipy_fft.next_fast_len(minimum_length, real=True))
+
+
+def select_msd_engine(
+        framenum: int,
+        frame_lags: Sequence[int]) -> t.Literal['direct', 'fft']:
+    """Select an engine from trajectory and requested-lag work estimates."""
+    if framenum < 1:
+        raise ValueError("framenum must be positive")
+    lags = np.asarray(frame_lags, dtype=np.intp)
+    if np.any(lags < 0) or np.any(lags >= framenum):
+        raise ValueError("frame_lags contain a lag outside the trajectory")
+
+    # Direct work follows the number of displacement samples actually reduced.
+    # FFT work covers the complete padded trajectory regardless of lag count.
+    direct_samples = int(np.sum(framenum - lags, dtype=np.int64))
+    fft_length = _next_fast_fft_length(2 * framenum - 1)
+    fft_work = fft_length * np.log2(fft_length)
+    return 'fft' if direct_samples > fft_work else 'direct'
+
+
+def calculate_msd_fft(
+        taus: list[int], framenum: int, interval: int,
+        traj_com_unwrap: NDFloat64, id_type: Sequence[int],
+        msd: NDFloat64,
+        chunk_size: int | None = None,
+        workers: int = 1) -> None:
+    """Calculate all requested MSD lags using FFT autocorrelation.
+
+    This is asymptotically faster for long trajectories, but floating-point
+    reduction order differs from :func:`calculate_msd`, so callers that need
+    byte-for-byte legacy output should continue to use the direct engine.
+    """
+    ntype = len(msd)
+    type_ids = np.asarray(id_type, dtype=np.intp)
+    if traj_com_unwrap.shape != (framenum, len(type_ids), 3):
+        raise ValueError(
+            "traj_com_unwrap shape must be (framenum, len(id_type), 3)"
+        )
+    if np.any(type_ids < 0) or np.any(type_ids >= ntype):
+        raise ValueError("id_type contains an invalid molecule type index")
+
+    frame_lags = np.asarray(taus, dtype=np.intp) // interval
+    if np.any(frame_lags < 0) or np.any(frame_lags >= framenum):
+        raise ValueError("taus contain a lag outside the trajectory")
+    if chunk_size is not None and chunk_size < 1:
+        raise ValueError("chunk_size must be positive")
+    if workers < 1:
+        raise ValueError("workers must be positive")
+
+    # Linear autocorrelation of N samples needs at least 2N - 1 points. Use a
+    # compact mixed-radix length instead of forcing a power of two; SciPy
+    # selects efficient real-transform sizes for its FFT backend.
+    minimum_fft_length = 2 * framenum - 1
+    fft_length = _next_fast_fft_length(minimum_fft_length)
+    for molecule_type in range(ntype):
+        indices = np.flatnonzero(type_ids == molecule_type)
+        if not len(indices):
+            msd[molecule_type] = np.nan
+            continue
+
+        effective_chunk_size = (
+            len(indices)
+            if chunk_size is None
+            else chunk_size
+        )
+        autocorrelation = np.zeros((framenum, 3), dtype=float)
+        squared = np.zeros((framenum, 3), dtype=float)
+        for chunk_start in range(0, len(indices), effective_chunk_size):
+            chunk_indices = indices[
+                chunk_start:chunk_start + effective_chunk_size
+            ]
+            coordinates = traj_com_unwrap[:, chunk_indices, :]
+            spectrum = scipy_fft.rfft(
+                coordinates,
+                n=fft_length,
+                axis=0,
+                workers=workers,
+            )
+
+            # Convert F to |F|^2 in place. This avoids allocating a second
+            # complex FFT-sized array for spectrum.conjugate() * spectrum.
+            np.square(spectrum.real, out=spectrum.real)
+            np.square(spectrum.imag, out=spectrum.imag)
+            spectrum.real += spectrum.imag
+            spectrum.imag.fill(0.0)
+            autocorrelation += scipy_fft.irfft(
+                spectrum,
+                n=fft_length,
+                axis=0,
+                workers=workers,
+            )[:framenum].sum(axis=1)
+            squared += np.einsum(
+                'tmc,tmc->tc',
+                coordinates,
+                coordinates,
+                optimize=True,
+            )
+
+        prefix = np.vstack(
+            [np.zeros((1, 3), dtype=float), np.cumsum(squared, axis=0)]
+        )
+        for output_index, frame_lag in enumerate(frame_lags):
+            origin_count = framenum - frame_lag
+            numerator = (
+                prefix[origin_count]
+                + prefix[framenum]
+                - prefix[frame_lag]
+                - 2.0 * autocorrelation[frame_lag]
+            )
+            values = numerator / (origin_count * len(indices))
+            # Roundoff in the FFT can make exact zeros very slightly negative.
+            msd[molecule_type, output_index] = np.maximum(values, 0.0)
+
+    msd[:, 0, :] = 0.0
+
+# FFT-based MSD formulation
+#
+# The direct all-time-origin MSD for a trajectory r(t) is
+#
+#                1
+# MSD(tau) = ----------- * sum_t |r(t + tau) - r(t)|^2
+#             N - tau
+#
+# where N is the number of frames and tau is the frame lag.
+#
+# Expanding the squared displacement,
+#
+# |r(t + tau) - r(t)|^2
+#     = |r(t + tau)|^2
+#       + |r(t)|^2
+#       - 2 r(t + tau) . r(t)
+#
+# therefore,
+#
+#                 A(tau) + B(tau) - 2 C(tau)
+# MSD(tau) = ---------------------------------------
+#                           N - tau
+#
+# where
+#
+# A(tau) = sum_t |r(t + tau)|^2
+# B(tau) = sum_t |r(t)|^2
+# C(tau) = sum_t r(t + tau) . r(t)
+#
+# C(tau) is the (unnormalized) position autocorrelation. Computing
+# C(tau) independently for every lag requires O(N^2) work. Using the
+# Fourier correlation theorem, all lags can instead be obtained as
+#
+# C = IFFT(conj(FFT(r)) * FFT(r))
+#
+# in O(N log N) time per coordinate trajectory.
+#
+# The trajectory is zero-padded before the FFT so that the FFT's
+# circular correlation corresponds to the required linear
+# autocorrelation and does not wrap the end of the trajectory back
+# onto its beginning.
+#
+# A(tau) and B(tau) are obtained separately from squared-coordinate
+# sums. Combining them with C(tau) recovers the same all-time-origin
+# MSD definition as the direct implementation.
+#
+# For M molecules, the approximate scaling therefore changes from
+#
+#     direct: O(M * N^2)
+#     FFT:    O(M * N log N)
+#
+# up to constant factors and the additional O(M * N) work required
+# for the squared-coordinate terms.
+#
+# NOTE: The FFT and direct formulations are mathematically equivalent,
+# but floating-point operation ordering differs. Small roundoff-level
+# differences from the direct implementation are therefore expected.
 
 def calculate_msd_bilayer(msd: Sequence[NDFloat64], nside: int, ntype: int,
                           ntaus: int, nmol_type: Sequence[Sequence[int]]) -> NDFloat64:
@@ -506,33 +938,19 @@ def calculate_msd_bilayer(msd: Sequence[NDFloat64], nside: int, ntype: int,
     output
           bmsd     : MSD from both leaflets
     """
-    bmsd = np.zeros([ntype, ntaus, 3], dtype=float)
-    # sum over leaflets - nomralization factor
-    bnmol_type = np.sum(nmol_type, axis=0)
+    msd_array = np.asarray(msd, dtype=float)
+    counts = np.asarray(nmol_type, dtype=float)
+    if msd_array.shape != (nside, ntype, ntaus, 3):
+        raise ValueError("msd has an incompatible shape")
+    if counts.shape != (nside, ntype):
+        raise ValueError("nmol_type has an incompatible shape")
 
-    # -----------------------------------------
-    # Calculate sum of square displacement
-    # -----------------------------------------
-    # leaflet data: msd[side][type,tau]
-    #
-    # sd[type,tau] =
-    #   msd[up][type,tau] * nmol_type[up][type] + msd[dn][type,tau] * nmol_type[dn][type]
-    #
-    # msd[type,tau,:] = sd[type,tau]/np.sum(nmol_type,axis = 0)
-    #
-    for j in range(0, ntype):
-        tnmolj = bnmol_type[j]
-        if tnmolj == 0:
-            continue  # when there's no type j in bilayer
-
-        for k in range(0, ntaus):
-            for i in range(0, nside):
-                tnmolij = nmol_type[i][j]
-                if tnmolij == 0:
-                    continue  # when there's no type j in leaflet i
-
-                for m in range(0, 3):
-                    bmsd[j, k, m] += msd[i][j, k, m] * \
-                        nmol_type[i][j] / bnmol_type[j]
-
-    return bmsd
+    totals = counts.sum(axis=0)
+    weights = np.divide(
+        counts,
+        totals[np.newaxis, :],
+        out=np.zeros_like(counts),
+        where=totals[np.newaxis, :] != 0,
+    )
+    result = np.einsum('stkc,st->tkc', msd_array, weights, optimize=True)
+    return t.cast(NDFloat64, result)
