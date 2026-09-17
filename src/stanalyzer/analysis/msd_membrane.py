@@ -1,8 +1,10 @@
 #!/usr/bin/python
 import argparse
+import hashlib
 import json
 import os
 import re
+import tempfile
 import typing as t
 from collections.abc import Sequence
 from pathlib import Path
@@ -52,6 +54,20 @@ class COMCacheData(t.NamedTuple):
     system_com: list[NDFloat64] | None
 
 
+def _content_prefix_hash(path: Path, limit: int = 1 << 20) -> str:
+    """Return the hex SHA-256 of the file's first `limit` bytes."""
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        remaining = limit
+        while remaining > 0:
+            chunk = stream.read(min(remaining, 1 << 16))
+            if not chunk:
+                break
+            digest.update(chunk)
+            remaining -= len(chunk)
+    return digest.hexdigest()
+
+
 def _file_identity(file_ref: sta.FileRef) -> dict[str, int | str]:
     """Return stable local-file metadata suitable for a cache identity."""
     if isinstance(file_ref, (str, os.PathLike)):
@@ -69,6 +85,7 @@ def _file_identity(file_ref: sta.FileRef) -> dict[str, int | str]:
         'path': str(resolved),
         'size': stat.st_size,
         'mtime_ns': stat.st_mtime_ns,
+        'content_hash': _content_prefix_hash(resolved),
     }
 
 
@@ -138,11 +155,33 @@ def _load_com_cache(
         return None
 
 
+def _atomic_write(path: Path, write: t.Callable[[t.BinaryIO], None]) -> None:
+    """Write via a uniquely-named temp file, then atomically rename in place.
+
+    mkstemp names the temp file unpredictably and creates it exclusively, so
+    concurrent writers cannot collide on a shared name and no pre-placed
+    symlink at a fixed .tmp path can be followed. os.replace makes the
+    destination swap atomic.
+    """
+    fd, temporary = tempfile.mkstemp(
+        dir=path.parent, prefix=f'.{path.name}.', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            write(stream)
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
 def _atomic_save_array(path: Path, values: NDFloat64) -> None:
-    temporary = path.with_name(f'.{path.name}.tmp')
-    with temporary.open('wb') as stream:
-        np.save(stream, values, allow_pickle=False)
-    os.replace(temporary, path)
+    _atomic_write(
+        path,
+        lambda stream: np.save(stream, values, allow_pickle=False),
+    )
 
 
 def _write_com_cache(
@@ -158,15 +197,17 @@ def _write_com_cache(
             _atomic_save_array(cache_dir / f'{side}_sys_com.npy', values)
 
     metadata_path = cache_dir / 'metadata.json'
-    temporary = metadata_path.with_name(f'.{metadata_path.name}.tmp')
     stored_metadata = {
         **metadata,
         'has_system_com': system_com is not None,
     }
-    with temporary.open('w', encoding='utf-8') as stream:
-        json.dump(stored_metadata, stream, indent=2, sort_keys=True)
-        stream.write('\n')
-    os.replace(temporary, metadata_path)
+    payload = (json.dumps(stored_metadata, indent=2, sort_keys=True)
+               + '\n').encode('utf-8')
+
+    def _write_payload(stream: t.BinaryIO) -> None:
+        stream.write(payload)
+
+    _atomic_write(metadata_path, _write_payload)
 
 
 def assign_leaflet_zpos_fast(atomgroup):
