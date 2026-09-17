@@ -59,6 +59,8 @@ def write_secondary_structure(psf: sta.FileRef, traj: sta.FileRefList, out: sta.
                 resnames[i] = 'HIS'
             if resnames[i] in ['HID', 'HIE', 'HIP']:  # Amber FF
                 resnames[i] = 'HIS'
+            if resnames[i] in ['NALA', 'CPHE']:  # Charmm FF capping residues
+                resnames[i] = resnames[i][1:]
         all_atoms.residues.resnames = resnames
         # Fix the names of C-terminal carboxyl oxygens that are not recognized by DSSP
         atom_names = all_atoms.atoms.names

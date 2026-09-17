@@ -85,8 +85,8 @@ def write_contact_res_time(psf: sta.FileRef, traj: sta.FileRefList, sel: str,
         if event_len:
             events = np.array(event_len)
             residence_dist[contact] = events.mean(), events.std()
-    else:
-        residence_dist[contact] = (0.0, 0.0)  # Handle case with no events
+        else:
+            residence_dist[contact] = (0.0, 0.0)
 
     with sta.resolve_file(out, 'w') as outfile:
         print("# Residue1_Resname Residue1_ID Residue2_Resname Residue2_ID Mean_Time Std",

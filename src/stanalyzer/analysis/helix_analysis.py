@@ -59,7 +59,9 @@ def analyze_helix(aligned: mda.Universe, selection: str,
     plt.plot(h.results.local_twists.mean(axis=1))
     plt.xlabel('Frame')
     plt.ylabel('Average twist (degrees)')
-    plt.show()
+    if plt.get_backend().lower() in ('tkagg', 'qtagg', 'qt5agg', 'gtk3agg',
+                                     'gtk4agg', 'macosx', 'wxagg'):
+        plt.show()
 
 
 def write_helix_analysis(
