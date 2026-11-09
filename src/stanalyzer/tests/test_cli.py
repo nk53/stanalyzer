@@ -1096,6 +1096,14 @@ class MsdMembrane(SoohyungCase):
             ref = ref_dir / actual.name
             assert_output_matches_reference(self, actual, ref)
 
+    def test_suffix_traversal_rejected(self) -> None:
+        args = f'{self.standard_args} --suffix ../escape'
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_analysis(args, accepts_o=self.accepts_o)
+
+        err_path = Path(self.outfile('msd_membrane.err'))
+        self.assertIn('invalid suffix', err_path.read_text())
+
 
 class MsdSolution(SoohyungCase):
     accepts_o = False

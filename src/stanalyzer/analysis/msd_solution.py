@@ -25,6 +25,11 @@ class ProcessedArgs(t.NamedTuple):
     qsplit: list[bool]
 
 
+def _sampled_frame_indices(n_frames: int, interval: int) -> range:
+    """Return the zero-based global trajectory frames selected by ``interval``."""
+    return range(0, n_frames, interval)
+
+
 def process_args(sel: str, split_to_mol: str | None) -> ProcessedArgs:
     """
     ----------
@@ -211,8 +216,9 @@ def run_msd_solution(sel: str, split: str | None, qdrift: str, qcomsys: bool, qc
 
     # READ topology and trajectory
     u = mda.Universe(psf, traj)  # MDA universe
-    # number of frames to be analyzed
-    framenum = int(u.trajectory.n_frames/interval)
+    # one ceil stride range feeds count and iteration: int(n/s) drops the tail frame
+    frame_indices = _sampled_frame_indices(u.trajectory.n_frames, interval)
+    framenum = len(frame_indices)
 
     # Generate molecule groups
     name_type, nmol_type, nmol, id_type, ag =\
@@ -243,10 +249,10 @@ def run_msd_solution(sel: str, split: str | None, qdrift: str, qcomsys: bool, qc
 
     # UNWRAPPING
     print('# UNWRAP trajectories')
-    for i in range(0, framenum):
+    for i, source_frame in enumerate(frame_indices):
         #  ct=(cnt-1)+dt*(i+1) # in ns
-        print(f'# processing {interval*i+1}/{interval*framenum}')
-        ts = u.trajectory[interval*i]
+        print(f'# processing {source_frame+1}/{u.trajectory.n_frames}')
+        ts = u.trajectory[source_frame]
 
         # get box size
         xtla, xtlb, xtlc = ts.dimensions[:3]

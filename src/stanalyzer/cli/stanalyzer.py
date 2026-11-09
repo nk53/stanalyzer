@@ -12,6 +12,12 @@ from typing import Any, TypeAlias, TypeVar, cast, overload
 from .validators import exec_name, p_int, p_float
 from ..utils import braced_glob, read_json
 
+if __name__ == '__main__' and __spec__ is not None:
+    # python -m: alias real name to __main__ so from_settings identity holds
+    parent_name, _, module_name = __spec__.name.rpartition('.')
+    sys.modules[__spec__.name] = sys.modules[__name__]
+    setattr(sys.modules[parent_name], module_name, sys.modules[__name__])
+
 T = TypeVar('T')
 
 

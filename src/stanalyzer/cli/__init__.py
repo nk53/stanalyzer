@@ -1,8 +1,15 @@
 import argparse
-from .stanalyzer import get_settings
-from .stanalyzer import main as analyze
 
 __all__ = ["analyze", "config", "get_settings", "FakeParser"]
+
+
+def __getattr__(name):
+    """Lazily re-export analyze/get_settings; importing cli must not execute stanalyzer.py."""
+    if name in ("analyze", "get_settings"):
+        from importlib import import_module
+        return getattr(import_module(f"{__name__}.stanalyzer"),
+                       "main" if name == "analyze" else name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class FakeParser(argparse.ArgumentParser):
