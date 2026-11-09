@@ -685,7 +685,19 @@ def calculate_msd_fft(
         msd: NDFloat64,
         chunk_size: int | None = None,
         workers: int = 1) -> None:
-    """FFT autocorrelation MSD; faster for long trajectories but float-reduction order differs from the direct engine."""
+    """Calculate all requested MSD lags using FFT autocorrelation.
+
+    MSD(tau) = (A(tau) + B(tau) - 2 C(tau)) / (N - tau), where A and B are
+    squared-coordinate sums and C = IFFT(conj(FFT(r)) * FFT(r)) is the
+    position autocorrelation - O(N log N) per coordinate instead of the
+    direct O(N^2). The trajectory is zero-padded so the circular
+    correlation is linear and does not wrap. Scaling: O(M N log N) vs
+    O(M N^2) direct, up to O(M N) extra squared-coordinate sums.
+
+    This is asymptotically faster for long trajectories, but floating-point
+    reduction order differs from :func:`calculate_msd`, so callers that need
+    byte-for-byte legacy output should continue to use the direct engine.
+    """
     ntype = len(msd)
     type_ids = np.asarray(id_type, dtype=np.intp)
     if traj_com_unwrap.shape != (framenum, len(type_ids), 3):

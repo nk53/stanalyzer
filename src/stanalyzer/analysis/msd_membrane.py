@@ -523,12 +523,9 @@ def run_msd_membrane(
     n_trajectory_frames = u.trajectory.n_frames
     if n_trajectory_frames < 1:
         raise ValueError("trajectory contains no frames")
-    # truncate trailing frames to preserve original sampling contract
-    framenum = int(n_trajectory_frames / interval)
-    frame_indices = [
-        interval * frame
-        for frame in range(framenum)
-    ]
+    # one ceil stride range feeds count and both iterators: int(n/s) drops the tail frame
+    frame_indices = list(range(0, n_trajectory_frames, interval))
+    framenum = len(frame_indices)
     if framenum < 1:
         raise ValueError(
             "interval is larger than the number of trajectory frames"
